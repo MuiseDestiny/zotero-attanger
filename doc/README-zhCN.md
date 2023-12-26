@@ -1,7 +1,7 @@
 # Zotero Plugin Template
 
 [![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
-[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
+[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/muisedestiny/zotero-plugin-template)
 
 这是 [Zotero](https://www.zotero.org/) 的插件模板.
 
@@ -11,23 +11,23 @@
 
 [📖 Zotero 7 插件开发文档](https://www.zotero.org/support/dev/zotero_7_for_developers)
 
-🛠️ [Zotero 插件工具包](https://github.com/windingwind/zotero-plugin-toolkit) | [API 文档](https://github.com/windingwind/zotero-plugin-toolkit/blob/master/docs/zotero-plugin-toolkit.md)
+🛠️ [Zotero 插件工具包](https://github.com/muisedestiny/zotero-plugin-toolkit) | [API 文档](https://github.com/muisedestiny/zotero-plugin-toolkit/blob/master/docs/zotero-plugin-toolkit.md)
 
-ℹ️ [Zotero 类型定义](https://github.com/windingwind/zotero-types)
+ℹ️ [Zotero 类型定义](https://github.com/muisedestiny/zotero-types)
 
 📜 [Zotero 源代码](https://github.com/zotero/zotero)
 
-📌 [Zotero 插件模板](https://github.com/windingwind/zotero-plugin-template) (即本仓库)
+📌 [Zotero 插件模板](https://github.com/muisedestiny/zotero-plugin-template) (即本仓库)
 
 > [!tip]
 > 👁 Watch 本仓库，以及时收到修复或更新的通知.
 
 ## 使用此模板构建的插件
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/windingwind/zotero-better-notes?label=zotero-better-notes&style=flat-square)](https://github.com/windingwind/zotero-better-notes)
-[![GitHub Repo stars](https://img.shields.io/github/stars/windingwind/zotero-pdf-preview?label=zotero-pdf-preview&style=flat-square)](https://github.com/windingwind/zotero-pdf-preview)
-[![GitHub Repo stars](https://img.shields.io/github/stars/windingwind/zotero-pdf-translate?label=zotero-pdf-translate&style=flat-square)](https://github.com/windingwind/zotero-pdf-translate)
-[![GitHub Repo stars](https://img.shields.io/github/stars/windingwind/zotero-tag?label=zotero-tag&style=flat-square)](https://github.com/windingwind/zotero-tag)
+[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-better-notes?label=zotero-better-notes&style=flat-square)](https://github.com/muisedestiny/zotero-better-notes)
+[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-pdf-preview?label=zotero-pdf-preview&style=flat-square)](https://github.com/muisedestiny/zotero-pdf-preview)
+[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-pdf-translate?label=zotero-pdf-translate&style=flat-square)](https://github.com/muisedestiny/zotero-pdf-translate)
+[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-tag?label=zotero-tag&style=flat-square)](https://github.com/muisedestiny/zotero-tag)
 [![GitHub Repo stars](https://img.shields.io/github/stars/iShareStuff/ZoteroTheme?label=zotero-theme&style=flat-square)](https://github.com/iShareStuff/ZoteroTheme)
 [![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/zotero-reference?label=zotero-reference&style=flat-square)](https://github.com/MuiseDestiny/zotero-reference)
 [![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/zotero-citation?label=zotero-citation&style=flat-square)](https://github.com/MuiseDestiny/zotero-citation)
@@ -46,10 +46,10 @@
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/daeh/zotero-markdb-connect?label=zotero-markdb-connect&style=flat-square)](https://github.com/daeh/zotero-markdb-connect)
 
-如果你正在使用此库，我建议你将这个标志 ([![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)) 放在 README 文件中:
+如果你正在使用此库，我建议你将这个标志 ([![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/muisedestiny/zotero-plugin-template)) 放在 README 文件中:
 
 ```md
-[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
+[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/muisedestiny/zotero-plugin-template)
 ```
 
 ## Features 特性
@@ -57,9 +57,9 @@
 - 事件驱动、函数式编程的可扩展框架；
 - 简单易用，开箱即用；
 - ⭐[新特性!]自动热重载！每当修改源码时，都会自动编译并重新加载插件；[详情请跳转→](#自动热重载)
-- `src/modules/examples.ts` 中有丰富的示例，涵盖了插件中常用的大部分API (使用的插件工具包 zotero-plugin-toolkit，仓库地址 https://github.com/windingwind/zotero-plugin-toolkit)；
+- `src/modules/examples.ts` 中有丰富的示例，涵盖了插件中常用的大部分API (使用的插件工具包 zotero-plugin-toolkit，仓库地址 https://github.com/muisedestiny/zotero-plugin-toolkit)；
 - TypeScript 支持:
-  - 为使用 JavaScript 编写的Zotero源码提供全面的类型定义支持 (使用类型定义包 zotero-types，仓库地址 https://github.com/windingwind/zotero-types)；
+  - 为使用 JavaScript 编写的Zotero源码提供全面的类型定义支持 (使用类型定义包 zotero-types，仓库地址 https://github.com/muisedestiny/zotero-types)；
   - 全局变量和环境设置；
 - 插件开发/构建/发布工作流:
   - 自动生成/更新插件id和版本、更新配置和设置环境变量 (`development`/`production`)；
@@ -72,7 +72,7 @@
 
 ## Examples 示例
 
-此库提供了 [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit) 中API的示例.
+此库提供了 [zotero-plugin-toolkit](https://github.com/muisedestiny/zotero-plugin-toolkit) 中API的示例.
 
 在 `src/examples.ts` 中搜索`@example` 查看示例. 这些示例在 `src/hooks.ts` 中调用演示.
 
@@ -154,7 +154,7 @@ Obsidian风格的指令输入模块，它通过接受文本来运行插件，并
 
 	重复下列步骤，仅需三十秒即可开始构建你的第一个插件！
 
-	- 去 [homepage](https://github.com/windingwind/zotero-plugin-template)顶部，点击绿色按钮`Use this template`，点击 `Open in codespace`， 你需要登录你的GitHub账号.
+	- 去 [homepage](https://github.com/muisedestiny/zotero-plugin-template)顶部，点击绿色按钮`Use this template`，点击 `Open in codespace`， 你需要登录你的GitHub账号.
 	- 等待 codespace 加载.
 
   	</details>
@@ -200,7 +200,7 @@ Obsidian风格的指令输入模块，它通过接受文本来运行插件，并
 
 3. 运行 `npm install` 以安装相关依赖
 
-	> 如果你使用 `pnpm` 作为包管理器，你需要添加 `public-hoist-pattern[]=*@types/bluebird*` 到`.npmrc`, 详情请查看 zotero-types（https://github.com/windingwind/zotero-types?tab=readme-ov-file#usage）的文档.
+	> 如果你使用 `pnpm` 作为包管理器，你需要添加 `public-hoist-pattern[]=*@types/bluebird*` 到`.npmrc`, 详情请查看 zotero-types（https://github.com/muisedestiny/zotero-types?tab=readme-ov-file#usage）的文档.
 
 ### 3 开始开发(Coding)
 
@@ -294,7 +294,7 @@ npm run release
 
 ### 关于Hooks(About Hooks)
 
-> 可以在 [`src/hooks.ts`](https://github.com/windingwind/zotero-plugin-template/blob/main/src/hooks.ts) 中查看更多
+> 可以在 [`src/hooks.ts`](https://github.com/muisedestiny/zotero-plugin-template/blob/main/src/hooks.ts) 中查看更多
 
 1. 当在 Zotero 中触发安装/启用/启动时，`bootstrap.js` > `startup` 被调用
    - 等待 Zotero 就绪
@@ -308,7 +308,7 @@ npm run release
 
 ### 关于全局变量(About Global Variables)
 
-> 可以在 [`src/index.ts`](https://github.com/windingwind/zotero-plugin-template/blob/main/src/index.ts)中查看更多
+> 可以在 [`src/index.ts`](https://github.com/muisedestiny/zotero-plugin-template/blob/main/src/index.ts)中查看更多
 
 bootstrap插件在沙盒中运行，但沙盒中没有默认的全局变量，例如 `Zotero` 或 `window` 等我们曾在overlay插件环境中使用的变量.
 
@@ -335,7 +335,7 @@ createElement(document, "button", { namespace: "xul" }); // manually set namespa
 
 Zotero 文档已过时且不完整，克隆 https://github.com/zotero/zotero 并全局搜索关键字.
 
-> ⭐[zotero-types](https://github.com/windingwind/zotero-types) 提供了最常用的 Zotero API，在默认情况下它被包含在此模板中. 你的 IDE 将为大多数的 API 提供提醒.
+> ⭐[zotero-types](https://github.com/muisedestiny/zotero-types) 提供了最常用的 Zotero API，在默认情况下它被包含在此模板中. 你的 IDE 将为大多数的 API 提供提醒.
 
 猜你需要：查找所需 API的技巧
 

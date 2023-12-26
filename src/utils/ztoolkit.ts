@@ -1,4 +1,4 @@
-import ZoteroToolkit from "zotero-plugin-toolkit";
+import ZoteroToolkit from "zotero-plugin-toolkit/dist/index";
 import { config } from "../../package.json";
 
 export { createZToolkit };
@@ -27,23 +27,4 @@ function initZToolkit(_ztoolkit: ReturnType<typeof createZToolkit>) {
     "default",
     `chrome://${config.addonRef}/content/icons/favicon.png`,
   );
-}
-
-import { BasicTool, unregister } from "zotero-plugin-toolkit/dist/basic";
-import { UITool } from "zotero-plugin-toolkit/dist/tools/ui";
-import { PreferencePaneManager } from "zotero-plugin-toolkit/dist/managers/preferencePane";
-
-class MyToolkit extends BasicTool {
-  UI: UITool;
-  PreferencePane: PreferencePaneManager;
-
-  constructor() {
-    super();
-    this.UI = new UITool(this);
-    this.PreferencePane = new PreferencePaneManager(this);
-  }
-
-  unregisterAll() {
-    unregister(this);
-  }
 }

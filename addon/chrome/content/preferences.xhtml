@@ -1,36 +1,92 @@
 <linkset>
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
-<vbox
-  id="zotero-prefpane-__addonRef__"
-  onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', {window})"
->
+<vbox id="zotero-prefpane-__addonRef__" onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', {window})">
   <groupbox>
-    <label><html:h2 data-l10n-id="pref-title"></html:h2></label>
-    <checkbox
-      id="zotero-prefpane-__addonRef__-enable"
-      preference="extensions.zotero.__addonRef__.enable"
-      data-l10n-id="pref-enable"
-    />
-    <hbox>
-      <html:label
-        for="zotero-prefpane-__addonRef__-input"
-        data-l10n-id="pref-input"
-      ></html:label>
-      <html:input
-        type="text"
-        id="zotero-prefpane-__addonRef__-input"
-        preference="extensions.zotero.__addonRef__.input"
-      ></html:input>
-    </hbox>
-    <hbox class="virtualized-table-container" flex="1" height="300px">
-      <html:div id="__addonRef__-table-container" />
-    </hbox>
+    <label>
+      <html:h2 data-l10n-id="source-title"></html:h2>
+    </label>
+    <vbox align="start">
+      <label data-l10n-id="source-intro"></label>
+      <separator class="thin" />
+      <hbox align="center">
+        <label data-l10n-id="directory"></label>
+        <html:input id="source-dir" type="text" readonly="true" flex="1"
+          preference="extensions.zotero.__addonRef__.sourceDir" style="background: none; border: none;">
+        </html:input>
+        <button id="choose-source-dir" data-l10n-id="choose"></button>
+      </hbox>
+    </vbox>
   </groupbox>
-</vbox>
-<vbox>
-  <html:label
-    data-l10n-id="pref-help"
-    data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
-  ></html:label>
+  <groupbox>
+    <label>
+      <html:h2 data-l10n-id="attach-title"></html:h2>
+    </label>
+    <vbox align="start">
+      <label data-l10n-id="attach-intro"></label>
+      <separator class="thin" />
+      <hbox align="center">
+        <label data-l10n-id="attach-type-start"></label>
+        <menulist native="true" id="attach-type" preference="extensions.zotero.__addonRef__.attachType">
+          <menupopup>
+            <menuitem data-l10n-id="importing" value="importing" />
+            <menuitem data-l10n-id="linking" value="linking" />
+          </menupopup>
+        </menulist>
+        <label data-l10n-id="attach-type-end"></label>
+      </hbox>
+    </vbox>
+  </groupbox>
+  <groupbox id="dest-setting">
+    <label>
+      <html:h2 data-l10n-id="dest-title"></html:h2>
+    </label>
+    <vbox align="start">
+      <label data-l10n-id="dest-intro"></label>
+      <separator class="thin" />
+      <hbox align="center">
+        <label data-l10n-id="directory"></label>
+        <html:input id="dest-dir" type="text" readonly="true" flex="1"
+          preference="extensions.zotero.__addonRef__.destDir" style="background: none; border: none; ">
+        </html:input>
+        <button id="choose-dest-dir" data-l10n-id="choose"></button>
+      </hbox>
+
+      <separator class="thin" />
+
+      <hbox align="center">
+        <label data-l10n-id="subfolder"></label>
+        <html:input id="subfolder-format" type="text" flex="1"
+          preference="extensions.zotero.__addonRef__.subfolderFormat">
+        </html:input>
+      </hbox>
+
+      <separator class="thin" />
+
+      <hbox align="center">
+        <label data-l10n-id="filename"></label>
+        <button id="file-renaming-button" data-l10n-id="preferences-file-renaming-customize-button"
+          data-search-strings="preferences-file-renaming-format-title, preferences-file-renaming-format-template"
+          oncommand="Zotero_Preferences.navigateToPane('zotero-subpane-file-renaming')">
+        </button>
+      </hbox>
+
+      <separator class="thin" />
+
+      <label style="color: gray;" data-l10n-id="preferences-file-renaming-format-instructions-more">
+        See the <label is="zotero-text-link" href="https://www.zotero.org/support/file_renaming"
+          data-l10n-name="file-renaming-format-help-link" class="zotero-text-link">documentation
+        </label> for more information.
+      </label>
+    </vbox>
+  </groupbox>
+  <groupbox>
+    <label>
+      <html:h2 data-l10n-id="other-title"></html:h2>
+    </label>
+    <vbox align="start">
+      <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />
+      <checkbox native="true" data-l10n-id="auto-move" preference="extensions.zotero.__addonRef__.autoMove" />
+    </vbox>
+  </groupbox>
 </vbox>

@@ -148,7 +148,7 @@ export class UIExampleFactory {
     // item menuitem with icon
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
-      id: "zotero-itemmenu-addontemplate-test",
+      id: "zotero-itemmenu-zoteroattanger-test",
       label: getString("menuitem-label"),
       commandListener: (ev) => addon.hooks.onDialogEvents("dialogExample"),
       icon: menuIcon,
@@ -172,7 +172,7 @@ export class UIExampleFactory {
       },
       "before",
       document.querySelector(
-        "#zotero-itemmenu-addontemplate-test",
+        "#zotero-itemmenu-zoteroattanger-test",
       ) as XUL.MenuItem,
     );
   }
@@ -869,11 +869,11 @@ export class HelperExampleFactory {
   static clipboardExample() {
     new ztoolkit.Clipboard()
       .addText(
-        "![Plugin Template](https://github.com/windingwind/zotero-plugin-template)",
+        "![Plugin Template](https://github.com/muisedestiny/zotero-plugin-template)",
         "text/unicode",
       )
       .addText(
-        '<a href="https://github.com/windingwind/zotero-plugin-template">Plugin Template</a>',
+        '<a href="https://github.com/muisedestiny/zotero-plugin-template">Plugin Template</a>',
         "text/html",
       )
       .copy();

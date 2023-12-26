@@ -1,0 +1,492 @@
+import { getString } from "../utils/locale";
+import { config } from "../../package.json";
+import { getPref, setPref } from "../utils/prefs";
+
+export default class Menu {
+  constructor() {
+    this.init()
+    this.register()
+    const callback = {
+      notify: async (
+        event: string,
+        type: string,
+        ids: number[] | string[],
+        extraData: { [key: string]: any },
+      ) => {
+        if (
+          type == "item" &&
+          // event == "modify" &&
+          getPref("autoMove")
+        ) {
+          // return
+          let atts = Zotero.Items.get(ids as number[])
+            .filter((att) =>
+              att.isImportedAttachment() &&
+              !att.isTopLevelItem() &&
+              att.fileExists()
+            ) as Zotero.Item[]
+          if (atts.length > 0) {
+            window.setTimeout(async () => {
+              await Promise.all(
+                atts.map(att => moveFile(att))
+              )
+            })
+          }
+        }
+      },
+    };
+
+    // Register the callback in Zotero as an item observer
+    addon.data.notifierID = Zotero.Notifier.registerObserver(callback, [
+      "tab",
+      "item",
+      "file",
+    ]);
+
+    // Unregister callback when the window closes (important to avoid a memory leak)
+    window.addEventListener(
+      "unload",
+      (e: Event) => {
+        Zotero.Notifier.unregisterObserver(addon.data.notifierID);
+      },
+      false,
+    );
+
+  }
+
+  private init() {
+    // addon.data.icons = 
+    for (let name in addon.data.icons) {
+      ztoolkit.ProgressWindow.setIconURI(
+        name,
+        addon.data.icons[name]
+      );
+    }
+  }
+
+  private register() {
+    // 分隔符
+    ztoolkit.Menu.register(
+      "item",
+      {
+        tag: "menuseparator",
+        getVisibility: () => {
+          const items = ZoteroPane.getSelectedItems();
+          return items.some(i => i.isTopLevelItem() || i.isAttachment());
+        },
+      }
+    )
+    // 附加新文件
+    // 条目
+    ztoolkit.Menu.register(
+      "item",
+      {
+        tag: "menuitem",
+        label: getString("attach-new-file"),
+        icon: addon.data.icons.attachNewFile,
+        getVisibility: () => {
+          // 只选择一个父级条目
+          const items = ZoteroPane.getSelectedItems();
+          return items.length == 1 && items[0].isTopLevelItem() && items[0].isRegularItem();
+        },
+        commandListener: async (ev) => {
+          const item = ZoteroPane.getSelectedItems()[0]
+          await attachNewFile({
+            libraryID: item.libraryID,
+            parentItemID: item.id,
+            collections: undefined
+          })
+        }
+      },
+    )
+    // 分类
+    ztoolkit.Menu.register(
+      "collection",
+      {
+        tag: "menuitem",
+        label: getString("attach-new-file"),
+        icon: addon.data.icons.attachNewFile,
+        commandListener: async (ev) => {
+          const collection = ZoteroPane.getSelectedCollection() as Zotero.Collection
+          if (!collection) {
+            // 非collection暂不处理
+            new ztoolkit.ProgressWindow("Attach New File")
+              .createLine({ text: "Please select a Zotero Collection", type: "attachNewFile" })
+              .show()
+          }
+          await attachNewFile({
+            libraryID: collection.libraryID,
+            parentItemID: undefined,
+            collections: [collection.id]
+          })
+        }
+      },
+    )
+    // 附件管理
+    ztoolkit.Menu.register(
+      "item",
+      {
+        tag: "menu",
+        getVisibility: () => {
+          return getAttachmentItems().length > 0
+        },
+        label: getString("attachment-manager"),
+        icon: addon.data.icons.favicon,
+        subElementOptions: [
+          {
+            tag: "menuitem",
+            label: getString("rename-attachment"),
+            icon: addon.data.icons.renameAttachment,
+            commandListener: async (ev) => {
+              for (let item of getAttachmentItems()) {
+                await renameFile(item)
+              }
+            }
+          },
+          {
+            tag: "menuitem",
+            label: getString("move-attachment"),
+            icon: addon.data.icons.moveFile,
+            commandListener: async (ev) => {
+              for (let item of getAttachmentItems()) {
+                await moveFile(item)
+              }
+            }
+          }
+        ]
+      }
+    )
+    // 打开方式
+    const fileHandlerArr = JSON.parse(
+      (Zotero.Prefs.get(`${config.addonRef}.openUsing`) as string) || "[]",
+    );
+    const setPref = (fileHandlerArr: string[]) => {
+      window.setTimeout(async () => {
+        Zotero.Prefs.set(
+          `${config.addonRef}.openUsing`,
+          JSON.stringify(fileHandlerArr),
+        );
+        await ztoolkit.Menu.unregisterAll();
+        await registerItemMenu();
+      });
+    };
+    ztoolkit.Menu.register(
+      "item",
+      {
+        tag: "menu",
+        getVisibility: () => getAttachmentItems().length > 0,
+        label: getString("open-using"),
+        icon: addon.data.icons.openUsing,
+        subElementOptions: [
+          {
+            tag: "menuitem",
+            label: "Zotero",
+            commandListener: async (ev) => {
+              // 第二个参数应该从文件分析得出，默认pdf
+              openUsing("", "pdf");
+            },
+          },
+          {
+            tag: "menuitem",
+            label: Zotero.locale == "zh-CN" ? "系统" : "System",
+            commandListener: async (ev) => {
+              openUsing("system", "pdf");
+            },
+          },
+          ...((() => {
+            const children = [];
+            for (const fileHandler of fileHandlerArr) {
+              children.push({
+                tag: "menuitem",
+                // @ts-ignore
+                label: OS.Path.basename(fileHandler),
+                commandListener: async (ev: MouseEvent) => {
+                  if (ev.button == 2) {
+                    if (window.confirm("Delete?")) {
+                      const _fileHandlerArr = fileHandlerArr.filter(
+                        (i: string) => i != fileHandler,
+                      ) as string[];
+                      setPref(_fileHandlerArr);
+                    }
+                  } else {
+                    openUsing(fileHandler, "pdf");
+                  }
+                },
+              });
+            }
+            return children;
+          })() as any),
+          {
+            tag: "menuitem",
+            label: getString("choose-other-app"),
+            commandListener: async (ev) => {
+              // #42 Multiple extensions may be included, separated by a semicolon and a space.
+              const filename = await new ztoolkit.FilePicker(
+                "Select Application",
+                "open",
+                [["Application", "*.exe; *.app"]], // support windows .exe and macOS .app both.
+              ).open();
+              if (filename && fileHandlerArr.indexOf(filename) == -1) {
+                fileHandlerArr.push(filename);
+                setPref(fileHandlerArr);
+                openUsing(filename, "pdf");
+              }
+            },
+          },
+        ],
+      }
+    )
+  }
+}
+
+/**
+ * 获取所有附件条目
+ */
+function getAttachmentItems() {
+  const attachmentItems = []
+  for (let item of ZoteroPane.getSelectedItems()) {
+    if (item.isAttachment()) {
+      attachmentItems.push(item)
+    } else if (item.isRegularItem()) {
+      for (let id of item.getAttachments()) {
+        const _item = Zotero.Items.get(id)
+        if (_item.isAttachment()) {
+          attachmentItems.push(_item)
+        }
+      }
+    }
+  }
+  return attachmentItems
+}
+
+
+async function openUsing(fileHandler: string, fileType = "pdf") {
+  const _fileHandler = Zotero.Prefs.get(`fileHandler.${fileType}`) as string;
+  Zotero.Prefs.set(`fileHandler.${fileType}`, fileHandler);
+  const selectedItems = ZoteroPane.getSelectedItems();
+  const ids: number[] = [];
+  await Promise.all(
+    selectedItems.map(async (item: Zotero.Item) => {
+      if (item.isAttachment()) {
+        ids.push(item.id);
+      } else {
+        ids.push((await item.getBestAttachments())[0].id);
+      }
+    }),
+  );
+  await ZoteroPane.viewAttachment(ids);
+  Zotero.Prefs.set(`fileHandler.${fileType}`, _fileHandler);
+}
+
+/**
+ * Get the last modified file from directory
+ * @param  {string} path Path to directory
+ * @return {string}      Path to last modified file in folder or undefined.
+ */
+function getLastFileInFolder(path: string) {
+  var dir = Zotero.File.pathToFile(path);
+  var files = dir.directoryEntries, lastmod = { lastModifiedTime: 0, path: undefined };
+  while (files.hasMoreElements()) {
+    // get next file
+    var file = files.getNext().QueryInterface(Components.interfaces.nsIFile)
+    // skip if directory, hidden file or certain file types
+    if (
+      file.isDirectory() ||
+      file.isHidden()
+    ) {
+      continue;
+    }
+    // check modification time
+    if (file.isFile() && file.lastModifiedTime > lastmod.lastModifiedTime) {
+      lastmod = file;
+    }
+  }
+  // return sorted directory entries
+  return lastmod.path;
+};
+
+/**
+ * 重命名文件，但不重命名Zotero内显示的名称 - 来自Zotero官方代码
+ * @param item 
+ * @returns 
+ */
+async function renameFile(attItem: Zotero.Item) {
+  var file = await attItem.getFilePathAsync() as string;
+  let parentItemID = attItem.parentItemID as number;
+  let parentItem = await Zotero.Items.getAsync(parentItemID);
+  // getFileBaseNameFromItem
+  var newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem);
+
+  let extRE = /\.[^\.]+$/;
+  let origFilename = PathUtils.split(file).pop() as string;
+  let ext = origFilename.match(extRE);
+  if (ext) {
+    newName = newName + ext[0];
+  }
+  let origFilenameNoExt = origFilename.replace(extRE, '')
+
+  var renamed = await attItem.renameAttachmentFile(newName, false, true);
+  if (!renamed) {
+    Zotero.debug("Could not rename file (" + renamed + ")");
+    return;
+  }
+  // TODO: 做成选项是否重命名条目名称
+  let origTitle = attItem.getField('title');
+  if (origTitle == origFilename || origTitle == origFilenameNoExt) {
+    attItem.setField('title', newName);
+    await attItem.saveTx();
+  }
+  return newName
+}
+
+/**
+ * 移动文件
+ * @param item Attachment Item
+ */
+export async function moveFile(attItem: Zotero.Item) {
+  // 1. 目标根路径
+  let destDir = getPref("destDir") as string
+  // 2. 中间路径
+  // const folderSep = Zotero.isWin ? "\\" : "/";
+  let subfolder = ""
+  const subfolderFormat = getPref("subfolderFormat") as string
+  // Zotero.Attachments.getFileBaseNameFromItem 补充不支持的变量
+  // 3. 得到最终路径
+  if (subfolderFormat.length > 0) {
+    subfolder = subfolderFormat.split(/[\\\/]/).map((formatString: string) => {
+      ztoolkit.log(formatString)
+      if (formatString == "{{collection}}") {
+        return getCollectionPathsOfItem(attItem.topLevelItem)
+      } else {
+        return Zotero.Attachments.getFileBaseNameFromItem(attItem.topLevelItem, formatString)
+      }
+    }).join(addon.data.folderSep)
+    ztoolkit.log("subfolder", subfolder)
+    destDir = OS.Path.join(destDir, subfolder)
+  }
+  const sourcePath = await attItem.getFilePathAsync() as string
+  ztoolkit.log("sourcePath", sourcePath)
+  const filename = OS.Path.basename(sourcePath)
+  ztoolkit.log("filename", filename)
+  const destPath = OS.Path.join(destDir, filename)
+  // 创建中间路径
+  ztoolkit.log("destDir", destDir)
+  if (!(await OS.File.exists(destDir))) {
+    let create = [destDir],
+      parent = OS.Path.dirname(destDir);
+    while (!(await OS.File.exists(parent))) {
+      create.push(parent);
+      parent = OS.Path.dirname(parent);
+    }
+    await Promise.all(
+      create.reverse().map((f) => OS.File.makeDir(f))
+    );
+  }
+  await Zotero.File.createDirectoryIfMissingAsync(destDir);
+  // 移动文件到目标文件夹
+  if (sourcePath !== destPath) {
+    await OS.File.move(sourcePath, destPath)
+  }
+  let options = {
+    file: destPath,
+    libraryID: attItem.topLevelItem.libraryID,
+    parentItemID: attItem.topLevelItem.id,
+    collections: undefined,
+  };
+  await attItem.eraseTx()
+  attItem = await Zotero.Attachments.linkFromFile(options);
+  return attItem
+}
+
+/**
+ * 为TopLevelItem / collection附加附件
+ * @param item 
+ * @param path 
+ * @returns 
+ */
+async function attachFile(options: {
+  file: string;
+  libraryID: number;
+  parentItemID: number | undefined;
+  collections: number[] | undefined
+}) {
+  let attItem: Zotero.Item
+  attItem = await Zotero.Attachments.importFromFile(options);
+  if (attItem.parentItemID) {
+    await renameFile(attItem)
+    if (getPref("attachType") == "linking" && options.parentItemID) {
+      try {
+        attItem = await moveFile(attItem);
+      } catch (e) {
+        ztoolkit.log("ERROR => attachFile", options, e)
+      }
+    }
+  } else {
+    Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
+  }
+  return attItem;
+}
+
+async function attachNewFile(options: {
+  libraryID: number;
+  parentItemID: number | undefined;
+  collections: number[] | undefined
+}) {
+  const autoMove = getPref("autoMove") as boolean
+  setPref("autoMove", false)
+  const sourceDir = getPref("sourceDir") as string
+  const path = getLastFileInFolder(sourceDir)
+  if (!path) {
+    new ztoolkit.ProgressWindow(config.addonName)
+      .createLine({ text: "No File Found", type: "default" })
+      .show()
+  } else {
+    let popupWin = new ztoolkit.ProgressWindow("Attach New File", { closeTime: -1 })
+    if (options.collections) {
+      popupWin
+        .createLine({
+          text: (Zotero.Collections.get(options.collections[0]) as Zotero.Collection).name,
+          icon: addon.data.icons.collection
+        })
+        .show()
+    } else if (options.parentItemID) {
+      const parentItem = Zotero.Items.get(options.parentItemID) as Zotero.Item
+      popupWin
+        .createLine({
+          text: parentItem.getField("title") as string,
+          icon: parentItem.getImageSrc()
+        })
+        .show()
+    }
+    const attItem = await attachFile({
+      file: path,
+      ...options
+    })
+    popupWin
+      .createLine({ text: attItem.getField("title") as string, icon: attItem.getImageSrc() })
+      .startCloseTimer(3000)
+    // 设置透明度 调整缩进
+    // @ts-ignore
+    const hbox = popupWin.lines[1]._hbox
+    hbox.style.opacity = "1"
+    hbox.style.marginLeft = "2em"
+  }
+  setPref("autoMove", autoMove)
+}
+
+function getCollectionPathsOfItem(item: Zotero.Item) {
+  const getCollectionPath = function (collectionID: number): string {
+    var collection = Zotero.Collections.get(collectionID) as Zotero.Collection;
+    if (!collection.parentID) { return collection.name; }
+    return OS.Path.normalize(
+      getCollectionPath(collection.parentID) +
+      addon.data.folderSep +
+      collection.name,
+    ) as string
+  };
+  try {
+    return [ZoteroPane.getSelectedCollection()!.id].map(getCollectionPath)[0];
+  } catch {
+    return item.getCollections().map(getCollectionPath).slice(0, 1)[0];
+  }
+}

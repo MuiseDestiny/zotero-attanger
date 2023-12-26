@@ -1,15 +1,15 @@
 {
-  "name": "zotero-addon-template",
+  "name": "zotero-attanger",
   "version": "1.1.0",
-  "description": "Zotero Addon Template",
+  "description": "Attanger for Zotero",
   "config": {
-    "addonName": "Zotero Addon Template",
-    "addonID": "addontemplate@euclpts.com",
-    "addonRef": "addontemplate",
-    "addonInstance": "AddonTemplate",
-    "prefsPrefix": "extensions.zotero.addontemplate",
-    "releasePage": "https://github.com/windingwind/zotero-addon-template/releases",
-    "updateJSON": "https://raw.githubusercontent.com/windingwind/zotero-addon-template/main/update.json"
+    "addonName": "Zotero Attanger",
+    "addonID": "zoteroattanger@polygon.org",
+    "addonRef": "zoteroattanger",
+    "addonInstance": "ZoteroAttanger",
+    "prefsPrefix": "extensions.zotero.zoteroattanger",
+    "releasePage": "https://github.com/muisedestiny/zotero-attanger/releases",
+    "updateJSON": "https://raw.githubusercontent.com/muisedestiny/zotero-attanger/main/update.json"
   },
   "main": "src/index.ts",
   "scripts": {
@@ -23,14 +23,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/windingwind/zotero-addon-template.git"
+    "url": "git+https://github.com/muisedestiny/zotero-attanger.git"
   },
-  "author": "windingwind",
+  "author": "muisedestiny",
   "license": "AGPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/windingwind/zotero-addon-template/issues"
+    "url": "https://github.com/muisedestiny/zotero-attanger/issues"
   },
-  "homepage": "https://github.com/windingwind/zotero-addon-template#readme",
+  "homepage": "https://github.com/muisedestiny/zotero-attanger#readme",
   "dependencies": {
     "zotero-plugin-toolkit": "^2.3.15"
   },
@@ -47,7 +47,7 @@
     "release-it": "^17.0.1",
     "replace-in-file": "^7.0.2",
     "typescript": "^5.3.3",
-    "zotero-types": "^1.3.10"
+    "zotero-types": "^1.3.11"
   },
   "eslintConfig": {
     "env": {

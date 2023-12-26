@@ -2,6 +2,7 @@ import { ColumnOptions } from "zotero-plugin-toolkit/dist/helpers/virtualizedTab
 import { DialogHelper } from "zotero-plugin-toolkit/dist/helpers/dialog";
 import hooks from "./hooks";
 import { createZToolkit } from "./utils/ztoolkit";
+import { config } from "../package.json";
 
 class Addon {
   public data: {
@@ -14,10 +15,13 @@ class Addon {
     };
     prefs?: {
       window: Window;
-      columns: Array<ColumnOptions>;
-      rows: Array<{ [dataKey: string]: string }>;
+      // columns: Array<ColumnOptions>;
+      // rows: Array<{ [dataKey: string]: string }>;
     };
     dialog?: DialogHelper;
+    icons: { [name: string]: string };
+    folderSep: string;
+    notifierID: string;
   };
   // Lifecycle hooks
   public hooks: typeof hooks;
@@ -29,9 +33,21 @@ class Addon {
       alive: true,
       env: __env__,
       ztoolkit: createZToolkit(),
+      icons: {
+        favicon: `chrome://${config.addonRef}/content/icons/favicon.png`,
+        attachNewFile: `chrome://${config.addonRef}/content/icons/attachNewFile.png`,
+        renameMoveAttachment: `chrome://${config.addonRef}/content/icons/renameMoveAttachment.png`,
+        openUsing: `chrome://${config.addonRef}/content/icons/openUsing.png`,
+        renameAttachment: "chrome://zotero/skin/bookmark-pencil.png",
+        moveFile: `chrome://${config.addonRef}/content/icons/moveAttachment.png`,
+        collection: "chrome://zotero/skin/treesource-collection@2x.png"
+      },
+      folderSep: Zotero.isWin ? "\\" : "/",
+      notifierID: "",
     };
     this.hooks = hooks;
     this.api = {};
+
   }
 }
 
