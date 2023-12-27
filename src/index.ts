@@ -9,8 +9,8 @@ if (!basicTool.getGlobal("Zotero")[config.addonInstance]) {
   defineGlobal("document");
   defineGlobal("ZoteroPane");
   defineGlobal("Zotero_Tabs");
-  // @ts-ignore
-  _globalThis.OS = window.OS
+  // @ts-ignore Zotero的window
+  _globalThis.OS = window.OS;
   _globalThis.addon = new Addon();
   defineGlobal("ztoolkit", () => {
     return _globalThis.addon.data.ztoolkit;

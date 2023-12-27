@@ -40,14 +40,13 @@ class Addon {
         openUsing: `chrome://${config.addonRef}/content/icons/openUsing.png`,
         renameAttachment: "chrome://zotero/skin/bookmark-pencil.png",
         moveFile: `chrome://${config.addonRef}/content/icons/moveAttachment.png`,
-        collection: "chrome://zotero/skin/treesource-collection@2x.png"
+        collection: "chrome://zotero/skin/treesource-collection@2x.png",
       },
       folderSep: Zotero.isWin ? "\\" : "/",
       notifierID: "",
     };
     this.hooks = hooks;
     this.api = {};
-
   }
 }
 

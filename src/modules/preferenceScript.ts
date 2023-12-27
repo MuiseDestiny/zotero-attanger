@@ -15,43 +15,42 @@ export async function registerPrefsScripts(_window: Window) {
 }
 
 async function updatePrefsUI() {
-  const doc = addon.data
-    .prefs!.window.document
-  const destSettingBox = doc.querySelector("#dest-setting") as XUL.GroupBox
+  const doc = addon.data.prefs!.window.document;
+  const destSettingBox = doc.querySelector("#dest-setting") as XUL.GroupBox;
   if (getPref("attachType") == "importing") {
-    destSettingBox.style.opacity = ".6"
+    destSettingBox.style.opacity = ".6";
   } else {
-    destSettingBox.style.opacity = "1"
+    destSettingBox.style.opacity = "1";
   }
 }
 
 function bindPrefEvents() {
   // 选择源目录
-  const doc = addon.data
-    .prefs!.window.document
-  doc.querySelector("#choose-source-dir")
+  const doc = addon.data.prefs!.window.document;
+  doc
+    .querySelector("#choose-source-dir")
     ?.addEventListener("command", async () => {
       const sourceDir = await new ztoolkit.FilePicker(
         "Select Source Directory",
-        "folder"
+        "folder",
       ).open();
       if (sourceDir) {
-        setPref("sourceDir", sourceDir)
+        setPref("sourceDir", sourceDir);
       }
-    })
+    });
   // 选择目标目录
-  doc.querySelector("#choose-dest-dir")
+  doc
+    .querySelector("#choose-dest-dir")
     ?.addEventListener("command", async () => {
       const destDir = await new ztoolkit.FilePicker(
         "Select Destination Directory",
-        "folder"
+        "folder",
       ).open();
       if (destDir) {
-        setPref("destDir", destDir)
+        setPref("destDir", destDir);
       }
-    })
-  doc.querySelector("#attach-type")
-    ?.addEventListener("command", async () => {
-      await updatePrefsUI()
-    })
+    });
+  doc.querySelector("#attach-type")?.addEventListener("command", async () => {
+    await updatePrefsUI();
+  });
 }

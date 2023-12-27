@@ -1,7 +1,10 @@
 <linkset>
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
-<vbox id="zotero-prefpane-__addonRef__" onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', {window})">
+<vbox
+  id="zotero-prefpane-__addonRef__"
+  onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', {window})"
+>
   <groupbox>
     <label>
       <html:h2 data-l10n-id="source-title"></html:h2>
@@ -11,8 +14,14 @@
       <separator class="thin" />
       <hbox align="center">
         <label data-l10n-id="directory"></label>
-        <html:input id="source-dir" type="text" readonly="true" flex="1"
-          preference="extensions.zotero.__addonRef__.sourceDir" style="background: none; border: none;">
+        <html:input
+          id="source-dir"
+          type="text"
+          readonly="true"
+          flex="1"
+          preference="extensions.zotero.__addonRef__.sourceDir"
+          style="background: none; border: none"
+        >
         </html:input>
         <button id="choose-source-dir" data-l10n-id="choose"></button>
       </hbox>
@@ -27,7 +36,11 @@
       <separator class="thin" />
       <hbox align="center">
         <label data-l10n-id="attach-type-start"></label>
-        <menulist native="true" id="attach-type" preference="extensions.zotero.__addonRef__.attachType">
+        <menulist
+          native="true"
+          id="attach-type"
+          preference="extensions.zotero.__addonRef__.attachType"
+        >
           <menupopup>
             <menuitem data-l10n-id="importing" value="importing" />
             <menuitem data-l10n-id="linking" value="linking" />
@@ -46,8 +59,14 @@
       <separator class="thin" />
       <hbox align="center">
         <label data-l10n-id="directory"></label>
-        <html:input id="dest-dir" type="text" readonly="true" flex="1"
-          preference="extensions.zotero.__addonRef__.destDir" style="background: none; border: none; ">
+        <html:input
+          id="dest-dir"
+          type="text"
+          readonly="true"
+          flex="1"
+          preference="extensions.zotero.__addonRef__.destDir"
+          style="background: none; border: none"
+        >
         </html:input>
         <button id="choose-dest-dir" data-l10n-id="choose"></button>
       </hbox>
@@ -56,8 +75,12 @@
 
       <hbox align="center">
         <label data-l10n-id="subfolder"></label>
-        <html:input id="subfolder-format" type="text" flex="1"
-          preference="extensions.zotero.__addonRef__.subfolderFormat">
+        <html:input
+          id="subfolder-format"
+          type="text"
+          flex="1"
+          preference="extensions.zotero.__addonRef__.subfolderFormat"
+        >
         </html:input>
       </hbox>
 
@@ -65,19 +88,23 @@
 
       <hbox align="center">
         <label data-l10n-id="filename"></label>
-        <button id="file-renaming-button" data-l10n-id="preferences-file-renaming-customize-button"
+        <button
+          id="file-renaming-button"
+          data-l10n-id="preferences-file-renaming-customize-button"
           data-search-strings="preferences-file-renaming-format-title, preferences-file-renaming-format-template"
-          oncommand="Zotero_Preferences.navigateToPane('zotero-subpane-file-renaming')">
-        </button>
+          oncommand="Zotero_Preferences.navigateToPane('zotero-subpane-file-renaming')"
+        ></button>
       </hbox>
 
       <separator class="thin" />
 
       <label data-l10n-id="preferences-file-renaming-format-instructions-more">
-        <label is="zotero-text-link" href="https://www.zotero.org/support/file_renaming"
-          data-l10n-name="file-renaming-format-help-link"></label>
+        <label
+          is="zotero-text-link"
+          href="https://www.zotero.org/support/file_renaming"
+          data-l10n-name="file-renaming-format-help-link"
+        ></label>
       </label>
-
     </vbox>
   </groupbox>
   <groupbox>
@@ -85,8 +112,16 @@
       <html:h2 data-l10n-id="other-title"></html:h2>
     </label>
     <vbox align="start">
-      <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />
-      <checkbox native="true" data-l10n-id="auto-move" preference="extensions.zotero.__addonRef__.autoMove" />
+      <checkbox
+        native="true"
+        data-l10n-id="auto-rename"
+        preference="extensions.zotero.autoRenameFiles"
+      />
+      <checkbox
+        native="true"
+        data-l10n-id="auto-move"
+        preference="extensions.zotero.__addonRef__.autoMove"
+      />
     </vbox>
   </groupbox>
   <groupbox>
@@ -96,20 +131,36 @@
     <vbox align="start">
       <label data-l10n-id="about-intro"></label>
       <separator class="thin" />
-      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
-        href="https://github.com/MuiseDestiny/zotero-attanger" class="zotero-text-link">
+      <label
+        style="margin-inline: 6px 5px; text-decoration: none"
+        is="zotero-text-link"
+        href="https://github.com/MuiseDestiny/zotero-attanger"
+        class="zotero-text-link"
+      >
         ⭐ Star it
       </label>
-      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
-        href="https://github.com/MuiseDestiny" class="zotero-text-link">
+      <label
+        style="margin-inline: 6px 5px; text-decoration: none"
+        is="zotero-text-link"
+        href="https://github.com/MuiseDestiny"
+        class="zotero-text-link"
+      >
         🔍 See author's Github
       </label>
-      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
-        href="https://space.bilibili.com/13557814" class="zotero-text-link">
+      <label
+        style="margin-inline: 6px 5px; text-decoration: none"
+        is="zotero-text-link"
+        href="https://space.bilibili.com/13557814"
+        class="zotero-text-link"
+      >
         📺 See author's Bilibli
       </label>
-      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
-        href="https://gitee.com/MuiseDestiny/plugins" class="zotero-text-link">
+      <label
+        style="margin-inline: 6px 5px; text-decoration: none"
+        is="zotero-text-link"
+        href="https://gitee.com/MuiseDestiny/plugins"
+        class="zotero-text-link"
+      >
         🎊 See Pro plugins
       </label>
     </vbox>

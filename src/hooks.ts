@@ -17,7 +17,7 @@ async function onStartup() {
 
 async function onMainWindowLoad(win: Window): Promise<void> {
   addon.data.ztoolkit = createZToolkit();
-  new Menu()
+  new Menu();
   const prefOptions = {
     pluginID: config.addonID,
     src: rootURI + "chrome/content/preferences.xhtml",
@@ -42,7 +42,6 @@ function onShutdown(): void {
   delete Zotero[config.addonInstance];
 }
 
-
 /**
  * This function is just an example of dispatcher for Preference UI events.
  * Any operations should be placed in a function to keep this funcion clear.
@@ -58,7 +57,6 @@ async function onPrefsEvent(type: string, data: { [key: string]: any }) {
       return;
   }
 }
-
 
 export default {
   onStartup,
