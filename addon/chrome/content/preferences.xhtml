@@ -73,11 +73,11 @@
 
       <separator class="thin" />
 
-      <label style="color: gray;" data-l10n-id="preferences-file-renaming-format-instructions-more">
-        See the <label is="zotero-text-link" href="https://www.zotero.org/support/file_renaming"
-          data-l10n-name="file-renaming-format-help-link" class="zotero-text-link">documentation
-        </label> for more information.
+      <label data-l10n-id="preferences-file-renaming-format-instructions-more">
+        <label is="zotero-text-link" href="https://www.zotero.org/support/file_renaming"
+          data-l10n-name="file-renaming-format-help-link"></label>
       </label>
+
     </vbox>
   </groupbox>
   <groupbox>
@@ -87,6 +87,31 @@
     <vbox align="start">
       <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />
       <checkbox native="true" data-l10n-id="auto-move" preference="extensions.zotero.__addonRef__.autoMove" />
+    </vbox>
+  </groupbox>
+  <groupbox>
+    <label>
+      <html:h2 data-l10n-id="about-title"></html:h2>
+    </label>
+    <vbox align="start">
+      <label data-l10n-id="about-intro"></label>
+      <separator class="thin" />
+      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
+        href="https://github.com/MuiseDestiny/zotero-attanger" class="zotero-text-link">
+        ⭐ Star it
+      </label>
+      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
+        href="https://github.com/MuiseDestiny" class="zotero-text-link">
+        🔍 See author's Github
+      </label>
+      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
+        href="https://space.bilibili.com/13557814" class="zotero-text-link">
+        📺 See author's Bilibli
+      </label>
+      <label style="margin-inline: 6px 5px; text-decoration: none;" is="zotero-text-link"
+        href="https://gitee.com/MuiseDestiny/plugins" class="zotero-text-link">
+        🎊 See Pro plugins
+      </label>
     </vbox>
   </groupbox>
 </vbox>

@@ -14,9 +14,7 @@ export default class Menu {
         extraData: { [key: string]: any },
       ) => {
         if (
-          type == "item" &&
-          // event == "modify" &&
-          getPref("autoMove")
+          type == "item"
         ) {
           // return
           let atts = Zotero.Items.get(ids as number[])
@@ -28,7 +26,17 @@ export default class Menu {
           if (atts.length > 0) {
             window.setTimeout(async () => {
               await Promise.all(
-                atts.map(att => moveFile(att))
+                atts.map((att: Zotero.Item) => {
+                  if (Zotero.Prefs.get("autoRenameFiles")) {
+                    renameFile(att)
+                  }
+                  if (
+                    getPref("autoMove") &&
+                    getPref("attachType") == "linking"
+                  ) {
+                    moveFile(att)
+                  }
+                })
               )
             })
           }
@@ -77,7 +85,7 @@ export default class Menu {
       }
     )
     // 附加新文件
-    // 条目
+    //   条目
     ztoolkit.Menu.register(
       "item",
       {
@@ -99,7 +107,7 @@ export default class Menu {
         }
       },
     )
-    // 分类
+    //   分类
     ztoolkit.Menu.register(
       "collection",
       {
@@ -346,6 +354,10 @@ async function renameFile(attItem: Zotero.Item) {
 export async function moveFile(attItem: Zotero.Item) {
   // 1. 目标根路径
   let destDir = getPref("destDir") as string
+  // if (!(await OS.File.exists(destDir))) {
+  //   window.alert("The destination path is not configured or does not exist.")
+  //   return
+  // }
   // 2. 中间路径
   // const folderSep = Zotero.isWin ? "\\" : "/";
   let subfolder = ""
@@ -398,43 +410,17 @@ export async function moveFile(attItem: Zotero.Item) {
   return attItem
 }
 
-/**
- * 为TopLevelItem / collection附加附件
- * @param item 
- * @param path 
- * @returns 
- */
-async function attachFile(options: {
-  file: string;
-  libraryID: number;
-  parentItemID: number | undefined;
-  collections: number[] | undefined
-}) {
-  let attItem: Zotero.Item
-  attItem = await Zotero.Attachments.importFromFile(options);
-  if (attItem.parentItemID) {
-    await renameFile(attItem)
-    if (getPref("attachType") == "linking" && options.parentItemID) {
-      try {
-        attItem = await moveFile(attItem);
-      } catch (e) {
-        ztoolkit.log("ERROR => attachFile", options, e)
-      }
-    }
-  } else {
-    Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
-  }
-  return attItem;
-}
 
 async function attachNewFile(options: {
   libraryID: number;
   parentItemID: number | undefined;
   collections: number[] | undefined
 }) {
-  const autoMove = getPref("autoMove") as boolean
-  setPref("autoMove", false)
   const sourceDir = getPref("sourceDir") as string
+  if (!(await OS.File.exists(sourceDir))) {
+    window.alert("The source path is not configured or does not exist.")
+    return
+  }
   const path = getLastFileInFolder(sourceDir)
   if (!path) {
     new ztoolkit.ProgressWindow(config.addonName)
@@ -458,10 +444,13 @@ async function attachNewFile(options: {
         })
         .show()
     }
-    const attItem = await attachFile({
+    const attItem = await Zotero.Attachments.importFromFile({
       file: path,
       ...options
-    })
+    });
+    if (!attItem.parentItemID) {
+      Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
+    }
     popupWin
       .createLine({ text: attItem.getField("title") as string, icon: attItem.getImageSrc() })
       .startCloseTimer(3000)
@@ -471,9 +460,13 @@ async function attachNewFile(options: {
     hbox.style.opacity = "1"
     hbox.style.marginLeft = "2em"
   }
-  setPref("autoMove", autoMove)
 }
 
+/**
+ * 获取Item的分类路径
+ * @param item 
+ * @returns 
+ */
 function getCollectionPathsOfItem(item: Zotero.Item) {
   const getCollectionPath = function (collectionID: number): string {
     var collection = Zotero.Collections.get(collectionID) as Zotero.Collection;

@@ -19,9 +19,9 @@ async function updatePrefsUI() {
     .prefs!.window.document
   const destSettingBox = doc.querySelector("#dest-setting") as XUL.GroupBox
   if (getPref("attachType") == "importing") {
-    destSettingBox.style.display = "none"
+    destSettingBox.style.opacity = ".6"
   } else {
-    destSettingBox.style.display = ""
+    destSettingBox.style.opacity = "1"
   }
 }
 
