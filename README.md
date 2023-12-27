@@ -1,4 +1,5 @@
 # Attanger
+> Attachment Manager
 
 <img src="addon/chrome/content/icons/favicon.png" width="36px" height="36px">
 
