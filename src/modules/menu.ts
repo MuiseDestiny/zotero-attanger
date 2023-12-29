@@ -165,8 +165,7 @@ export default class Menu {
           JSON.stringify(fileHandlerArr),
         );
         await ztoolkit.Menu.unregisterAll();
-        new Menu()
-          ;
+        new Menu();
       });
     };
     ztoolkit.Menu.register("item", {
@@ -471,8 +470,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
