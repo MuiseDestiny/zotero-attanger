@@ -10,4 +10,5 @@
 [![License](https://img.shields.io/github/license/MuiseDestiny/zotero-style)](https://github.com/MuiseDestiny/zotero-attanger/blob/master/LICENSE)
 ![Downloads latest release](https://img.shields.io/github/downloads/MuiseDestiny/zotero-attanger/latest/total?color=yellow)
 
+[📺视频教程](https://www.bilibili.com/video/BV1x64y1J7Rv/?spm_id_from=333.999.0.0)
 ![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/d898094d-a387-4b88-919a-886a4cf5d40d)
