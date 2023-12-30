@@ -25,6 +25,7 @@ export default class Menu {
             window.setTimeout(async () => {
               await Promise.all(
                 atts.map((att: Zotero.Item) => {
+                  if (!checkFileType(att)) { return }
                   if (Zotero.Prefs.get("autoRenameFiles")) {
                     renameFile(att);
                   }
@@ -470,8 +471,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
@@ -479,4 +480,18 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
   } catch {
     return item.getCollections().map(getCollectionPath).slice(0, 1)[0];
   }
+}
+
+
+function checkFileType(attItem: Zotero.Item) {
+  const fileTypes = getPref("fileTypes") as string
+  if (!fileTypes) return true;
+  var pos = attItem.attachmentFilename.lastIndexOf("."),
+    fileType =
+      pos == -1 ? "" : attItem.attachmentFilename.substr(pos + 1).toLowerCase(),
+    regex = fileTypes
+      .toLowerCase()
+      .replace(/,/gi, "|");
+  // return value
+  return fileType.search(new RegExp(regex)) >= 0 ? true : false;
 }
