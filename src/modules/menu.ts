@@ -148,7 +148,9 @@ export default class Menu {
             for (const item of getAttachmentItems()) {
               try {
                 await renameFile(item);
-              } catch (e) { ztoolkit.log(e) }
+              } catch (e) {
+                ztoolkit.log(e);
+              }
             }
           },
         },
@@ -160,7 +162,9 @@ export default class Menu {
             for (const item of getAttachmentItems()) {
               try {
                 await moveFile(item);
-              } catch (e) { ztoolkit.log(e) }
+              } catch (e) {
+                ztoolkit.log(e);
+              }
             }
           },
         },
@@ -462,8 +466,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
