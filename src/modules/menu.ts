@@ -25,9 +25,6 @@ export default class Menu {
             window.setTimeout(async () => {
               await Promise.all(
                 atts.map((att: Zotero.Item) => {
-                  if (!checkFileType(att)) {
-                    return;
-                  }
                   if (Zotero.Prefs.get("autoRenameFiles")) {
                     renameFile(att);
                   }
@@ -141,7 +138,9 @@ export default class Menu {
           icon: addon.data.icons.renameAttachment,
           commandListener: async (ev) => {
             for (const item of getAttachmentItems()) {
-              await renameFile(item);
+              try {
+                await renameFile(item);
+              } catch { }
             }
           },
         },
@@ -151,7 +150,9 @@ export default class Menu {
           icon: addon.data.icons.moveFile,
           commandListener: async (ev) => {
             for (const item of getAttachmentItems()) {
-              await moveFile(item);
+              try {
+                await moveFile(item);
+              } catch { }
             }
           },
         },
@@ -252,7 +253,9 @@ function getAttachmentItems() {
         }
       }
     }
+
   }
+
   return attachmentItems;
 }
 
@@ -305,6 +308,7 @@ function getLastFileInFolder(path: string) {
  * @returns
  */
 async function renameFile(attItem: Zotero.Item) {
+  if (!checkFileType(attItem)) { return; }
   const file = (await attItem.getFilePathAsync()) as string;
   const parentItemID = attItem.parentItemID as number;
   const parentItem = await Zotero.Items.getAsync(parentItemID);
@@ -338,6 +342,7 @@ async function renameFile(attItem: Zotero.Item) {
  * @param item Attachment Item
  */
 export async function moveFile(attItem: Zotero.Item) {
+  if (!checkFileType(attItem)) { return; }
   // 1. 目标根路径
   let destDir = getPref("destDir") as string;
   // if (!(await OS.File.exists(destDir))) {
@@ -473,8 +478,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
