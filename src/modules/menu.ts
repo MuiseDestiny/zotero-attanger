@@ -1,11 +1,13 @@
 import { getString } from "../utils/locale";
 import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
+import { waitUntil } from "../utils/wait";
 
 export default class Menu {
   constructor() {
     this.init();
     this.register();
+    let queue: Number[] = []
     const callback = {
       notify: async (
         event: string,
@@ -14,28 +16,37 @@ export default class Menu {
         extraData: { [key: string]: any },
       ) => {
         if (type == "item") {
-          // return
-          const atts = Zotero.Items.get(ids as number[]).filter(
+          let atts = Zotero.Items.get(ids as number[]).filter(
             (att) =>
               att.isImportedAttachment() &&
               !att.isTopLevelItem() &&
               att.fileExists(),
           ) as Zotero.Item[];
+          for (let att of atts) {
+            if (queue.indexOf(att.id) >= 0) {
+              atts = atts.filter(_att => _att.id != att.id)
+            } else {
+              queue.push(att.id)
+            }
+          }
           if (atts.length > 0) {
-            window.setTimeout(async () => {
-              await Promise.all(
-                atts.map((att: Zotero.Item) => {
-                  if (Zotero.Prefs.get("autoRenameFiles")) {
-                    renameFile(att);
-                  }
-                  if (
-                    getPref("autoMove") &&
-                    getPref("attachType") == "linking"
-                  ) {
-                    moveFile(att);
-                  }
-                }),
-              );
+            atts.map(async (att: Zotero.Item) => {
+              try {
+                if (Zotero.Prefs.get("autoRenameFiles")) {
+                  await renameFile(att);
+                }
+                if (
+                  getPref("autoMove") &&
+                  getPref("attachType") == "linking"
+                ) {
+                  att = await moveFile(att) as Zotero.Item;
+                }
+              } catch (e) {
+                ztoolkit.log(e)
+              }
+
+              queue = queue.filter(id => att.id != id)
+              showAttachmentItem(att)
             });
           }
         }
@@ -374,6 +385,7 @@ export async function moveFile(attItem: Zotero.Item) {
     destDir = OS.Path.join(destDir, subfolder);
   }
   const sourcePath = (await attItem.getFilePathAsync()) as string;
+  if (!sourcePath) { return }
   ztoolkit.log("sourcePath", sourcePath);
   const filename = OS.Path.basename(sourcePath);
   ztoolkit.log("filename", filename);
@@ -389,7 +401,7 @@ export async function moveFile(attItem: Zotero.Item) {
     }
     await Promise.all(create.reverse().map((f) => OS.File.makeDir(f)));
   }
-  await Zotero.File.createDirectoryIfMissingAsync(destDir);
+  // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
   if (sourcePath !== destPath) {
     await OS.File.move(sourcePath, destPath);
@@ -421,45 +433,16 @@ async function attachNewFile(options: {
       .createLine({ text: "No File Found", type: "default" })
       .show();
   } else {
-    const popupWin = new ztoolkit.ProgressWindow("Attach New File", {
-      closeTime: -1,
-    });
-    if (options.collections) {
-      popupWin
-        .createLine({
-          text: (
-            Zotero.Collections.get(options.collections[0]) as Zotero.Collection
-          ).name,
-          icon: addon.data.icons.collection,
-        })
-        .show();
-    } else if (options.parentItemID) {
-      const parentItem = Zotero.Items.get(options.parentItemID) as Zotero.Item;
-      popupWin
-        .createLine({
-          text: parentItem.getField("title") as string,
-          icon: parentItem.getImageSrc(),
-        })
-        .show();
-    }
     const attItem = await Zotero.Attachments.importFromFile({
       file: path,
       ...options,
     });
+    showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
       Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
+      // showAttachmentItem(attItem);
     }
-    popupWin
-      .createLine({
-        text: attItem.getField("title") as string,
-        icon: attItem.getImageSrc(),
-      })
-      .startCloseTimer(3000);
-    // 设置透明度 调整缩进
-    // @ts-ignore lines私有变量
-    const hbox = popupWin.lines[1]._hbox;
-    hbox.style.opacity = "1";
-    hbox.style.marginLeft = "2em";
+
   }
 }
 
@@ -498,4 +481,51 @@ function checkFileType(attItem: Zotero.Item) {
     regex = fileTypes.toLowerCase().replace(/,/gi, "|");
   // return value
   return fileType.search(new RegExp(regex)) >= 0 ? true : false;
+}
+
+/**
+ * 向popupWin添加附件行
+ * @param attItem 
+ * @param type 
+ */
+function showAttachmentItem(attItem: Zotero.Item) {
+  const popupWin = new ztoolkit.ProgressWindow("Attanger", {
+    closeTime: -1,
+    closeOtherProgressWindows: true
+  });
+  // 显示父行
+  if (attItem.isTopLevelItem()) {
+    popupWin
+      .createLine({
+        text: (
+          ZoteroPane.getSelectedCollection() as Zotero.Collection
+        ).name,
+        icon: addon.data.icons.collection,
+      })
+      .show();
+  } else {
+    const parentItem = attItem.parentItem as Zotero.Item;
+    popupWin
+      .createLine({
+        text: parentItem.getField("title") as string,
+        icon: parentItem.getImageSrc(),
+      })
+      .show();
+  }
+  // 显示附件行
+  popupWin.createLine({
+    text: attItem.getField("title") as string,
+    icon: attItem.getImageSrc(),
+  })
+  // 设置透明度 调整缩进
+  // @ts-ignore lines私有变量
+  const lines = popupWin.lines
+  waitUntil(() => lines?.[1]?._hbox, () => {
+    const hbox = lines?.[1]?._hbox;
+    if (hbox) {
+      hbox.style.opacity = "1";
+      hbox.style.marginLeft = "2em";
+    }
+  }, 10)
+  popupWin.startCloseTimer(3000);
 }
