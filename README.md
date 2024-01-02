@@ -9,6 +9,7 @@
 ![Release Date](https://img.shields.io/github/release-date/MuiseDestiny/zotero-attanger?color=9cf)
 [![License](https://img.shields.io/github/license/MuiseDestiny/zotero-style)](https://github.com/MuiseDestiny/zotero-attanger/blob/master/LICENSE)
 ![Downloads latest release](https://img.shields.io/github/downloads/MuiseDestiny/zotero-attanger/latest/total?color=yellow)
+
 📺[视频演示](https://www.bilibili.com/video/BV1x64y1J7Rv)
 
 
