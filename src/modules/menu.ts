@@ -359,11 +359,18 @@ export async function moveFile(attItem: Zotero.Item) {
     return;
   }
   // 1. 目标根路径
-  let destDir = getPref("destDir") as string;
-  // if (!(await OS.File.exists(destDir))) {
-  //   window.alert("The destination path is not configured or does not exist.")
-  //   return
-  // }
+  let destDir: string | boolean = getPref("destDir") as string;
+  if (!destDir) {
+    destDir = await new ztoolkit.FilePicker(
+      "Select Destination Directory",
+      "folder",
+    ).open();
+    if (destDir) {
+      setPref("destDir", destDir);
+    } else {
+      return
+    }
+  }
   // 2. 中间路径
   // const folderSep = Zotero.isWin ? "\\" : "/";
   let subfolder = "";
@@ -466,8 +473,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
