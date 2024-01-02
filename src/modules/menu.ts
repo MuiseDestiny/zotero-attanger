@@ -455,8 +455,31 @@ async function attachNewFile(options: {
       Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
       // showAttachmentItem(attItem);
     }
+    removeFile(path);
   }
 }
+
+function removeFile(file: any) {
+  file = Zotero.File.pathToFile(file);
+  if (!file.exists()) return;
+  try {
+    // remove file
+    if (!file.isDirectory()) {
+      file.remove(false);
+    }
+    // ... for directories, remove them if no non-hidden files are inside
+    else {
+      var files = file.directoryEntries;
+      while (files.hasMoreElements()) {
+        var f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+        if (!f.isHidden()) return;
+      }
+      file.remove(true);
+    }
+  } catch (err) {
+    ztoolkit.log(err)
+  }
+};
 
 /**
  * 获取Item的分类路径
