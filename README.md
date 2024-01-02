@@ -22,7 +22,7 @@
 4. 在**其它设置**中，配置是否自动`重命名`和`移动`
 
 如何自定义重命名规则以及定义子目录？
-见[Zotero官方介绍](https://www.zotero.org/support/file_renaming)，在配置子目录时候嵌套请用`/`隔开。
+见[Zotero官方教程](https://www.zotero.org/support/file_renaming)，在配置*子目录*时多层级目录请用`/`隔开。
 
 ![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/6f17def2-2481-4e23-be4d-82cfcdd6c2f3)
 
