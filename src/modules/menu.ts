@@ -368,7 +368,7 @@ export async function moveFile(attItem: Zotero.Item) {
     if (destDir) {
       setPref("destDir", destDir);
     } else {
-      return
+      return;
     }
   }
   // 2. 中间路径
@@ -468,17 +468,17 @@ function removeFile(file: any) {
     }
     // ... for directories, remove them if no non-hidden files are inside
     else {
-      var files = file.directoryEntries;
+      const files = file.directoryEntries;
       while (files.hasMoreElements()) {
-        var f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+        const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
         if (!f.isHidden()) return;
       }
       file.remove(true);
     }
   } catch (err) {
-    ztoolkit.log(err)
+    ztoolkit.log(err);
   }
-};
+}
 
 /**
  * 获取Item的分类路径
@@ -495,8 +495,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
