@@ -9,6 +9,21 @@
 ![Release Date](https://img.shields.io/github/release-date/MuiseDestiny/zotero-attanger?color=9cf)
 [![License](https://img.shields.io/github/license/MuiseDestiny/zotero-style)](https://github.com/MuiseDestiny/zotero-attanger/blob/master/LICENSE)
 ![Downloads latest release](https://img.shields.io/github/downloads/MuiseDestiny/zotero-attanger/latest/total?color=yellow)
+📺[视频演示](https://www.bilibili.com/video/BV1x64y1J7Rv)
 
-📺[视频教程](https://www.bilibili.com/video/BV1x64y1J7Rv)
-![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/d898094d-a387-4b88-919a-886a4cf5d40d)
+
+# 教程
+
+
+1. 选择**源路径**的*根目录*
+2. 根据你的同步方式选择**附加类型**
+3. 若你在3选择`链接`，请配置**靶路径**的根目录
+4. 在**其它设置**中，配置是否自动`重命名`和`移动`
+
+如何自定义重命名规则以及定义子目录？
+见[Zotero官方介绍](https://www.zotero.org/support/file_renaming)，在配置子目录时候嵌套请用`/`隔开。
+
+![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/6f17def2-2481-4e23-be4d-82cfcdd6c2f3)
+
+
+
