@@ -29,3 +29,9 @@ file-types = Types of Attachments for Renaming/Moving (separated by ',')
 
 about-title = About
 about-intro = 🌠 Happy New Year! Attanger is an abbreviation for Attachment Manager, and this project heavily references the ZotFile plugin of Zotero version 6.
+
+
+preferences-file-renaming-customize-button =
+    .label = Customize Filename Format…
+
+preferences-file-renaming-format-instructions-more = See the <label data-l10n-name="file-renaming-format-help-link">documentation</label> for more information.

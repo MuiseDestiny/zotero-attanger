@@ -29,3 +29,9 @@ file-types = 重命名/移动的附件类型（用','隔开）
 
 about-title = 关于
 about-intro = 🌠 新年快乐！Attanger 是 Attachment Manager 的缩写，本项目大量参考了 Zotero 6 版本的 ZotFile 插件。
+
+
+preferences-file-renaming-customize-button =
+    .label = 设置重命名规则…
+
+preferences-file-renaming-format-instructions-more = 阅读<label data-l10n-name="file-renaming-format-help-link">文档</label>获取更多帮助。

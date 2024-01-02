@@ -453,7 +453,6 @@ async function attachNewFile(options: {
     showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
       Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
-      // showAttachmentItem(attItem);
     }
     removeFile(path);
   }
