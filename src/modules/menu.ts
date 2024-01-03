@@ -14,27 +14,24 @@ export default class Menu {
         ids: number[] | string[],
         extraData: { [key: string]: any },
       ) => {
-        ztoolkit.log(event, type, extraData)
-        if (
-          type == "item" &&
-          event == "add"
-        ) {
+        ztoolkit.log(event, type, extraData);
+        if (type == "item" && event == "add") {
           window.setTimeout(async () => {
-            const items = Zotero.Items.get(ids as number[])
-            const attItems = []
-            for (let item of items) {
+            const items = Zotero.Items.get(ids as number[]);
+            const attItems = [];
+            for (const item of items) {
               if (
                 item.isImportedAttachment() &&
                 !item.isTopLevelItem() &&
-                await item.fileExists()
+                (await item.fileExists())
               ) {
-                attItems.push(item)
+                attItems.push(item);
               }
               if (item.isTopLevelItem()) {
                 // 等待是否有新增附件
-                await Zotero.Promise.delay(1000)
-                for (let id of item.getAttachments()) {
-                  attItems.push(Zotero.Items.get(id))
+                await Zotero.Promise.delay(1000);
+                for (const id of item.getAttachments()) {
+                  attItems.push(Zotero.Items.get(id));
                 }
               }
             }
@@ -44,7 +41,10 @@ export default class Menu {
                   if (Zotero.Prefs.get("autoRenameFiles")) {
                     await renameFile(att);
                   }
-                  if (getPref("autoMove") && getPref("attachType") == "linking") {
+                  if (
+                    getPref("autoMove") &&
+                    getPref("attachType") == "linking"
+                  ) {
                     att = (await moveFile(att)) as Zotero.Item;
                   }
                 } catch (e) {
@@ -52,9 +52,8 @@ export default class Menu {
                 }
                 showAttachmentItem(att);
               });
-
             }
-          })
+          });
         }
       },
     };
@@ -425,7 +424,7 @@ export async function moveFile(attItem: Zotero.Item) {
     try {
       await OS.File.move(sourcePath, destPath);
     } catch {
-      return await moveFile(attItem)
+      return await moveFile(attItem);
     }
   }
   const options = {
@@ -475,7 +474,9 @@ async function attachNewFile(options: {
 }
 
 function removeFile(file: any) {
-  if (addon.data.env == "development") { return }
+  if (addon.data.env == "development") {
+    return;
+  }
   file = Zotero.File.pathToFile(file);
   if (!file.exists()) return;
   try {
@@ -512,8 +513,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
