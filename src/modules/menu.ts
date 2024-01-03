@@ -7,7 +7,6 @@ export default class Menu {
   constructor() {
     this.init();
     this.register();
-    let queue: number[] = [];
     const callback = {
       notify: async (
         event: string,
@@ -15,37 +14,53 @@ export default class Menu {
         ids: number[] | string[],
         extraData: { [key: string]: any },
       ) => {
-        if (type == "item") {
-          let atts = Zotero.Items.get(ids as number[]).filter(
-            (att) =>
-              att.isImportedAttachment() &&
-              !att.isTopLevelItem() &&
-              att.fileExists(),
-          ) as Zotero.Item[];
-          for (const att of atts) {
-            if (queue.indexOf(att.id) >= 0) {
-              atts = atts.filter((_att) => _att.id != att.id);
-            } else {
-              queue.push(att.id);
-            }
-          }
-          if (atts.length > 0) {
-            atts.map(async (att: Zotero.Item) => {
-              try {
-                if (Zotero.Prefs.get("autoRenameFiles")) {
-                  await renameFile(att);
-                }
-                if (getPref("autoMove") && getPref("attachType") == "linking") {
-                  att = (await moveFile(att)) as Zotero.Item;
-                }
-              } catch (e) {
-                ztoolkit.log(e);
+        ztoolkit.log(event, type, extraData)
+        if (
+          type == "item" &&
+          (
+            event == "add" ||
+            (
+              event == "modify" &&
+              Object.keys(extraData).length == 2
+            )
+          )
+        ) {
+          window.setTimeout(async () => {
+            const items = Zotero.Items.get(ids as number[])
+            const attItems = []
+            for (let item of items) {
+              if (
+                item.isImportedAttachment() &&
+                !item.isTopLevelItem() &&
+                await item.fileExists()
+              ) {
+                attItems.push(item)
               }
+              // if (item.isTopLevelItem()) {
+              //   // 等待是否有新增附件
+              //   await Zotero.Promise.delay(1000)
+              //   for (let id of item.getAttachments()) {
+              //     attItems.push(Zotero.Items.get(id))
+              //   }
+              // }
+            }
+            if (attItems.length > 0) {
+              attItems.map(async (att: Zotero.Item) => {
+                try {
+                  if (Zotero.Prefs.get("autoRenameFiles")) {
+                    await renameFile(att);
+                  }
+                  if (getPref("autoMove") && getPref("attachType") == "linking") {
+                    att = (await moveFile(att)) as Zotero.Item;
+                  }
+                } catch (e) {
+                  ztoolkit.log(e);
+                }
+                showAttachmentItem(att);
+              });
 
-              queue = queue.filter((id) => att.id != id);
-              showAttachmentItem(att);
-            });
-          }
+            }
+          })
         }
       },
     };
@@ -335,18 +350,17 @@ async function renameFile(attItem: Zotero.Item) {
     newName = newName + ext[0];
   }
   const origFilenameNoExt = origFilename.replace(extRE, "");
-
   const renamed = await attItem.renameAttachmentFile(newName, false, true);
-  if (!renamed) {
-    Zotero.debug("Could not rename file (" + renamed + ")");
-    return;
+  if (renamed !== true) {
+    ztoolkit.log("renamed = " + renamed);
+    return await renameFile(attItem);
   }
-  // TODO: 做成选项是否重命名条目名称
   const origTitle = attItem.getField("title");
   if (origTitle == origFilename || origTitle == origFilenameNoExt) {
     attItem.setField("title", newName);
     await attItem.saveTx();
   }
+  // window.alert("newName: " + newName)
   return newName;
 }
 
@@ -399,12 +413,9 @@ export async function moveFile(attItem: Zotero.Item) {
   if (!sourcePath) {
     return;
   }
-  ztoolkit.log("sourcePath", sourcePath);
   const filename = OS.Path.basename(sourcePath);
-  ztoolkit.log("filename", filename);
   const destPath = OS.Path.join(destDir, filename);
   // 创建中间路径
-  ztoolkit.log("destDir", destDir);
   if (!(await OS.File.exists(destDir))) {
     const create = [destDir];
     let parent = OS.Path.dirname(destDir);
@@ -417,7 +428,11 @@ export async function moveFile(attItem: Zotero.Item) {
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
   if (sourcePath !== destPath) {
-    await OS.File.move(sourcePath, destPath);
+    try {
+      await OS.File.move(sourcePath, destPath);
+    } catch {
+      return await moveFile(attItem)
+    }
   }
   const options = {
     file: destPath,
@@ -435,10 +450,17 @@ async function attachNewFile(options: {
   parentItemID: number | undefined;
   collections: number[] | undefined;
 }) {
-  const sourceDir = getPref("sourceDir") as string;
+  let sourceDir: string | boolean = getPref("sourceDir") as string;
   if (!(await OS.File.exists(sourceDir))) {
-    window.alert("The source path is not configured or does not exist.");
-    return;
+    sourceDir = await new ztoolkit.FilePicker(
+      "Select Source Directory",
+      "folder",
+    ).open();
+    if (sourceDir) {
+      setPref("sourceDir", sourceDir);
+    } else {
+      return;
+    }
   }
   const path = getLastFileInFolder(sourceDir);
   if (!path) {
@@ -459,6 +481,7 @@ async function attachNewFile(options: {
 }
 
 function removeFile(file: any) {
+  if (addon.data.env == "development") { return }
   file = Zotero.File.pathToFile(file);
   if (!file.exists()) return;
   try {
@@ -495,8 +518,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
