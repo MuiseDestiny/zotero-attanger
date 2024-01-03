@@ -17,13 +17,7 @@ export default class Menu {
         ztoolkit.log(event, type, extraData)
         if (
           type == "item" &&
-          (
-            event == "add" ||
-            (
-              event == "modify" &&
-              Object.keys(extraData).length == 2
-            )
-          )
+          event == "add"
         ) {
           window.setTimeout(async () => {
             const items = Zotero.Items.get(ids as number[])
@@ -36,13 +30,13 @@ export default class Menu {
               ) {
                 attItems.push(item)
               }
-              // if (item.isTopLevelItem()) {
-              //   // 等待是否有新增附件
-              //   await Zotero.Promise.delay(1000)
-              //   for (let id of item.getAttachments()) {
-              //     attItems.push(Zotero.Items.get(id))
-              //   }
-              // }
+              if (item.isTopLevelItem()) {
+                // 等待是否有新增附件
+                await Zotero.Promise.delay(1000)
+                for (let id of item.getAttachments()) {
+                  attItems.push(Zotero.Items.get(id))
+                }
+              }
             }
             if (attItems.length > 0) {
               attItems.map(async (att: Zotero.Item) => {
