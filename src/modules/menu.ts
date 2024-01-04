@@ -383,8 +383,8 @@ export async function moveFile(attItem: Zotero.Item) {
   const subfolderFormat = getPref("subfolderFormat") as string;
   // Zotero.Attachments.getFileBaseNameFromItem 补充不支持的变量
   // 3. 得到最终路径
-  const _getValidFileName = Zotero.File.getValidFileName
-  Zotero.File.getValidFileName = (s: string) => s
+  const _getValidFileName = Zotero.File.getValidFileName;
+  Zotero.File.getValidFileName = (s: string) => s;
   if (subfolderFormat.length > 0) {
     subfolder = subfolderFormat
       .split(/[\\/]/)
@@ -399,13 +399,13 @@ export async function moveFile(attItem: Zotero.Item) {
           );
         }
       })
-      .join(addon.data.folderSep)
+      .join(addon.data.folderSep);
     if (Zotero.isWin) {
-      subfolder = subfolder.replace(/[\/]/g, "\\");
+      subfolder = subfolder.replace(/[/]/g, "\\");
     } else {
       subfolder = subfolder.replace(/[\\]/g, "/");
     }
-    Zotero.File.getValidFileName = _getValidFileName
+    Zotero.File.getValidFileName = _getValidFileName;
     ztoolkit.log("subfolder", subfolder);
     destDir = OS.Path.join(destDir, subfolder);
   }
@@ -520,8 +520,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
