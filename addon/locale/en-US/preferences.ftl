@@ -25,7 +25,7 @@ auto-rename =
     .label = Automatically rename added attachments
 auto-move = 
     .label = Automatically move added attachments
-auto-move = 
+auto-remove-empty-folder = 
     .label = Automatically delete empty folders after moving
 file-types = Types of Attachments for Renaming/Moving
 
