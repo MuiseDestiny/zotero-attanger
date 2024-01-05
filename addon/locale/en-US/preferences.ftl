@@ -22,10 +22,12 @@ filename = Filename:
 
 other-title = Other Settings
 auto-rename = 
-    .label = Automatically Rename Added Attachments
+    .label = Automatically rename added attachments
 auto-move = 
-    .label = Automatically Move Added Attachments
-file-types = Types of Attachments for Renaming/Moving (separated by ',')
+    .label = Automatically move added attachments
+auto-move = 
+    .label = Automatically delete empty folders after moving
+file-types = Types of Attachments for Renaming/Moving
 
 about-title = About
 about-intro = 🌠 Happy New Year! Attanger is an abbreviation for Attachment Manager, and this project heavily references the ZotFile plugin of Zotero version 6.

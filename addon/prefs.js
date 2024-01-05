@@ -7,3 +7,4 @@ pref("__prefsPrefix__.destDir", "");
 pref("__prefsPrefix__.autoMove", true);
 pref("__prefsPrefix__.move", "linking");
 pref("__prefsPrefix__.fileTypes", "pdf,doc,docx,txt,rtf,djvu,epub");
+pref("__prefsPrefix__.autoRemoveEmptyFolder", false);

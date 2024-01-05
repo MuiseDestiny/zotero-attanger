@@ -25,7 +25,9 @@ auto-rename =
     .label = 自动重命名添加的附件
 auto-move = 
     .label = 自动移动添加的附件
-file-types = 重命名/移动的附件类型（用','隔开）
+auto-remove-empty-folder = 
+    .label = 自动删除移动后为空的文件夹
+file-types = 重命名/移动的附件类型
 
 about-title = 关于
 about-intro = 🌠 新年快乐！Attanger 是 Attachment Manager 的缩写，本项目大量参考了 Zotero 6 版本的 ZotFile 插件。
