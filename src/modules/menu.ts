@@ -445,7 +445,7 @@ export async function moveFile(attItem: Zotero.Item) {
   };
   await attItem.eraseTx();
   attItem = await Zotero.Attachments.linkFromFile(options);
-  removeEmptyFolder(OS.Path.dirname(sourcePath))
+  removeEmptyFolder(OS.Path.dirname(sourcePath));
   return attItem;
 }
 
@@ -524,8 +524,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
@@ -601,22 +601,28 @@ function showAttachmentItem(attItem: Zotero.Item) {
  * @return {void}
  */
 async function removeEmptyFolder(path: string) {
-  if (!getPref("autoRemoveEmptyFolder") as boolean) { return false }
-  let folder = Zotero.File.pathToFile(path);
-  var rootFolders = [Zotero.getStorageDirectory().path];
+  if (!getPref("autoRemoveEmptyFolder") as boolean) {
+    return false;
+  }
+  const folder = Zotero.File.pathToFile(path);
+  let rootFolders = [Zotero.getStorageDirectory().path];
   const source_dir = getPref("sourceDir") as string;
   const dest_dir = getPref("destDir") as string;
-  if (source_dir != "") { rootFolders.push(source_dir); }
-  if (dest_dir != "") { rootFolders.push(dest_dir); }
+  if (source_dir != "") {
+    rootFolders.push(source_dir);
+  }
+  if (dest_dir != "") {
+    rootFolders.push(dest_dir);
+  }
   rootFolders = rootFolders.map((path) => OS.Path.normalize(path));
   // 不属于插件相关根目录，不处理
-  if (
-    !rootFolders.find((dir) => folder.path.startsWith(dir))
-  ) { return false; }
+  if (!rootFolders.find((dir) => folder.path.startsWith(dir))) {
+    return false;
+  }
   if (folder.directoryEntries.hasMoreElements()) {
     return true;
   } else {
     removeFile(folder, true);
-    return await removeEmptyFolder(OS.Path.dirname(folder.path))
+    return await removeEmptyFolder(OS.Path.dirname(folder.path));
   }
 }
