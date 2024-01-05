@@ -3,7 +3,7 @@
     "zoteroattanger@polygon.org": {
       "updates": [
         {
-          "version": "1.0.7",
+          "version": "1.0.8",
           "update_link": "https://github.com/muisedestiny/zotero-attanger/releases/latest/download/zotero-attanger.xpi",
           "applications": {
             "zotero": {
