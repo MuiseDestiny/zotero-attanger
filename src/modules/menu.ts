@@ -154,7 +154,8 @@ export default class Menu {
           commandListener: async (ev) => {
             for (const item of getAttachmentItems()) {
               try {
-                await renameFile(item);
+                const attItem = await renameFile(item);
+                attItem && showAttachmentItem(attItem)
               } catch (e) {
                 ztoolkit.log(e);
               }
@@ -168,7 +169,8 @@ export default class Menu {
           commandListener: async (ev) => {
             for (const item of getAttachmentItems()) {
               try {
-                await moveFile(item);
+                const attItem = await moveFile(item);
+                attItem && showAttachmentItem(attItem)
               } catch (e) {
                 ztoolkit.log(e);
               }
@@ -352,8 +354,7 @@ async function renameFile(attItem: Zotero.Item) {
     attItem.setField("title", newName);
     await attItem.saveTx();
   }
-  // window.alert("newName: " + newName)
-  return newName;
+  return attItem;
 }
 
 /**
@@ -378,7 +379,6 @@ export async function moveFile(attItem: Zotero.Item) {
     }
   }
   // 2. 中间路径
-  // const folderSep = Zotero.isWin ? "\\" : "/";
   let subfolder = "";
   const subfolderFormat = getPref("subfolderFormat") as string;
   // Zotero.Attachments.getFileBaseNameFromItem 补充不支持的变量
@@ -433,7 +433,8 @@ export async function moveFile(attItem: Zotero.Item) {
   if (sourcePath !== destPath) {
     try {
       await OS.File.move(sourcePath, destPath);
-    } catch {
+    } catch (e) {
+      ztoolkit.log(e)
       return await moveFile(attItem);
     }
   }
@@ -443,10 +444,32 @@ export async function moveFile(attItem: Zotero.Item) {
     parentItemID: attItem.topLevelItem.id,
     collections: undefined,
   };
-  await attItem.eraseTx();
-  attItem = await Zotero.Attachments.linkFromFile(options);
-  removeEmptyFolder(OS.Path.dirname(sourcePath));
-  return attItem;
+  const newAttItem = await Zotero.Attachments.linkFromFile(options);
+  window.setTimeout(async () => {
+    // 迁移标注
+    ztoolkit.log("迁移标注")
+    await Zotero.DB.executeTransaction(async function () {
+      await Zotero.Items.moveChildItems(attItem, newAttItem);
+    });
+    // 迁移相关
+    ztoolkit.log("迁移相关")
+    await Zotero.Relations.copyObjectSubjectRelations(attItem, newAttItem);
+    // 迁移索引
+    ztoolkit.log("迁移索引")
+    await Zotero.DB.executeTransaction(async function () {
+      await Zotero.Fulltext.transferItemIndex(attItem, newAttItem);
+    });
+    // 迁移标签
+    ztoolkit.log("迁移标签")
+    newAttItem.setTags(attItem.getTags())
+    // 迁移PDF笔记
+    ztoolkit.log("迁移PDF笔记")
+    newAttItem.setNote(attItem.getNote())
+    await newAttItem.saveTx()
+    removeEmptyFolder(OS.Path.dirname(sourcePath));
+    await attItem.eraseTx();
+  })
+  return newAttItem;
 }
 
 async function attachNewFile(options: {
@@ -524,8 +547,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
