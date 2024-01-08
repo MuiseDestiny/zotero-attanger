@@ -155,7 +155,7 @@ export default class Menu {
             for (const item of getAttachmentItems()) {
               try {
                 const attItem = await renameFile(item);
-                attItem && showAttachmentItem(attItem)
+                attItem && showAttachmentItem(attItem);
               } catch (e) {
                 ztoolkit.log(e);
               }
@@ -170,7 +170,7 @@ export default class Menu {
             for (const item of getAttachmentItems()) {
               try {
                 const attItem = await moveFile(item);
-                attItem && showAttachmentItem(attItem)
+                attItem && showAttachmentItem(attItem);
               } catch (e) {
                 ztoolkit.log(e);
               }
@@ -434,7 +434,7 @@ export async function moveFile(attItem: Zotero.Item) {
     try {
       await OS.File.move(sourcePath, destPath);
     } catch (e) {
-      ztoolkit.log(e)
+      ztoolkit.log(e);
       return await moveFile(attItem);
     }
   }
@@ -447,28 +447,28 @@ export async function moveFile(attItem: Zotero.Item) {
   const newAttItem = await Zotero.Attachments.linkFromFile(options);
   window.setTimeout(async () => {
     // 迁移标注
-    ztoolkit.log("迁移标注")
+    ztoolkit.log("迁移标注");
     await Zotero.DB.executeTransaction(async function () {
       await Zotero.Items.moveChildItems(attItem, newAttItem);
     });
     // 迁移相关
-    ztoolkit.log("迁移相关")
+    ztoolkit.log("迁移相关");
     await Zotero.Relations.copyObjectSubjectRelations(attItem, newAttItem);
     // 迁移索引
-    ztoolkit.log("迁移索引")
+    ztoolkit.log("迁移索引");
     await Zotero.DB.executeTransaction(async function () {
       await Zotero.Fulltext.transferItemIndex(attItem, newAttItem);
     });
     // 迁移标签
-    ztoolkit.log("迁移标签")
-    newAttItem.setTags(attItem.getTags())
+    ztoolkit.log("迁移标签");
+    newAttItem.setTags(attItem.getTags());
     // 迁移PDF笔记
-    ztoolkit.log("迁移PDF笔记")
-    newAttItem.setNote(attItem.getNote())
-    await newAttItem.saveTx()
+    ztoolkit.log("迁移PDF笔记");
+    newAttItem.setNote(attItem.getNote());
+    await newAttItem.saveTx();
     removeEmptyFolder(OS.Path.dirname(sourcePath));
     await attItem.eraseTx();
-  })
+  });
   return newAttItem;
 }
 
@@ -547,8 +547,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
