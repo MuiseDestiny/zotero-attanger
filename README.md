@@ -12,7 +12,7 @@
 
 📺[视频演示](https://www.bilibili.com/video/BV1x64y1J7Rv)
 
-# 教程
+## 教程
 
 1. 选择**源路径**的*根目录*
 2. 根据你的同步方式选择**附加类型**
@@ -22,4 +22,10 @@
 如何自定义重命名规则以及定义子目录？
 见[Zotero官方教程](https://www.zotero.org/support/file_renaming)，在配置*子目录*时多层级目录请用`/`隔开。
 
-![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/6f17def2-2481-4e23-be4d-82cfcdd6c2f3)
+![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/630268da-582f-47af-882f-ab04eabd0eea)
+
+
+
+## 支持
+
+[Here](https://github.com/MuiseDestiny/zotero-reference#%E8%B5%9E%E5%8A%A9)
