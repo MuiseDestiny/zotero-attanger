@@ -24,8 +24,6 @@
 
 ![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/630268da-582f-47af-882f-ab04eabd0eea)
 
-
-
 ## 支持
 
 [Here](https://github.com/MuiseDestiny/zotero-reference#%E8%B5%9E%E5%8A%A9)

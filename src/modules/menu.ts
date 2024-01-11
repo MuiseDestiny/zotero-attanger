@@ -181,20 +181,19 @@ export default class Menu {
           tag: "menuitem",
           label: "恢复PDF标注",
           commandListener: async () => {
-            ZoteroPane.getSelectedItems()
-              .forEach(async (item) => {
-                const attItem = Zotero.Items.get(item.getAttachments()[0])
-                const trashedAttItem = item.getAttachments(true)
-                  .filter(i => i != attItem.id)
-                  .map(i => Zotero.Items.get(i))
-                  .find(i => i.getAnnotations().length > 0)
-                if (trashedAttItem) {
-                  await transferItem(trashedAttItem, attItem)
-                }
-
-              })
-          }
-        }
+            ZoteroPane.getSelectedItems().forEach(async (item) => {
+              const attItem = Zotero.Items.get(item.getAttachments()[0]);
+              const trashedAttItem = item
+                .getAttachments(true)
+                .filter((i) => i != attItem.id)
+                .map((i) => Zotero.Items.get(i))
+                .find((i) => i.getAnnotations().length > 0);
+              if (trashedAttItem) {
+                await transferItem(trashedAttItem, attItem);
+              }
+            });
+          },
+        },
       ],
     });
     // 打开方式
@@ -436,39 +435,43 @@ export async function moveFile(attItem: Zotero.Item) {
   }
   const filename = OS.Path.basename(sourcePath);
   let destPath = OS.Path.join(destDir, filename);
+  // window.alert(destPath)
   if (await OS.File.exists(destPath)) {
+    await Zotero.Promise.delay(1000)
     // Click to enter a specified suffix.
-    const popupWin = new ztoolkit.ProgressWindow("Attanger", { closeTime: -1 })
+    const popupWin = new ztoolkit.ProgressWindow("Attanger", { closeTime: -1, closeOtherProgressWindows: true })
       .createLine({
-        text: "The target path already contains this file; a numeric suffix will be automatically added to the current file.",
-        icon: addon.data.icons.moveFile
+        text: "The target file already exists; a numeric suffix will be automatically added to the filename.",
+        icon: addon.data.icons.moveFile,
       })
-      .show()
-    popupWin.addDescription(`<a href="https://zotero.org">Click to enter a specified suffix.</a>`);
+      .show();
+    // Zotero.ProgressWindowSet.remove(popupWin)
+    popupWin.addDescription(
+      `<a href="https://zotero.org">Click to enter a specified suffix.</a>`,
+    );
     await waitUtilAsync(() =>
-      // @ts-ignore
+      // @ts-ignore oriate
       Boolean(popupWin.lines && popupWin.lines[0]._itemText),
     );
-    let lock = Zotero.Promise.defer(), timer: undefined | number
-    // @ts-ignore
+    const lock = Zotero.Promise.defer();
+    const timer = window.setTimeout(() => {
+      popupWin.close();
+      lock.resolve();
+    }, 3e3);
+    // @ts-ignore private
     popupWin.lines[0]._hbox.ownerDocument
       .querySelector("label[href]")
       .addEventListener("click", async (ev: MouseEvent) => {
         ev.stopPropagation();
         ev.preventDefault();
-        window.clearTimeout(timer)
-        popupWin.close()
-        let suffix = window.prompt(
-          "Suffix"
-        ) as string
+        window.clearTimeout(timer);
+        popupWin.close();
+        const suffix = window.prompt("Suffix") as string;
         destPath = await addSuffixToFilename(destPath, suffix);
-        lock.resolve()
+        lock.resolve();
       });
-    timer = window.setTimeout(() => {
-      popupWin.close();
-      lock.resolve()
-    }, 3e3)
-    await lock.promise
+
+    await lock.promise;
     destPath = await addSuffixToFilename(destPath);
   }
   // 创建中间路径
@@ -500,7 +503,7 @@ export async function moveFile(attItem: Zotero.Item) {
   const newAttItem = await Zotero.Attachments.linkFromFile(options);
   window.setTimeout(async () => {
     // 迁移标注
-    await transferItem(attItem, newAttItem)
+    await transferItem(attItem, newAttItem);
     removeEmptyFolder(OS.Path.dirname(sourcePath));
     await attItem.eraseTx();
   });
@@ -688,7 +691,10 @@ async function removeEmptyFolder(path: string) {
 /**
  * 迁移数据
  */
-async function transferItem(originalItem: Zotero.Item, targetItem: Zotero.Item) {
+async function transferItem(
+  originalItem: Zotero.Item,
+  targetItem: Zotero.Item,
+) {
   ztoolkit.log("迁移标注");
   await Zotero.DB.executeTransaction(async function () {
     await Zotero.Items.moveChildItems(originalItem, targetItem);
@@ -699,7 +705,7 @@ async function transferItem(originalItem: Zotero.Item, targetItem: Zotero.Item) 
   // 迁移索引
   ztoolkit.log("迁移索引");
   await Zotero.DB.executeTransaction(async function () {
-    await Zotero.Fulltext.transferItemIndex(originalItem, targetItem)
+    await Zotero.Fulltext.transferItemIndex(originalItem, targetItem);
   });
   // 迁移标签
   ztoolkit.log("迁移标签");
@@ -712,28 +718,27 @@ async function transferItem(originalItem: Zotero.Item, targetItem: Zotero.Item) 
 
 /**
  * 为文件添加后缀，如果存在
- * @param filename 
- * @returns 
+ * @param filename
+ * @returns
  */
 async function addSuffixToFilename(filename: string, suffix?: string) {
   let incr = 0;
-  let origPath = filename; // 假设 origPath 是完整的文件路径
   let destPath, destName;
 
   // 提取文件名（不含扩展名）和扩展名
-  let [root, ext] = (() => {
-    let parts = filename.split('.');
-    let ext = parts.length > 1 ? parts.pop() : '';
-    return [parts.join('.'), ext];
+  const [root, ext] = (() => {
+    const parts = filename.split(".");
+    const ext = parts.length > 1 ? parts.pop() : "";
+    return [parts.join("."), ext];
   })();
   if (suffix) {
     // 直接返回不在考虑是否存在
-    return ext ? `${root}${suffix}.${ext}` : `${root}${suffix}`
+    return ext ? `${root}_${suffix}.${ext}` : `${root}_${suffix}`;
   }
   while (true) {
     // 如果存在数字后缀，则添加它
     if (incr) {
-      destName = ext ? `${root}${incr}.${ext}` : `${root}${incr}`;
+      destName = ext ? `${root}_${incr}.${ext}` : `${root}_${incr}`;
     } else {
       destName = filename;
     }
