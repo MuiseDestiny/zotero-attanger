@@ -1,5 +1,6 @@
 directory = 根目录:
-choose = 选择…
+choose-dir = 
+    .label = 选择…
 setting = 设置
 
 source-title = 源路径

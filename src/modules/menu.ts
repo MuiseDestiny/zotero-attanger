@@ -1,7 +1,7 @@
 import { getString } from "../utils/locale";
 import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
-import { waitUntil } from "../utils/wait";
+import { waitUntil, waitUtilAsync } from "../utils/wait";
 
 export default class Menu {
   constructor() {
@@ -177,6 +177,24 @@ export default class Menu {
             }
           },
         },
+        {
+          tag: "menuitem",
+          label: "恢复PDF标注",
+          commandListener: async () => {
+            ZoteroPane.getSelectedItems()
+              .forEach(async (item) => {
+                const attItem = Zotero.Items.get(item.getAttachments()[0])
+                const trashedAttItem = item.getAttachments(true)
+                  .filter(i => i != attItem.id)
+                  .map(i => Zotero.Items.get(i))
+                  .find(i => i.getAnnotations().length > 0)
+                if (trashedAttItem) {
+                  await transferItem(trashedAttItem, attItem)
+                }
+
+              })
+          }
+        }
       ],
     });
     // 打开方式
@@ -417,7 +435,42 @@ export async function moveFile(attItem: Zotero.Item) {
     return;
   }
   const filename = OS.Path.basename(sourcePath);
-  const destPath = OS.Path.join(destDir, filename);
+  let destPath = OS.Path.join(destDir, filename);
+  if (await OS.File.exists(destPath)) {
+    // Click to enter a specified suffix.
+    const popupWin = new ztoolkit.ProgressWindow("Attanger", { closeTime: -1 })
+      .createLine({
+        text: "The target path already contains this file; a numeric suffix will be automatically added to the current file.",
+        icon: addon.data.icons.moveFile
+      })
+      .show()
+    popupWin.addDescription(`<a href="https://zotero.org">Click to enter a specified suffix.</a>`);
+    await waitUtilAsync(() =>
+      // @ts-ignore
+      Boolean(popupWin.lines && popupWin.lines[0]._itemText),
+    );
+    let lock = Zotero.Promise.defer(), timer: undefined | number
+    // @ts-ignore
+    popupWin.lines[0]._hbox.ownerDocument
+      .querySelector("label[href]")
+      .addEventListener("click", async (ev: MouseEvent) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        window.clearTimeout(timer)
+        popupWin.close()
+        let suffix = window.prompt(
+          "Suffix"
+        ) as string
+        destPath = await addSuffixToFilename(destPath, suffix);
+        lock.resolve()
+      });
+    timer = window.setTimeout(() => {
+      popupWin.close();
+      lock.resolve()
+    }, 3e3)
+    await lock.promise
+    destPath = await addSuffixToFilename(destPath);
+  }
   // 创建中间路径
   if (!(await OS.File.exists(destDir))) {
     const create = [destDir];
@@ -447,25 +500,7 @@ export async function moveFile(attItem: Zotero.Item) {
   const newAttItem = await Zotero.Attachments.linkFromFile(options);
   window.setTimeout(async () => {
     // 迁移标注
-    ztoolkit.log("迁移标注");
-    await Zotero.DB.executeTransaction(async function () {
-      await Zotero.Items.moveChildItems(attItem, newAttItem);
-    });
-    // 迁移相关
-    ztoolkit.log("迁移相关");
-    await Zotero.Relations.copyObjectSubjectRelations(attItem, newAttItem);
-    // 迁移索引
-    ztoolkit.log("迁移索引");
-    await Zotero.DB.executeTransaction(async function () {
-      await Zotero.Fulltext.transferItemIndex(attItem, newAttItem);
-    });
-    // 迁移标签
-    ztoolkit.log("迁移标签");
-    newAttItem.setTags(attItem.getTags());
-    // 迁移PDF笔记
-    ztoolkit.log("迁移PDF笔记");
-    newAttItem.setNote(attItem.getNote());
-    await newAttItem.saveTx();
+    await transferItem(attItem, newAttItem)
     removeEmptyFolder(OS.Path.dirname(sourcePath));
     await attItem.eraseTx();
   });
@@ -547,8 +582,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
@@ -647,5 +682,69 @@ async function removeEmptyFolder(path: string) {
   } else {
     removeFile(folder, true);
     return await removeEmptyFolder(OS.Path.dirname(folder.path));
+  }
+}
+
+/**
+ * 迁移数据
+ */
+async function transferItem(originalItem: Zotero.Item, targetItem: Zotero.Item) {
+  ztoolkit.log("迁移标注");
+  await Zotero.DB.executeTransaction(async function () {
+    await Zotero.Items.moveChildItems(originalItem, targetItem);
+  });
+  // 迁移相关
+  ztoolkit.log("迁移相关");
+  await Zotero.Relations.copyObjectSubjectRelations(originalItem, targetItem);
+  // 迁移索引
+  ztoolkit.log("迁移索引");
+  await Zotero.DB.executeTransaction(async function () {
+    await Zotero.Fulltext.transferItemIndex(originalItem, targetItem)
+  });
+  // 迁移标签
+  ztoolkit.log("迁移标签");
+  targetItem.setTags(originalItem.getTags());
+  // 迁移PDF笔记
+  ztoolkit.log("迁移PDF笔记");
+  targetItem.setNote(originalItem.getNote());
+  await targetItem.saveTx();
+}
+
+/**
+ * 为文件添加后缀，如果存在
+ * @param filename 
+ * @returns 
+ */
+async function addSuffixToFilename(filename: string, suffix?: string) {
+  let incr = 0;
+  let origPath = filename; // 假设 origPath 是完整的文件路径
+  let destPath, destName;
+
+  // 提取文件名（不含扩展名）和扩展名
+  let [root, ext] = (() => {
+    let parts = filename.split('.');
+    let ext = parts.length > 1 ? parts.pop() : '';
+    return [parts.join('.'), ext];
+  })();
+  if (suffix) {
+    // 直接返回不在考虑是否存在
+    return ext ? `${root}${suffix}.${ext}` : `${root}${suffix}`
+  }
+  while (true) {
+    // 如果存在数字后缀，则添加它
+    if (incr) {
+      destName = ext ? `${root}${incr}.${ext}` : `${root}${incr}`;
+    } else {
+      destName = filename;
+    }
+
+    destPath = destName; // 假设 destPath 是目标文件路径
+
+    // 检查文件是否存在
+    if (await OS.File.exists(destPath)) {
+      incr++; // 如果文件存在，增加后缀数字
+    } else {
+      return destPath; // 如果文件不存在，返回新的文件路径
+    }
   }
 }

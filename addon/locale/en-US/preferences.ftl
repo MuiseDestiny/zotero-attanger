@@ -1,5 +1,6 @@
 directory = Root Directory:
-choose = Choose…
+choose-dir = 
+    .label = Choose…
 setting = Settings
 
 source-title = Source Path
