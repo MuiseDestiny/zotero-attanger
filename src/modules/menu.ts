@@ -1,3 +1,4 @@
+/*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 import { getString } from "../utils/locale";
 import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
@@ -485,9 +486,11 @@ export async function moveFile(attItem: Zotero.Item) {
       create.push(parent);
       parent = OS.Path.dirname(parent);
     }
-    await Promise.all(create.reverse().map(async (f) =>
-      await Zotero.File.createDirectoryIfMissingAsync(f)
-    ));
+    await Promise.all(
+      create
+        .reverse()
+        .map(async (f) => await Zotero.File.createDirectoryIfMissingAsync(f)),
+    );
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
@@ -590,8 +593,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
