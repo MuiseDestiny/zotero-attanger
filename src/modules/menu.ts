@@ -212,7 +212,7 @@ export default class Menu {
     };
     ztoolkit.Menu.register("item", {
       tag: "menu",
-      getVisibility: () => getAttachmentItems().length > 0,
+      getVisibility: () => getAttachmentItems(false).length > 0,
       label: getString("open-using"),
       icon: addon.data.icons.openUsing,
       subElementOptions: [
@@ -278,10 +278,10 @@ export default class Menu {
 /**
  * 获取所有附件条目
  */
-function getAttachmentItems() {
+function getAttachmentItems(hasParent = true) {
   const attachmentItems = [];
   for (const item of ZoteroPane.getSelectedItems()) {
-    if (item.isAttachment()) {
+    if (item.isAttachment() && (hasParent ? !item.isTopLevelItem() : true)) {
       attachmentItems.push(item);
     } else if (item.isRegularItem()) {
       for (const id of item.getAttachments()) {
