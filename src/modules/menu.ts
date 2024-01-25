@@ -485,7 +485,9 @@ export async function moveFile(attItem: Zotero.Item) {
       create.push(parent);
       parent = OS.Path.dirname(parent);
     }
-    await Promise.all(create.reverse().map((f) => OS.File.makeDir(f)));
+    await Promise.all(create.reverse().map(async (f) =>
+      await Zotero.File.createDirectoryIfMissingAsync(f)
+    ));
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
