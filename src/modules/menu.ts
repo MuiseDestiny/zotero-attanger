@@ -366,11 +366,11 @@ async function renameFile(attItem: Zotero.Item) {
     ztoolkit.log("renamed = " + renamed);
     return await renameFile(attItem);
   }
-  const origTitle = attItem.getField("title");
-  if (origTitle == origFilename || origTitle == origFilenameNoExt) {
-    attItem.setField("title", newName);
-    await attItem.saveTx();
-  }
+  // const origTitle = attItem.getField("title");
+  // if (origTitle == origFilename || origTitle == origFilenameNoExt) {
+  attItem.setField("title", newName);
+  await attItem.saveTx();
+  // }
   return attItem;
 }
 
@@ -437,9 +437,12 @@ export async function moveFile(attItem: Zotero.Item) {
   let destPath = OS.Path.join(destDir, filename);
   // window.alert(destPath)
   if (await OS.File.exists(destPath)) {
-    await Zotero.Promise.delay(1000)
+    await Zotero.Promise.delay(1000);
     // Click to enter a specified suffix.
-    const popupWin = new ztoolkit.ProgressWindow("Attanger", { closeTime: -1, closeOtherProgressWindows: true })
+    const popupWin = new ztoolkit.ProgressWindow("Attanger", {
+      closeTime: -1,
+      closeOtherProgressWindows: true,
+    })
       .createLine({
         text: "The target file already exists; a numeric suffix will be automatically added to the filename.",
         icon: addon.data.icons.moveFile,
@@ -747,9 +750,9 @@ async function addSuffixToFilename(filename: string, suffix?: string) {
 
     // 检查文件是否存在
     if (await OS.File.exists(destPath)) {
-      incr++; // 如果文件存在，增加后缀数字
+      incr++;
     } else {
-      return destPath; // 如果文件不存在，返回新的文件路径
+      return destPath;
     }
   }
 }

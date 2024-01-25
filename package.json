@@ -1,6 +1,6 @@
 {
   "name": "zotero-attanger",
-  "version": "1.1.0-b1",
+  "version": "1.1.1",
   "description": "Attanger for Zotero",
   "config": {
     "addonName": "Zotero Attanger",
