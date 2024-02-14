@@ -437,7 +437,7 @@ export async function moveFile(attItem: Zotero.Item) {
   const filename = OS.Path.basename(sourcePath);
   let destPath = OS.Path.join(destDir, filename);
   if (sourcePath == destPath) {
-    return
+    return;
   }
   // window.alert(destPath)
   if (await OS.File.exists(destPath)) {
@@ -594,8 +594,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
