@@ -436,6 +436,9 @@ export async function moveFile(attItem: Zotero.Item) {
   }
   const filename = OS.Path.basename(sourcePath);
   let destPath = OS.Path.join(destDir, filename);
+  if (sourcePath == destPath) {
+    return
+  }
   // window.alert(destPath)
   if (await OS.File.exists(destPath)) {
     await Zotero.Promise.delay(1000);
@@ -494,13 +497,11 @@ export async function moveFile(attItem: Zotero.Item) {
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
-  if (sourcePath !== destPath) {
-    try {
-      await OS.File.move(sourcePath, destPath);
-    } catch (e) {
-      ztoolkit.log(e);
-      return await moveFile(attItem);
-    }
+  try {
+    await OS.File.move(sourcePath, destPath);
+  } catch (e) {
+    ztoolkit.log(e);
+    return await moveFile(attItem);
   }
   const options = {
     file: destPath,
@@ -593,8 +594,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return OS.Path.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
@@ -645,7 +646,7 @@ function showAttachmentItem(attItem: Zotero.Item) {
   // 显示附件行
   popupWin.createLine({
     text: attItem.getField("title") as string,
-    icon: attItem.getImageSrc(),
+    icon: attItem.getImageSrc().replace("p-d-f", "pdf"),
   });
   // 设置透明度 调整缩进
   // @ts-ignore lines私有变量
