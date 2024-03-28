@@ -6,6 +6,14 @@ setting = 设置
 source-title = 源路径
 source-intro = <附加新文件> 会从该目录检索最近添加的文件并附加到 Zotero 条目/分类下。
 
+read-pdf-title = 从PDF读取标题:
+readPDFtitle-never =
+    .label = 永不
+readPDFtitle-nonCJK =
+    .label = 仅限外文
+readPDFtitle-always =
+    .label = 始终
+
 attach-title = 附加类型
 attach-intro = 若使用 Zotero 官方或 WebDAV 同步，请选择作为 <副本>；若使用第三方官方同步，如坚果云、OneDrive等，请选择作为 <链接> 并认真配置 <靶路径>，文件将会被移动到靶路径下后作为链接类型附件导入 Zotero。
 attach-type-start = 文件作为
