@@ -6,6 +6,14 @@ setting = Settings
 source-title = Source Path
 source-intro = &lt;Attach New File&gt; will retrieve the recently added file from this directory and attach it to the Zotero Item/Collection.
 
+read-pdf-title = read title from PDF file:
+readPDFtitle-never =
+    .label = Never
+readPDFtitle-nonCJK =
+    .label = Except for CJK
+readPDFtitle-always =
+    .label = Always
+
 attach-title = Attach Type
 attach-intro = If using Zotero's official or WebDAV sync, choose &lt;Stored Copy&gt;; if using third-party sync such as Nutstore, OneDrive, etc., choose &lt;Link&gt; and properly configure the &lt;Destination Path&gt;. Files will be moved to the destination path and then imported into Zotero as a link attachment.
 attach-type-start = Attach file
