@@ -2,8 +2,8 @@ import { config } from "../package.json";
 import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
-import Menu, { moveFile } from "./modules/menu";
-import { getPref } from "./utils/prefs";
+import Menu from "./modules/menu";
+// import { getPref } from "./utils/prefs";
 
 async function onStartup() {
   await Promise.all([

@@ -36,6 +36,7 @@ class Addon {
       icons: {
         favicon: `chrome://${config.addonRef}/content/icons/favicon.png`,
         attachNewFile: `chrome://${config.addonRef}/content/icons/attachNewFile.png`,
+        matchAttachment: `chrome://${config.addonRef}/content/icons/matchAttachment.png`,
         renameMoveAttachment: `chrome://${config.addonRef}/content/icons/renameMoveAttachment.png`,
         openUsing: `chrome://${config.addonRef}/content/icons/openUsing.png`,
         renameAttachment: "chrome://zotero/skin/bookmark-pencil.png",
