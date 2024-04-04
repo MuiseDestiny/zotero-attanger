@@ -524,9 +524,11 @@ export async function moveFile(attItem: Zotero.Item) {
         if (formatString == "{{collection}}") {
           return getCollectionPathsOfItem(attItem.topLevelItem);
         } else {
-          return Zotero.Attachments.getFileBaseNameFromItem(
-            attItem.topLevelItem,
-            formatString,
+          return getValidFolderName(
+            Zotero.Attachments.getFileBaseNameFromItem(
+              attItem.topLevelItem,
+              formatString,
+            )
           );
         }
       })
@@ -700,6 +702,37 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
   } catch {
     return item.getCollections().map(getCollectionPath).slice(0, 1)[0];
   }
+}
+
+/**
+ * 从文件名中删除非法字符
+ * Modified from Zotero.File.getValidFileName
+ * @param folderName
+ * @returns
+ */
+function getValidFolderName(folderName: string): string {
+  // Replace illegal folder name characters
+  folderName = folderName.replace(/[\\:*?"<>|]/g, "");
+  // Replace newlines and tabs (which shouldn't be in the string in the first place) with spaces
+  folderName = folderName.replace(/[\r\n\t]+/g, " ");
+  // Replace various thin spaces
+  folderName = folderName.replace(/[\u2000-\u200A]/g, " ");
+  // Replace zero-width spaces
+  folderName = folderName.replace(/[\u200B-\u200E]/g, "");
+  // Strip characters not valid in XML, since they won't sync and they're probably unwanted
+  // eslint-disable-next-line no-control-regex
+  folderName = folderName.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ud800-\udfff\ufffe\uffff]/g, "");
+  // Normalize to NFC
+  folderName = folderName.normalize();
+  // Replace bidi isolation control characters
+  folderName = folderName.replace(/[\u2068\u2069]/g, "");
+  // Don't allow hidden files
+  folderName = folderName.replace(/^\./, "");
+  // Don't allow blank or illegal names
+  if (!folderName || folderName == "." || folderName == "..") {
+    folderName = "_";
+  }
+  return folderName;
 }
 
 function checkFileType(attItem: Zotero.Item) {
