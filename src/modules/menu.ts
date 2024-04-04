@@ -291,12 +291,12 @@ function getAttachmentItems(hasParent = true) {
   for (const item of ZoteroPane.getSelectedItems()) {
     if (item.isAttachment() && (hasParent ? !item.isTopLevelItem() : true)) {
       attachmentItems.push(item);
-    }
-    else if (item.isRegularItem()) {
-      item.getAttachments()
-        .map(id => Zotero.Items.get(id))
-        .filter(item => item.isAttachment())
-        .forEach(item => attachmentItems.push(item));
+    } else if (item.isRegularItem()) {
+      item
+        .getAttachments()
+        .map((id) => Zotero.Items.get(id))
+        .filter((item) => item.isAttachment())
+        .forEach((item) => attachmentItems.push(item));
     }
   }
 
@@ -305,19 +305,28 @@ function getAttachmentItems(hasParent = true) {
 
 async function matchAttachment() {
   const items = ZoteroPane.getSelectedItems()
-    .filter(i => i.isTopLevelItem() && i.isRegularItem())
+    .filter((i) => i.isTopLevelItem() && i.isRegularItem())
     .sort((a, b) => getPlainTitle(a).length - getPlainTitle(b).length);
-  ztoolkit.log("item titles: ", items.map(i => i.getDisplayTitle()));
+  ztoolkit.log(
+    "item titles: ",
+    items.map((i) => i.getDisplayTitle()),
+  );
   const sourceDir = await checkDir("sourceDir", "source path");
   if (!sourceDir) return;
   let files: OS.File.Entry[] = [];
   /* TODO: migrate to IOUtils */
-  await Zotero.File.iterateDirectory(sourceDir, async function (child: OS.File.Entry) {
-    if (!child.isDir && /\.(caj|pdf)$/i.test(child.name)) {
-      files.push(child);
-    }
-  });
-  ztoolkit.log("found pdf files:", files.map(f => f.path));
+  await Zotero.File.iterateDirectory(
+    sourceDir,
+    async function (child: OS.File.Entry) {
+      if (!child.isDir && /\.(caj|pdf)$/i.test(child.name)) {
+        files.push(child);
+      }
+    },
+  );
+  ztoolkit.log(
+    "found pdf files:",
+    files.map((f) => f.path),
+  );
   const readPDFTitle = getPref("readPDFtitle") as string;
   ztoolkit.log("read PDF title: ", readPDFTitle);
   for (const item of items) {
@@ -337,40 +346,52 @@ async function matchAttachment() {
         const data: any = await getPDFData(file.path);
         const lines: Array<any> = [];
         data.pages.forEach((page: Array<any>) => {
-          page[page.length - 1][0][0][0][4].forEach((line: Array<Array<Array<any>>>) => {
-            const lineObj = { fontSize: 0, text: "" };
-            line[0].forEach((word) => {
-              lineObj.fontSize += word[4];
-              lineObj.text += word[word.length - 1] + ((word[5] > 0) ? " " : "");
-            });
-            lineObj.fontSize /= line[0].length;
-            // ztoolkit.log(lineObj);
-            lines.push(lineObj);
-          });
+          page[page.length - 1][0][0][0][4].forEach(
+            (line: Array<Array<Array<any>>>) => {
+              const lineObj = { fontSize: 0, text: "" };
+              line[0].forEach((word) => {
+                lineObj.fontSize += word[4];
+                lineObj.text +=
+                  word[word.length - 1] + (word[5] > 0 ? " " : "");
+              });
+              lineObj.fontSize /= line[0].length;
+              // ztoolkit.log(lineObj);
+              lines.push(lineObj);
+            },
+          );
         });
-        const optTitle = data?.metadata?.title || data?.metadata?.Title
-          || lines.reduce((max, cur) => {
-            if (cur.fontSize > max.fontSize) {
-              return cur;
-            }
-            else if (cur.fontSize == max.fontSize) {
-              max.text += ` ${cur.text}`;
-            }
-            return max;
-          }, { fontSize: -Infinity, text: "" }).text.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1");
+        const optTitle =
+          data?.metadata?.title ||
+          data?.metadata?.Title ||
+          lines
+            .reduce(
+              (max, cur) => {
+                if (cur.fontSize > max.fontSize) {
+                  return cur;
+                } else if (cur.fontSize == max.fontSize) {
+                  max.text += ` ${cur.text}`;
+                }
+                return max;
+              },
+              { fontSize: -Infinity, text: "" },
+            )
+            .text.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1");
         ztoolkit.log("optical title: ", optTitle);
-        if (readPDFTitle != "Never"
-          && optTitle
-          && (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle == "Always")
+        if (
+          readPDFTitle != "Never" &&
+          optTitle &&
+          (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle == "Always")
         ) {
           filename = cleanLigature(optTitle);
         }
-      }
-      catch (e: any) {
+      } catch (e: any) {
         ztoolkit.log(e);
       }
       ztoolkit.log("filename:", filename);
-      const distance = comparison.metricLcs.distance(itemtitle.toLowerCase(), filename.toLowerCase());
+      const distance = comparison.metricLcs.distance(
+        itemtitle.toLowerCase(),
+        filename.toLowerCase(),
+      );
       ztoolkit.log(`【${itemtitle}】 × 【${filename}】 => ${distance}`);
       if (distance <= iniDistance) {
         iniDistance = distance;
@@ -378,7 +399,7 @@ async function matchAttachment() {
       }
     }
     if (matchedFile) {
-      ztoolkit.log("==>", itemtitle, matchedFile.path, iniDistance)
+      ztoolkit.log("==>", itemtitle, matchedFile.path, iniDistance);
       const attItem = await Zotero.Attachments.importFromFile({
         file: matchedFile.path,
         libraryID: item.libraryID,
@@ -389,7 +410,7 @@ async function matchAttachment() {
         Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
       }
       removeFile(matchedFile.path);
-      files = files.filter(file => file !== matchedFile);
+      files = files.filter((file) => file !== matchedFile);
     }
   }
 }
@@ -403,8 +424,7 @@ async function openUsing(fileHandler: string, fileType = "pdf") {
     selectedItems.map(async (item: Zotero.Item) => {
       if (item.isAttachment()) {
         ids.push(item.id);
-      }
-      else {
+      } else {
         ids.push((await item.getBestAttachments())[0].id);
       }
     }),
@@ -463,7 +483,7 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   const renamed = await attItem.renameAttachmentFile(newName, false, true);
   if (renamed !== true) {
     ztoolkit.log("renamed = " + renamed, "newName", newName);
-    await Zotero.Promise.delay(3e3)
+    await Zotero.Promise.delay(3e3);
     if (retry < 5) {
       return await renameFile(attItem, retry + 1);
     }
@@ -586,8 +606,7 @@ export async function moveFile(attItem: Zotero.Item) {
   // 移动文件到目标文件夹
   try {
     await IOUtils.move(sourcePath, destPath);
-  }
-  catch (e) {
+  } catch (e) {
     ztoolkit.log(e);
     return await moveFile(attItem);
   }
@@ -619,8 +638,7 @@ async function attachNewFile(options: {
     new ztoolkit.ProgressWindow(config.addonName)
       .createLine({ text: "No File Found", type: "default" })
       .show();
-  }
-  else {
+  } else {
     const attItem = await Zotero.Attachments.importFromFile({
       file: path,
       ...options,
@@ -673,8 +691,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return PathUtils.normalize(
       getCollectionPath(collection.parentID) +
-      addon.data.folderSep +
-      collection.name,
+        addon.data.folderSep +
+        collection.name,
     ) as string;
   };
   try {
@@ -689,7 +707,9 @@ function checkFileType(attItem: Zotero.Item) {
   if (!fileTypes) return true;
   const pos = attItem.attachmentFilename.lastIndexOf("."),
     fileType =
-      pos == -1 ? "" : attItem.attachmentFilename.substring(pos + 1).toLowerCase(),
+      pos == -1
+        ? ""
+        : attItem.attachmentFilename.substring(pos + 1).toLowerCase(),
     regex = fileTypes.toLowerCase().replace(/,/gi, "|");
   // return value
   return fileType.search(new RegExp(regex)) >= 0 ? true : false;
@@ -847,7 +867,7 @@ async function addSuffixToFilename(filename: string, suffix?: string) {
 
 async function checkDir(prefName: string, prefDisplay: string) {
   let dir = getPref(prefName);
-  if (typeof dir !== "string" || !await IOUtils.exists(dir)) {
+  if (typeof dir !== "string" || !(await IOUtils.exists(dir))) {
     dir = await new ztoolkit.FilePicker(
       `Select ${prefDisplay}`,
       "folder",
@@ -855,8 +875,7 @@ async function checkDir(prefName: string, prefDisplay: string) {
     if (typeof dir === "string") {
       setPref(prefName, dir);
       return dir;
-    }
-    else {
+    } else {
       new ztoolkit.ProgressWindow(config.addonName)
         .createLine({ text: "No valid path set", type: "default" })
         .show();
@@ -871,27 +890,29 @@ async function checkDir(prefName: string, prefDisplay: string) {
  * 虽然通常用于与文件名进行比较，但并不调用Zotero.File.getValidFileName进行规范化。
  */
 function getPlainTitle(item: Zotero.Item) {
-  return item.getDisplayTitle().replace(/<(?:i|b|sub|sub)>(.+?)<\/(?:i|b|sub|sub)>/g, "$1");
+  return item
+    .getDisplayTitle()
+    .replace(/<(?:i|b|sub|sub)>(.+?)<\/(?:i|b|sub|sub)>/g, "$1");
 }
 
 function cleanLigature(filename: string) {
   let result = filename;
   interface StringMap {
-    [key: string]: string
+    [key: string]: string;
   }
   const ligature: StringMap = {
-    "æ": "ae",
-    "Æ": "AE",
-    "œ": "oe",
-    "Œ": "OE",
-    "ﬀ": "ff",
-    "ﬁ": "fi",
-    "ﬂ": "fl",
-    "ﬃ": "ffi",
-    "ﬄ": "ffl"
-  }
+    æ: "ae",
+    Æ: "AE",
+    œ: "oe",
+    Œ: "OE",
+    ﬀ: "ff",
+    ﬁ: "fi",
+    ﬂ: "fl",
+    ﬃ: "ffi",
+    ﬄ: "ffl",
+  };
   Object.keys(ligature).forEach((key) => {
-    result = result.replace(new RegExp(key, 'g'), ligature[key])
+    result = result.replace(new RegExp(key, "g"), ligature[key]);
   });
   return result;
 }
@@ -904,14 +925,18 @@ async function getPDFData(path: string) {
     const buf = new Uint8Array(await IOUtils.read(path)).buffer;
     let result = {};
     try {
-      result = await Zotero.PDFWorker._query('getRecognizerData', { buf }, [buf]);
-    }
-    catch (e: any) {
-      const error = new Error(`Worker 'getRecognizerData' failed: ${JSON.stringify({ error: e.message })}`);
+      result = await Zotero.PDFWorker._query("getRecognizerData", { buf }, [
+        buf,
+      ]);
+    } catch (e: any) {
+      const error = new Error(
+        `Worker 'getRecognizerData' failed: ${JSON.stringify({
+          error: e.message,
+        })}`,
+      );
       try {
         error.name = JSON.parse(e.message).name;
-      }
-      catch (e: any) {
+      } catch (e: any) {
         ztoolkit.log(e);
       }
       ztoolkit.log(error);
@@ -923,5 +948,3 @@ async function getPDFData(path: string) {
     return result;
   }, false);
 }
-
-
