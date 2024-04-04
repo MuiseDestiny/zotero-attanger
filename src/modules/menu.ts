@@ -307,8 +307,8 @@ async function matchAttachment() {
   const items = ZoteroPane.getSelectedItems()
     .filter(i => i.isTopLevelItem() && i.isRegularItem())
     .sort((a, b) => getPlainTitle(a).length - getPlainTitle(b).length);
-    ztoolkit.log("item titles: ", items.map(i => i.getDisplayTitle()));
-  const sourceDir =  await checkDir("sourceDir", "source path");
+  ztoolkit.log("item titles: ", items.map(i => i.getDisplayTitle()));
+  const sourceDir = await checkDir("sourceDir", "source path");
   if (!sourceDir) return;
   let files: OS.File.Entry[] = [];
   /* TODO: migrate to IOUtils */
@@ -324,13 +324,13 @@ async function matchAttachment() {
     const itemtitle = getPlainTitle(item);
     ztoolkit.log("processing item: ", itemtitle);
     let iniDistance = Infinity;
-    let matched: OS.File.Entry|undefined = undefined;
+    let matchedFile: OS.File.Entry | undefined = undefined;
     for (const file of files) {
       let filename = file.name.replace(/\..+?$/, "");
 
       /* 尝试从PDF元数据或文本中读取标题 */
       try {
-        if (/pdf/i.test(Zotero.File.getExtension(file.path))) {
+        if (!/pdf/i.test(Zotero.File.getExtension(file.path))) {
           throw new Error("This is not a PDF file.");
         }
         ztoolkit.log("check file:", file.name + ": ");
@@ -341,16 +341,15 @@ async function matchAttachment() {
             const lineObj = { fontSize: 0, text: "" };
             line[0].forEach((word) => {
               lineObj.fontSize += word[4];
-              lineObj.text += word[word.length -1] + ((word[5] > 0) ? " " : "");
+              lineObj.text += word[word.length - 1] + ((word[5] > 0) ? " " : "");
             });
             lineObj.fontSize /= line[0].length;
             // ztoolkit.log(lineObj);
             lines.push(lineObj);
           });
         });
-        const optTitle = data?.metadata?.title
-          ? data.metadata.title
-          : lines.reduce((max, cur) => {
+        const optTitle = data?.metadata?.title || data?.metadata?.Title
+          || lines.reduce((max, cur) => {
             if (cur.fontSize > max.fontSize) {
               return cur;
             }
@@ -358,16 +357,16 @@ async function matchAttachment() {
               max.text += ` ${cur.text}`;
             }
             return max;
-          }, { fontSize: -Infinity,  text: ""}).text.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1");
+          }, { fontSize: -Infinity, text: "" }).text.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1");
         ztoolkit.log("optical title: ", optTitle);
         if (readPDFTitle != "Never"
-            && optTitle
-            && (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle == "Always")
-          ) {
+          && optTitle
+          && (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle == "Always")
+        ) {
           filename = cleanLigature(optTitle);
         }
       }
-      catch(e: any) {
+      catch (e: any) {
         ztoolkit.log(e);
       }
       ztoolkit.log("filename:", filename);
@@ -375,19 +374,22 @@ async function matchAttachment() {
       ztoolkit.log(`【${itemtitle}】 × 【${filename}】 => ${distance}`);
       if (distance <= iniDistance) {
         iniDistance = distance;
-        matched = file;
+        matchedFile = file;
       }
     }
-    if (matched !== undefined) {
+    if (matchedFile) {
+      ztoolkit.log("==>", itemtitle, matchedFile.path, iniDistance)
       const attItem = await Zotero.Attachments.importFromFile({
-        file: matched.path,
+        file: matchedFile.path,
         libraryID: item.libraryID,
         parentItemID: item.id,
       });
-      item.addTag("\\auto matched attachment");
-      item.save();
       showAttachmentItem(attItem);
-      files = files.filter(file => file !== matched);
+      if (!attItem.parentItemID) {
+        Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
+      }
+      removeFile(matchedFile.path);
+      files = files.filter(file => file !== matchedFile);
     }
   }
 }
@@ -441,7 +443,7 @@ function getLastFileInFolder(path: string) {
  * @param item
  * @returns
  */
-async function renameFile(attItem: Zotero.Item) {
+async function renameFile(attItem: Zotero.Item, retry = 0) {
   if (!checkFileType(attItem)) {
     return;
   }
@@ -460,8 +462,11 @@ async function renameFile(attItem: Zotero.Item) {
   const origFilenameNoExt = origFilename.replace(extRE, "");
   const renamed = await attItem.renameAttachmentFile(newName, false, true);
   if (renamed !== true) {
-    ztoolkit.log("renamed = " + renamed);
-    return await renameFile(attItem);
+    ztoolkit.log("renamed = " + renamed, "newName", newName);
+    await Zotero.Promise.delay(3e3)
+    if (retry < 5) {
+      return await renameFile(attItem, retry + 1);
+    }
   }
   // const origTitle = attItem.getField("title");
   // if (origTitle == origFilename || origTitle == origFilenameNoExt) {
@@ -607,7 +612,7 @@ async function attachNewFile(options: {
   parentItemID: number | undefined;
   collections: number[] | undefined;
 }) {
-  const sourceDir =  await checkDir("sourceDir", "source path");
+  const sourceDir = await checkDir("sourceDir", "source path");
   if (!sourceDir) return;
   const path = getLastFileInFolder(sourceDir);
   if (!path) {
@@ -668,8 +673,8 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     }
     return PathUtils.normalize(
       getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
+      addon.data.folderSep +
+      collection.name,
     ) as string;
   };
   try {
@@ -744,7 +749,7 @@ function showAttachmentItem(attItem: Zotero.Item) {
  * @param  {String|nsIFile} path Folder as nsIFile.
  * @return {void}
  */
-async function removeEmptyFolder(path: string|nsIFile) {
+async function removeEmptyFolder(path: string | nsIFile) {
   if (!getPref("autoRemoveEmptyFolder") as boolean) {
     return false;
   }
@@ -853,8 +858,8 @@ async function checkDir(prefName: string, prefDisplay: string) {
     }
     else {
       new ztoolkit.ProgressWindow(config.addonName)
-      .createLine({ text: "No valid path set", type: "default" })
-      .show();
+        .createLine({ text: "No valid path set", type: "default" })
+        .show();
       return false;
     }
   }
@@ -869,7 +874,7 @@ function getPlainTitle(item: Zotero.Item) {
   return item.getDisplayTitle().replace(/<(?:i|b|sub|sub)>(.+?)<\/(?:i|b|sub|sub)>/g, "$1");
 }
 
-function cleanLigature(filename:string) {
+function cleanLigature(filename: string) {
   let result = filename;
   interface StringMap {
     [key: string]: string

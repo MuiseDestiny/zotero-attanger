@@ -39,7 +39,7 @@ class Addon {
         matchAttachment: `chrome://${config.addonRef}/content/icons/matchAttachment.png`,
         renameMoveAttachment: `chrome://${config.addonRef}/content/icons/renameMoveAttachment.png`,
         openUsing: `chrome://${config.addonRef}/content/icons/openUsing.png`,
-        renameAttachment: "chrome://zotero/skin/bookmark-pencil.png",
+        renameAttachment: `chrome://${config.addonRef}/content/icons/renameAttachment.png`,
         moveFile: `chrome://${config.addonRef}/content/icons/moveAttachment.png`,
         collection: "chrome://zotero/skin/treesource-collection@2x.png",
       },
