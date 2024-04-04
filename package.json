@@ -71,6 +71,7 @@
       "@typescript-eslint"
     ],
     "rules": {
+      "no-control-regex": 0,
       "@typescript-eslint/ban-ts-comment": [
         "warn",
         {

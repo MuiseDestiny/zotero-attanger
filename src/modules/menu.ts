@@ -528,7 +528,7 @@ export async function moveFile(attItem: Zotero.Item) {
             Zotero.Attachments.getFileBaseNameFromItem(
               attItem.topLevelItem,
               formatString,
-            )
+            ),
           );
         }
       })
@@ -721,7 +721,10 @@ function getValidFolderName(folderName: string): string {
   folderName = folderName.replace(/[\u200B-\u200E]/g, "");
   // Strip characters not valid in XML, since they won't sync and they're probably unwanted
   // eslint-disable-next-line no-control-regex
-  folderName = folderName.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ud800-\udfff\ufffe\uffff]/g, "");
+  folderName = folderName.replace(
+    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ud800-\udfff\ufffe\uffff]/g,
+    "",
+  );
   // Normalize to NFC
   folderName = folderName.normalize();
   // Replace bidi isolation control characters
