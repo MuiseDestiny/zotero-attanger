@@ -832,12 +832,15 @@ async function removeEmptyFolder(path: string | nsIFile) {
   if (!rootFolders.find((dir) => folder.path.startsWith(dir))) {
     return false;
   }
-  if (folder.directoryEntries.hasMoreElements()) {
-    return true;
-  } else {
-    removeFile(folder, true);
-    return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
+  const files = folder.directoryEntries;
+  while (files.hasMoreElements()) {
+    const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    if (f.leafName !== ".DS_Store" && f.leafName !== "Thumbs.db") {
+      return true;
+    }
   }
+  removeFile(folder, true);
+  return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
 }
 
 /**
