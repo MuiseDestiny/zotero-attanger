@@ -833,12 +833,17 @@ async function removeEmptyFolder(path: string | nsIFile) {
     return false;
   }
   const files = folder.directoryEntries;
+  let fileCount = 0;
   while (files.hasMoreElements()) {
     const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    fileCount++;
     if (f.leafName !== ".DS_Store" && f.leafName !== "Thumbs.db") {
       return true;
+    } else if (fileCount > 1) {
+      break;
     }
   }
+  ztoolkit.log("Remove empty folder: ", folder.path);
   removeFile(folder, true);
   return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
 }
