@@ -27,6 +27,9 @@ dest-title = Zielpfad
 dest-intro = &lt;Anhang verschieben&gt; verschiebt den Anhang in diesen Pfad, und der endgültige Dateipfad lautet &lt;Stammverzeichnis/Unterverzeichnis/Dateiname&gt;. Lassen Sie dieses Feld leer, wenn kein &lt;Unterverzeichnis&gt; benötigt wird.
 subfolder = Unterverzeichnis:
 
+slash-as-subfolder-delimiter =
+    .label = Schrägstriche (/) in Variablen als Unterverzeichnis-Trennzeichen interpretieren
+
 filename = Dateiname:
 
 other-title = Andere Einstellungen

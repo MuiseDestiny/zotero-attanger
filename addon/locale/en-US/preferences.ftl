@@ -27,6 +27,9 @@ dest-title = Destination Path
 dest-intro = &lt;Move Attachment&gt; will move the attachment to this path, and the final file path will be &lt;Root Directory/Subfolder/Filename&gt;. Leave blank if no &lt;Subfolder&gt; is needed.
 subfolder = Subfolder:
 
+slash-as-subfolder-delimiter =
+    .label = Parse forward slashes (/) in variables as subfolder delimiters
+
 filename = Filename:
 
 other-title = Other Settings
