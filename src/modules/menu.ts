@@ -187,7 +187,7 @@ export default class Menu {
         },
         {
           tag: "menuitem",
-          label: "恢复PDF标注",
+          label: getString("restore-pdf-annotation"),
           commandListener: async () => {
             ZoteroPane.getSelectedItems().forEach(async (item) => {
               const attItem = Zotero.Items.get(item.getAttachments()[0]);
