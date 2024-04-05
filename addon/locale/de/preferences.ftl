@@ -1,0 +1,48 @@
+directory = Stammverzeichnis:
+choose-dir =
+    .label = Auswählen...
+setting = Einstellungen
+
+source-title = Quellpfad
+source-intro = &lt;Neue Datei anhängen&gt; ruft die zuletzt hinzugefügte Datei aus diesem Verzeichnis ab und hängt sie an das Zotero-Element/die Zotero-Sammlung an.
+
+read-pdf-title = Titel aus PDF-Datei lesen:
+readPDFtitle-never =
+    .label = Nie
+readPDFtitle-nonCJK =
+    .label = Außer für CJK
+readPDFtitle-always =
+    .label = Immer
+
+attach-title = Anhangtyp
+attach-intro = Wenn Sie die offizielle Zotero- oder WebDAV-Synchronisierung verwenden, wählen Sie &lt;Gespeicherte Kopie&gt;. Wenn Sie eine Drittanbieter-Synchronisierung wie Nutstore, OneDrive usw. verwenden, wählen Sie &lt;Link&gt; und konfigurieren Sie den &lt;Zielpfad&gt; ordnungsgemäß. Dateien werden in den Zielpfad verschoben und dann als Link-Anhang in Zotero importiert.
+attach-type-start = Datei anhängen
+attach-type-end = an das Zotero-Element/die Zotero-Sammlung
+importing =
+    .label = Gespeicherte Kopie
+linking =
+    .label = Link
+
+dest-title = Zielpfad
+dest-intro = &lt;Anhang verschieben&gt; verschiebt den Anhang in diesen Pfad, und der endgültige Dateipfad lautet &lt;Stammverzeichnis/Unterverzeichnis/Dateiname&gt;. Lassen Sie dieses Feld leer, wenn kein &lt;Unterverzeichnis&gt; benötigt wird.
+subfolder = Unterverzeichnis:
+
+filename = Dateiname:
+
+other-title = Andere Einstellungen
+auto-rename =
+    .label = Hinzugefügte Anhänge automatisch umbenennen
+auto-move =
+    .label = Hinzugefügte Anhänge automatisch verschieben
+auto-remove-empty-folder =
+    .label = Leere Ordner nach dem Verschieben automatisch löschen
+file-types = Arten von Anhängen zur Umbenennung/Verschiebung
+
+about-title = Über Attanger
+about-intro = 🌠 Frohes Neues Jahr! Attanger ist eine Abkürzung für Attachment Manager, und dieses Projekt bezieht sich stark auf das ZotFile-Plugin der Zotero-Version 6.
+
+
+preferences-file-renaming-customize-button =
+    .label = Dateinamenformat anpassen...
+
+preferences-file-renaming-format-instructions-more = Weitere Informationen finden Sie in der <label data-l10n-name="file-renaming-format-help-link">Dokumentation</label>.
