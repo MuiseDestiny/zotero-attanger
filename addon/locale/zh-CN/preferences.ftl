@@ -27,6 +27,9 @@ dest-title = 靶路径
 dest-intro = <移动附件> 会将附件移动到该路径下，文件最终路径为 <根目录/子目录/文件名>。若无需 <子目录> 留空即可。
 subfolder = 子目录:
 
+slash-as-subfolder-delimiter =
+    .label = 将变量中的正斜杠 (/) 解析为子文件夹分隔符
+
 filename = 文件名:
 
 other-title = 其他设置

@@ -187,7 +187,7 @@ export default class Menu {
         },
         {
           tag: "menuitem",
-          label: "恢复PDF标注",
+          label: getString("restore-pdf-annotation"),
           commandListener: async () => {
             ZoteroPane.getSelectedItems().forEach(async (item) => {
               const attItem = Zotero.Items.get(item.getAttachments()[0]);
@@ -541,7 +541,7 @@ export async function moveFile(attItem: Zotero.Item) {
     // @ts-ignore 未添加属性
     Zotero.File.getValidFileName = _getValidFileName;
     ztoolkit.log("subfolder", subfolder);
-    destDir = PathUtils.join(destDir, subfolder);
+    destDir = PathUtils.joinRelative(destDir, subfolder);
   }
   const sourcePath = (await attItem.getFilePathAsync()) as string;
   if (!sourcePath) return;
@@ -712,7 +712,12 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
  */
 function getValidFolderName(folderName: string): string {
   // Replace illegal folder name characters
-  folderName = folderName.replace(/[\\:*?"<>|]/g, "");
+  if (getPref("slashAsSubfolderDelimiter")) {
+    folderName = folderName.replace(/[\\:*?"<>|]/g, "");
+  } else {
+    // eslint-disable-next-line no-useless-escape
+    folderName = folderName.replace(/[\/\\:*?"<>|]/g, "");
+  }
   // Replace newlines and tabs (which shouldn't be in the string in the first place) with spaces
   folderName = folderName.replace(/[\r\n\t]+/g, " ");
   // Replace various thin spaces
@@ -827,12 +832,15 @@ async function removeEmptyFolder(path: string | nsIFile) {
   if (!rootFolders.find((dir) => folder.path.startsWith(dir))) {
     return false;
   }
-  if (folder.directoryEntries.hasMoreElements()) {
-    return true;
-  } else {
-    removeFile(folder, true);
-    return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
+  const files = folder.directoryEntries;
+  while (files.hasMoreElements()) {
+    const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    if (f.leafName !== ".DS_Store" && f.leafName !== "Thumbs.db") {
+      return true;
+    }
   }
+  removeFile(folder, true);
+  return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
 }
 
 /**
