@@ -4,5 +4,6 @@ rename-move-attachment = 重命名并移动附件
 match-attachment = 匹配附件
 rename-attachment = 重命名附件
 move-attachment = 移动附件
+restore-pdf-annotation = 恢复PDF标注
 open-using = 打开方式
 choose-other-app = 选择其它应用
