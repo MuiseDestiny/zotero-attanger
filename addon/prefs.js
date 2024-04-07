@@ -2,6 +2,7 @@
 pref("extensions.zotero.__addonRef__.enable", true);
 pref("extensions.zotero.__addonRef__.attachType", "linking");
 pref("extensions.zotero.__addonRef__.subfolderFormat", `{{collection}}`);
+pref("extensions.zotero.__addonRef__.slashAsSubfolderDelimiter", false);
 pref("extensions.zotero.__addonRef__.sourceDir", "");
 pref("extensions.zotero.__addonRef__.readPdfTitle", "nonCJK");
 pref("extensions.zotero.__addonRef__.destDir", "");

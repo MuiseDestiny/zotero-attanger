@@ -19,6 +19,9 @@ dest-title = Percorso di destinazione
 dest-intro = &lt;Sposta allegato&gt; sposterà l'allegato in questo percorso e il percorso finale sarà &lt;Directory di base/Sottocartella/Nome file&gt;. Lasciare vuoto se non è richiesta alcuna &lt;Sottocartella&gt;.
 subfolder = Sottocartella:
 
+slash-as-subfolder-delimiter =
+    .label = Interpretare le barre (/) nelle variabili come delimitatori di sottocartelle
+
 filename = Filename:
 
 other-title = Altre impostazioni
