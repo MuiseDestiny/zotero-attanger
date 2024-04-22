@@ -4,6 +4,7 @@ import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
 import { waitUntil, waitUtilAsync } from "../utils/wait";
 import comparison from "string-comparison";
+import { registerShortcut } from "../utils/shortcut";
 
 export default class Menu {
   constructor() {
@@ -92,6 +93,7 @@ export default class Menu {
         return items.some((i) => i.isTopLevelItem() || i.isAttachment());
       },
     });
+    // 匹配附件
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       label: getString("match-attachment"),
@@ -104,8 +106,19 @@ export default class Menu {
         await matchAttachment();
       },
     });
+    registerShortcut("matchAttachment.shortcut", async (e: any) => {
+      await matchAttachment();
+    })
     // 附加新文件
     //   条目
+    const attachNewFileCallback = async () => {
+      const item = ZoteroPane.getSelectedItems()[0];
+      await attachNewFile({
+        libraryID: item.libraryID,
+        parentItemID: item.id,
+        collections: undefined,
+      });
+    }
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       label: getString("attach-new-file"),
@@ -119,15 +132,13 @@ export default class Menu {
           items[0].isRegularItem()
         );
       },
-      commandListener: async (_ev) => {
-        const item = ZoteroPane.getSelectedItems()[0];
-        await attachNewFile({
-          libraryID: item.libraryID,
-          parentItemID: item.id,
-          collections: undefined,
-        });
+      commandListener: async () => {
+        await attachNewFileCallback()
       },
     });
+    registerShortcut("attachNewFile.shortcut", async (e: any) => {
+      await attachNewFileCallback()
+    })
     //   分类
     ztoolkit.Menu.register("collection", {
       tag: "menuitem",
@@ -424,10 +435,9 @@ async function matchAttachment() {
 }
 
 async function openUsing(fileHandler: string, fileType = "pdf") {
-  const _fileHandler = Zotero.Prefs.get(`fileHandler.${fileType}`) as string;
-  Zotero.Prefs.set(`fileHandler.${fileType}`, fileHandler);
   const selectedItems = ZoteroPane.getSelectedItems();
   const ids: number[] = [];
+
   await Promise.all(
     selectedItems.map(async (item: Zotero.Item) => {
       if (item.isAttachment()) {
@@ -437,7 +447,12 @@ async function openUsing(fileHandler: string, fileType = "pdf") {
       }
     }),
   );
-  await ZoteroPane.viewAttachment(ids);
+  const _fileHandler = Zotero.Prefs.get(`fileHandler.${fileType}`) as string;
+  Zotero.Prefs.set(`fileHandler.${fileType}`, fileHandler);
+  try {
+    await ZoteroPane.viewAttachment(ids);
+  } catch { }
+
   Zotero.Prefs.set(`fileHandler.${fileType}`, _fileHandler);
 }
 

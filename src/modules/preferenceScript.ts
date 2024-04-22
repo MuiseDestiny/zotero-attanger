@@ -1,6 +1,7 @@
 import { config } from "../../package.json";
 import { getString } from "../utils/locale";
 import { getPref, setPref } from "../utils/prefs";
+import { listenShortcut } from "../utils/shortcut";
 
 export async function registerPrefsScripts(_window: Window) {
   if (!addon.data.prefs) {
@@ -69,4 +70,12 @@ function bindPrefEvents(_window: Window) {
   doc.querySelector("#attach-type")?.addEventListener("command", async () => {
     await updatePrefsUI();
   });
+
+  doc.querySelectorAll(".shortcut")
+    // @ts-ignore
+    .forEach((inputNode: HTMLInputElement) => {
+      listenShortcut(inputNode, (shortcut: string) => {
+        Zotero.Prefs.set(inputNode.getAttribute("preference") as string, shortcut, true)
+      })
+    })
 }
