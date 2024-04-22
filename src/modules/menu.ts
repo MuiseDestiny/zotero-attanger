@@ -265,12 +265,20 @@ export default class Menu {
           tag: "menuitem",
           label: getString("choose-other-app"),
           commandListener: async (_ev) => {
+            // @ts-ignore
+            var fp = new window.FilePicker();
+            fp.init(window, "Select Destination Directory", fp.modeOpen);
+            fp.appendFilters(fp.filterApps);
+            if (await fp.show() != fp.returnOK) {
+              return false;
+            }
+            var filename = PathUtils.normalize(fp.file);
             // #42 Multiple extensions may be included, separated by a semicolon and a space.
-            const filename = await new ztoolkit.FilePicker(
-              "Select Application",
-              "open",
-              [["Application", "*.exe; *.app"]], // support windows .exe and macOS .app both.
-            ).open();
+            // const filename = await new ztoolkit.FilePicker(
+            //   "Select Application",
+            //   "open",
+            //   [["Application", "*.exe; *.app"]], // support windows .exe and macOS .app both.
+            // ).open();
             if (filename && fileHandlerArr.indexOf(filename) == -1) {
               fileHandlerArr.push(filename);
               setPref(fileHandlerArr);
@@ -541,12 +549,12 @@ export async function moveFile(attItem: Zotero.Item) {
     // @ts-ignore 未添加属性
     Zotero.File.getValidFileName = _getValidFileName;
     ztoolkit.log("subfolder", subfolder);
-    destDir = PathUtils.joinRelative(destDir, subfolder);
+    destDir = PathUtils.normalize(PathUtils.joinRelative(destDir, subfolder));
   }
   const sourcePath = (await attItem.getFilePathAsync()) as string;
   if (!sourcePath) return;
   const filename = PathUtils.filename(sourcePath);
-  let destPath = PathUtils.join(destDir, filename);
+  let destPath = PathUtils.joinRelative(destDir, filename);
   if (sourcePath == destPath) return;
   // window.alert(destPath)
   if (await IOUtils.exists(destPath)) {
@@ -657,6 +665,7 @@ function removeFile(file: any, force = false) {
   if (addon.data.env == "development" && force == false) {
     return;
   }
+  if (ZoteroPane.getSelectedLibraryID() != 1) { return }
   file = Zotero.File.pathToFile(file);
   if (!file.exists()) return;
   try {
@@ -691,11 +700,10 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     if (!collection.parentID) {
       return collection.name;
     }
-    return PathUtils.normalize(
-      getCollectionPath(collection.parentID) +
-        addon.data.folderSep +
-        collection.name,
-    ) as string;
+    return getCollectionPath(collection.parentID) +
+      addon.data.folderSep +
+      collection.name
+
   };
   try {
     return [ZoteroPane.getSelectedCollection()!.id].map(getCollectionPath)[0];
@@ -917,10 +925,16 @@ async function addSuffixToFilename(filename: string, suffix?: string) {
 async function checkDir(prefName: string, prefDisplay: string) {
   let dir = getPref(prefName);
   if (typeof dir !== "string" || !(await IOUtils.exists(dir))) {
-    dir = await new ztoolkit.FilePicker(
-      `Select ${prefDisplay}`,
-      "folder",
-    ).open();
+    // @ts-ignore
+    var fp = new window.FilePicker();
+
+    fp.init(window, `Select ${prefDisplay}`, fp.modeGetFolder);
+    fp.appendFilters(fp.filterAll);
+    if (await fp.show() != fp.returnOK) {
+      return false;
+    }
+    dir = PathUtils.normalize(fp.file);
+
     if (typeof dir === "string") {
       setPref(prefName, dir);
       return dir;

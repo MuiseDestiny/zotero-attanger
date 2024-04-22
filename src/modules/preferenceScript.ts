@@ -11,7 +11,7 @@ export async function registerPrefsScripts(_window: Window) {
     addon.data.prefs.window = _window;
   }
   updatePrefsUI();
-  bindPrefEvents();
+  bindPrefEvents(_window);
 }
 
 async function updatePrefsUI() {
@@ -24,30 +24,46 @@ async function updatePrefsUI() {
   }
 }
 
-function bindPrefEvents() {
+function bindPrefEvents(_window: Window) {
   // 选择源目录
   const doc = addon.data.prefs!.window.document;
   doc
     .querySelector("#choose-source-dir")
     ?.addEventListener("command", async () => {
-      const sourceDir = await new ztoolkit.FilePicker(
-        "Select Source Directory",
-        "folder",
-      ).open();
-      if (sourceDir) {
-        setPref("sourceDir", sourceDir);
+      var oldPath = getPref("sourceDir") as string
+      // @ts-ignore
+      var fp = new _window.FilePicker();
+      if (oldPath) {
+        fp.displayDirectory = PathUtils.normalize(oldPath);
+      }
+      fp.init(window, "Select Source Directory", fp.modeGetFolder);
+      fp.appendFilters(fp.filterAll);
+      if (await fp.show() != fp.returnOK) {
+        return false;
+      }
+      var newPath = PathUtils.normalize(fp.file);
+      if (newPath) {
+        setPref("sourceDir", newPath);
       }
     });
   // 选择目标目录
   doc
     .querySelector("#choose-dest-dir")
     ?.addEventListener("command", async () => {
-      const destDir = await new ztoolkit.FilePicker(
-        "Select Destination Directory",
-        "folder",
-      ).open();
-      if (destDir) {
-        setPref("destDir", destDir);
+      var oldPath = getPref("destDir") as string
+      // @ts-ignore
+      var fp = new _window.FilePicker();
+      if (oldPath) {
+        fp.displayDirectory = PathUtils.normalize(oldPath);
+      }
+      fp.init(window, "Select Destination Directory", fp.modeGetFolder);
+      fp.appendFilters(fp.filterAll);
+      if (await fp.show() != fp.returnOK) {
+        return false;
+      }
+      var newPath = PathUtils.normalize(fp.file);
+      if (newPath) {
+        setPref("destDir", newPath);
       }
     });
   doc.querySelector("#attach-type")?.addEventListener("command", async () => {
