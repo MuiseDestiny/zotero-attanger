@@ -106,7 +106,7 @@ export default class Menu {
         await matchAttachment();
       },
     });
-    registerShortcut("matchAttachment.shortcut", async (e: any) => {
+    registerShortcut("matchAttachment.shortcut", async () => {
       await matchAttachment();
     });
     // 附加新文件
@@ -136,7 +136,7 @@ export default class Menu {
         await attachNewFileCallback();
       },
     });
-    registerShortcut("attachNewFile.shortcut", async (e: any) => {
+    registerShortcut("attachNewFile.shortcut", async () => {
       await attachNewFileCallback();
     });
     //   分类
