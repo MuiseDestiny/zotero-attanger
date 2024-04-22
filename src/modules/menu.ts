@@ -108,7 +108,7 @@ export default class Menu {
     });
     registerShortcut("matchAttachment.shortcut", async (e: any) => {
       await matchAttachment();
-    })
+    });
     // 附加新文件
     //   条目
     const attachNewFileCallback = async () => {
@@ -118,7 +118,7 @@ export default class Menu {
         parentItemID: item.id,
         collections: undefined,
       });
-    }
+    };
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       label: getString("attach-new-file"),
@@ -133,12 +133,12 @@ export default class Menu {
         );
       },
       commandListener: async () => {
-        await attachNewFileCallback()
+        await attachNewFileCallback();
       },
     });
     registerShortcut("attachNewFile.shortcut", async (e: any) => {
-      await attachNewFileCallback()
-    })
+      await attachNewFileCallback();
+    });
     //   分类
     ztoolkit.Menu.register("collection", {
       tag: "menuitem",
@@ -276,14 +276,14 @@ export default class Menu {
           tag: "menuitem",
           label: getString("choose-other-app"),
           commandListener: async (_ev) => {
-            // @ts-ignore
-            var fp = new window.FilePicker();
+            // @ts-ignore window
+            const fp = new window.FilePicker();
             fp.init(window, "Select Destination Directory", fp.modeOpen);
             fp.appendFilters(fp.filterApps);
-            if (await fp.show() != fp.returnOK) {
+            if ((await fp.show()) != fp.returnOK) {
               return false;
             }
-            var filename = PathUtils.normalize(fp.file);
+            const filename = PathUtils.normalize(fp.file);
             // #42 Multiple extensions may be included, separated by a semicolon and a space.
             // const filename = await new ztoolkit.FilePicker(
             //   "Select Application",
@@ -451,7 +451,9 @@ async function openUsing(fileHandler: string, fileType = "pdf") {
   Zotero.Prefs.set(`fileHandler.${fileType}`, fileHandler);
   try {
     await ZoteroPane.viewAttachment(ids);
-  } catch { }
+  } catch {
+    ztoolkit.log("error when ZoteroPane.viewAttachment(ids)");
+  }
 
   Zotero.Prefs.set(`fileHandler.${fileType}`, _fileHandler);
 }
@@ -680,7 +682,9 @@ function removeFile(file: any, force = false) {
   if (addon.data.env == "development" && force == false) {
     return;
   }
-  if (ZoteroPane.getSelectedLibraryID() != 1) { return }
+  if (ZoteroPane.getSelectedLibraryID() != 1) {
+    return;
+  }
   file = Zotero.File.pathToFile(file);
   if (!file.exists()) return;
   try {
@@ -715,10 +719,11 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     if (!collection.parentID) {
       return collection.name;
     }
-    return getCollectionPath(collection.parentID) +
+    return (
+      getCollectionPath(collection.parentID) +
       addon.data.folderSep +
       collection.name
-
+    );
   };
   try {
     return [ZoteroPane.getSelectedCollection()!.id].map(getCollectionPath)[0];
@@ -940,12 +945,12 @@ async function addSuffixToFilename(filename: string, suffix?: string) {
 async function checkDir(prefName: string, prefDisplay: string) {
   let dir = getPref(prefName);
   if (typeof dir !== "string" || !(await IOUtils.exists(dir))) {
-    // @ts-ignore
-    var fp = new window.FilePicker();
+    // @ts-ignore window
+    const fp = new window.FilePicker();
 
     fp.init(window, `Select ${prefDisplay}`, fp.modeGetFolder);
     fp.appendFilters(fp.filterAll);
-    if (await fp.show() != fp.returnOK) {
+    if ((await fp.show()) != fp.returnOK) {
       return false;
     }
     dir = PathUtils.normalize(fp.file);

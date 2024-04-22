@@ -31,18 +31,18 @@ function bindPrefEvents(_window: Window) {
   doc
     .querySelector("#choose-source-dir")
     ?.addEventListener("command", async () => {
-      var oldPath = getPref("sourceDir") as string
-      // @ts-ignore
-      var fp = new _window.FilePicker();
+      const oldPath = getPref("sourceDir") as string;
+      // @ts-ignore _window
+      const fp = new _window.FilePicker();
       if (oldPath) {
         fp.displayDirectory = PathUtils.normalize(oldPath);
       }
       fp.init(window, "Select Source Directory", fp.modeGetFolder);
       fp.appendFilters(fp.filterAll);
-      if (await fp.show() != fp.returnOK) {
+      if ((await fp.show()) != fp.returnOK) {
         return false;
       }
-      var newPath = PathUtils.normalize(fp.file);
+      const newPath = PathUtils.normalize(fp.file);
       if (newPath) {
         setPref("sourceDir", newPath);
       }
@@ -51,18 +51,18 @@ function bindPrefEvents(_window: Window) {
   doc
     .querySelector("#choose-dest-dir")
     ?.addEventListener("command", async () => {
-      var oldPath = getPref("destDir") as string
-      // @ts-ignore
-      var fp = new _window.FilePicker();
+      const oldPath = getPref("destDir") as string;
+      // @ts-ignore _window
+      const fp = new _window.FilePicker();
       if (oldPath) {
         fp.displayDirectory = PathUtils.normalize(oldPath);
       }
       fp.init(window, "Select Destination Directory", fp.modeGetFolder);
       fp.appendFilters(fp.filterAll);
-      if (await fp.show() != fp.returnOK) {
+      if ((await fp.show()) != fp.returnOK) {
         return false;
       }
-      var newPath = PathUtils.normalize(fp.file);
+      const newPath = PathUtils.normalize(fp.file);
       if (newPath) {
         setPref("destDir", newPath);
       }
@@ -71,11 +71,16 @@ function bindPrefEvents(_window: Window) {
     await updatePrefsUI();
   });
 
-  doc.querySelectorAll(".shortcut")
-    // @ts-ignore
+  doc
+    .querySelectorAll(".shortcut")
+    // @ts-ignore forEach
     .forEach((inputNode: HTMLInputElement) => {
       listenShortcut(inputNode, (shortcut: string) => {
-        Zotero.Prefs.set(inputNode.getAttribute("preference") as string, shortcut, true)
-      })
-    })
+        Zotero.Prefs.set(
+          inputNode.getAttribute("preference") as string,
+          shortcut,
+          true,
+        );
+      });
+    });
 }
