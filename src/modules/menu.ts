@@ -566,7 +566,7 @@ export async function moveFile(attItem: Zotero.Item) {
     // @ts-ignore 未添加属性
     Zotero.File.getValidFileName = _getValidFileName;
     ztoolkit.log("subfolder", subfolder);
-    destDir = PathUtils.normalize(PathUtils.joinRelative(destDir, subfolder));
+    destDir = PathUtils.joinRelative(destDir, subfolder);
   }
   const sourcePath = (await attItem.getFilePathAsync()) as string;
   if (!sourcePath) return;
