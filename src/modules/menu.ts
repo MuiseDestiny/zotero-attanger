@@ -814,7 +814,7 @@ function showAttachmentItem(attItem: Zotero.Item) {
   // 显示附件行
   popupWin.createLine({
     text: attItem.getField("title") as string,
-    icon: attItem.getImageSrc().replace("p-d-f", "pdf"),
+    icon: attItem.getImageSrc().replace("pdflink", "pdf-link"),
   });
   // 设置透明度 调整缩进
   // @ts-ignore lines私有变量
