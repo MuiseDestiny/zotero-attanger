@@ -55,3 +55,4 @@ attach-new-file-shortcut =
     .label = Shortcut for Attach New File
 match-attachment-shortcut = 
     .label = Shortcut for Match Attachment
+

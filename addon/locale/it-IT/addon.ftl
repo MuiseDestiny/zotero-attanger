@@ -4,6 +4,7 @@ rename-move-attachment = Rinomina e sposta allegato
 match-attachment = Abbina allegato
 rename-attachment = Rinomina allegato
 move-attachment = Sposta allegato
+undo-move-attachment = Annulla lo spostamento allegato
 restore-pdf-annotation = Ripristina annotazione PDF
 open-using = Apri con
 choose-other-app = Scegli altra app

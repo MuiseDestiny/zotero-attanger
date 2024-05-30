@@ -196,21 +196,30 @@ export default class Menu {
             }
           },
         },
+
+        // {
+        //   tag: "menuitem",
+        //   label: getString("restore-pdf-annotation"),
+        //   commandListener: async () => {
+        //     ZoteroPane.getSelectedItems().forEach(async (item) => {
+        //       const attItem = Zotero.Items.get(item.getAttachments()[0]);
+        //       const trashedAttItem = item
+        //         .getAttachments(true)
+        //         .filter((i) => i != attItem.id)
+        //         .map((i) => Zotero.Items.get(i))
+        //         .find((i) => i.getAnnotations().length > 0);
+        //       if (trashedAttItem) {
+        //         await transferItem(trashedAttItem, attItem);
+        //       }
+        //     });
+        //   },
+        // },
         {
           tag: "menuitem",
-          label: getString("restore-pdf-annotation"),
+          label: getString("undo-move-attachment"),
+          icon: addon.data.icons.undoMoveFile,
           commandListener: async () => {
-            ZoteroPane.getSelectedItems().forEach(async (item) => {
-              const attItem = Zotero.Items.get(item.getAttachments()[0]);
-              const trashedAttItem = item
-                .getAttachments(true)
-                .filter((i) => i != attItem.id)
-                .map((i) => Zotero.Items.get(i))
-                .find((i) => i.getAnnotations().length > 0);
-              if (trashedAttItem) {
-                await transferItem(trashedAttItem, attItem);
-              }
-            });
+            await ZoteroPane.convertLinkedFilesToStoredFiles()
           },
         },
       ],
@@ -540,7 +549,7 @@ export async function moveFile(attItem: Zotero.Item) {
   // @ts-ignore 未添加属性
   const _getValidFileName = Zotero.File.getValidFileName;
   // @ts-ignore 未添加属性
-  Zotero.File.getValidFileName = (s: string) => s;
+  Zotero.File.getValidFileName = fileName => fileName.replace(/[?\*:|"<>]/g, '');
   if (subfolderFormat.length > 0) {
     subfolder = subfolderFormat
       .split(/[\\/]/)
@@ -574,7 +583,10 @@ export async function moveFile(attItem: Zotero.Item) {
   let destPath = PathUtils.joinRelative(destDir, filename);
   if (sourcePath == destPath) return;
   // window.alert(destPath)
-  if (await IOUtils.exists(destPath)) {
+  if (
+    await IOUtils.exists(destPath) &&
+    file2md5(sourcePath) != file2md5(destPath)
+  ) {
     await Zotero.Promise.delay(1000);
     // Click to enter a specified suffix.
     const popupWin = new ztoolkit.ProgressWindow("Attanger", {
@@ -706,6 +718,10 @@ function removeFile(file: any, force = false) {
   }
 }
 
+
+function file2md5(filepath: string) {
+  Zotero.Utilities.Internal.md5(Zotero.File.pathToFile(filepath))
+}
 /**
  * 获取Item的分类路径
  * @param item
@@ -999,6 +1015,7 @@ function cleanLigature(filename: string) {
   });
   return result;
 }
+
 
 /**
  * 对Zotero.PDFWorker.getRecognizerData的重写，以便支持直接给出路径。

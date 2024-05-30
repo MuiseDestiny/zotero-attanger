@@ -41,6 +41,7 @@ class Addon {
         openUsing: `chrome://${config.addonRef}/content/icons/openUsing.png`,
         renameAttachment: `chrome://${config.addonRef}/content/icons/renameAttachment.png`,
         moveFile: `chrome://${config.addonRef}/content/icons/moveAttachment.png`,
+        undoMoveFile: `chrome://${config.addonRef}/content/icons/undoMoveAttachment.png`,
         collection: "chrome://zotero/skin/treesource-collection@2x.png",
       },
       folderSep: Zotero.isWin ? "\\" : "/",
