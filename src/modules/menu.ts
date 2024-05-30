@@ -168,6 +168,23 @@ export default class Menu {
       subElementOptions: [
         {
           tag: "menuitem",
+          label: getString("rename-move-attachment"),
+          icon: addon.data.icons.renameMoveAttachment,
+          commandListener: async (_ev) => {
+            for (const item of getAttachmentItems()) {
+              try {
+                const attItem = await renameFile(item) as Zotero.Item;
+                attItem && await moveFile(attItem);
+                attItem && showAttachmentItem(attItem);
+              } catch (e) {
+                ztoolkit.log(e);
+              }
+            }
+          },
+        },
+        { tag: "menuseparator" },
+        {
+          tag: "menuitem",
           label: getString("rename-attachment"),
           icon: addon.data.icons.renameAttachment,
           commandListener: async (_ev) => {
@@ -219,7 +236,7 @@ export default class Menu {
           label: getString("undo-move-attachment"),
           icon: addon.data.icons.undoMoveFile,
           commandListener: async () => {
-            await ZoteroPane.convertLinkedFilesToStoredFiles()
+            await ZoteroPane.convertLinkedFilesToStoredFiles();
           },
         },
       ],
@@ -549,7 +566,9 @@ export async function moveFile(attItem: Zotero.Item) {
   // @ts-ignore 未添加属性
   const _getValidFileName = Zotero.File.getValidFileName;
   // @ts-ignore 未添加属性
-  Zotero.File.getValidFileName = fileName => fileName.replace(/[?\*:|"<>]/g, '');
+  Zotero.File.getValidFileName = (fileName) =>
+    // @ts-ignore
+    fileName.replace(/[?\*:|"<>]/g, "");
   if (subfolderFormat.length > 0) {
     subfolder = subfolderFormat
       .split(/[\\/]/)
@@ -584,7 +603,7 @@ export async function moveFile(attItem: Zotero.Item) {
   if (sourcePath == destPath) return;
   // window.alert(destPath)
   if (
-    await IOUtils.exists(destPath) &&
+    (await IOUtils.exists(destPath)) &&
     file2md5(sourcePath) != file2md5(destPath)
   ) {
     await Zotero.Promise.delay(1000);
@@ -718,9 +737,8 @@ function removeFile(file: any, force = false) {
   }
 }
 
-
 function file2md5(filepath: string) {
-  Zotero.Utilities.Internal.md5(Zotero.File.pathToFile(filepath))
+  Zotero.Utilities.Internal.md5(Zotero.File.pathToFile(filepath));
 }
 /**
  * 获取Item的分类路径
@@ -1015,7 +1033,6 @@ function cleanLigature(filename: string) {
   });
   return result;
 }
-
 
 /**
  * 对Zotero.PDFWorker.getRecognizerData的重写，以便支持直接给出路径。
