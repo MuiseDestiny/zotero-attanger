@@ -6,7 +6,7 @@ export function registerShortcut(
   callback: () => Promise<void>,
 ) {
   let shortcutString = (Zotero.Prefs.get(`${config.addonRef}.${prefKey}`) as string)
-    .replace(" + ", ",")
+    .replace(/\s\+\s/g, ",")
     .toLowerCase()
 
   shortcutString = shortcutString.replace("ctrl", "control")
