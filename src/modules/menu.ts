@@ -139,7 +139,7 @@ export default class Menu {
     registerShortcut("attachNewFile.shortcut", async () => {
       await attachNewFileCallback();
     });
-    //   分类
+    // 分类
     ztoolkit.Menu.register("collection", {
       tag: "menuitem",
       label: getString("attach-new-file"),
@@ -165,7 +165,7 @@ export default class Menu {
       },
       label: getString("attachment-manager"),
       icon: addon.data.icons.favicon,
-      subElementOptions: [
+      children: [
         {
           tag: "menuitem",
           label: getString("rename-move-attachment"),
@@ -260,7 +260,7 @@ export default class Menu {
       getVisibility: () => getAttachmentItems(false).length > 0,
       label: getString("open-using"),
       icon: addon.data.icons.openUsing,
-      subElementOptions: [
+      children: [
         {
           tag: "menuitem",
           label: "Zotero",
