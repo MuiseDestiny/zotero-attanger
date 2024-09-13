@@ -1,3 +1,4 @@
+import { KeyModifier } from "zotero-plugin-toolkit/dist/managers/keyboard";
 import { config } from "../../package.json";
 
 export function registerShortcut(
@@ -7,19 +8,21 @@ export function registerShortcut(
   const shortcutArr = (
     Zotero.Prefs.get(`${config.addonRef}.${prefKey}`) as string
   ).split(" + ");
+  let shortcutString = (Zotero.Prefs.get(`${config.addonRef}.${prefKey}`) as string).replace(" + ", ",")
   const allModifiers = ["Shift", "Meta", "Ctrl", "Alt", "Control"];
-  const modifiers = shortcutArr
-    .filter((i) => allModifiers.includes(i))
-    .map((i) => i.toLowerCase());
-
-  ztoolkit.Shortcut.register("event", {
-    id: prefKey.replace(/\./g, "-"),
-    modifiers: modifiers.join(",").replace("ctrl", "control"),
-    key: shortcutArr.slice(-1)[0].toLowerCase(),
-    callback: (e) => {
+  // for (let modifier of allModifiers) {
+  //   shortcutString = shortcutString.replace(modifier, modifier.toLowerCase())
+  // }
+  shortcutString = shortcutString.replace("ctrl", "control")
+  ztoolkit.Keyboard.register(async (ev, options) => {
+    const k1 = options.keyboard!
+    const k2 = options.keyboard!
+    k1.key = k1.key.toLowerCase()
+    k2.key = k2.key.toUpperCase()
+    if (k1.equals(shortcutString) || k2.equals(shortcutString)) {
       callback();
-    },
-  });
+    }
+  })
 }
 
 export function listenShortcut(

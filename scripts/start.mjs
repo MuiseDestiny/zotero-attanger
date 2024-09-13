@@ -84,7 +84,7 @@ export function main(callback) {
   prepareLog();
 
   const zoteroProcess = spawn(zoteroBinPath, [
-    "--debugger",
+    "--jsdebugger",
     "--purgecaches",
     "-profile",
     profilePath,

@@ -6,7 +6,7 @@ setting = Settings
 source-title = Source Path
 source-intro = &lt;Attach New File&gt; will retrieve the recently added file from this directory and attach it to the Zotero Item/Collection.
 
-read-pdf-title = read title from PDF file:
+read-pdf-title = read title from PDF file
 readPDFtitle-never =
     .label = Never
 readPDFtitle-nonCJK =
@@ -42,7 +42,7 @@ auto-remove-empty-folder =
 file-types = Types of Attachments for Renaming/Moving
 
 about-title = About
-about-intro = 🌠 Happy New Year! Attanger is an abbreviation for Attachment Manager, and this project heavily references the ZotFile plugin of Zotero version 6.
+about-intro = Attanger is an abbreviation for Attachment Manager, and this project heavily references the ZotFile plugin of Zotero version 6.
 
 
 preferences-file-renaming-customize-button =

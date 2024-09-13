@@ -603,7 +603,6 @@ export async function moveFile(attItem: Zotero.Item) {
   if (sourcePath == destPath) return;
   if ((await IOUtils.exists(destPath))) {
     ztoolkit.log("目标目录存在", file2md5(sourcePath), file2md5(destPath))
-    window.alert(1)
     if (file2md5(sourcePath) != file2md5(destPath)) {
       ztoolkit.log("不是同一个文件")
       await Zotero.Promise.delay(1000);

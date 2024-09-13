@@ -25,7 +25,7 @@ async function onMainWindowLoad(win: Window): Promise<void> {
     image: `chrome://${config.addonRef}/content/icons/favicon.png`,
     defaultXUL: true,
   };
-  ztoolkit.PreferencePane.register(prefOptions);
+  Zotero.PreferencePanes.register(prefOptions);
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
