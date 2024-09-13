@@ -842,7 +842,7 @@ function showAttachmentItem(attItem: Zotero.Item) {
     closeOtherProgressWindows: true,
   });
   // 显示父行
-  if (attItem.isTopLevelItem()) {
+  if (attItem && attItem.isTopLevelItem()) {
     popupWin
       .createLine({
         text: (ZoteroPane.getSelectedCollection() as Zotero.Collection).name,
