@@ -567,7 +567,7 @@ export async function moveFile(attItem: any) {
   const _getValidFileName = Zotero.File.getValidFileName;
   // @ts-ignore 未添加属性
   Zotero.File.getValidFileName = (fileName) =>
-    // @ts-ignore
+    // @ts-ignore no-useless-escape
     fileName.replace(/[?\*:|"<>]/g, "");
   if (subfolderFormat.length > 0) {
     subfolder = subfolderFormat
@@ -605,7 +605,7 @@ export async function moveFile(attItem: any) {
     ztoolkit.log("目标目录存在", file2md5(sourcePath), file2md5(destPath));
     if (file2md5(sourcePath) != file2md5(destPath)) {
       ztoolkit.log("不是同一个文件");
-      await Zotero.Promise.delay(1000);
+      // await Zotero.Promise.delay(1000);
       // Click to enter a specified suffix.
       const popupWin = new ztoolkit.ProgressWindow("Attanger", {
         closeTime: -1,
@@ -655,8 +655,6 @@ export async function moveFile(attItem: any) {
           icon: addon.data.icons.moveFile,
         })
         .show();
-      await attItem.eraseTx();
-      return attItem;
     }
   }
   // 创建中间路径
@@ -675,6 +673,7 @@ export async function moveFile(attItem: any) {
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
+  ztoolkit.log(sourcePath, destPath)
   try {
     await IOUtils.move(sourcePath, destPath);
   } catch (e) {

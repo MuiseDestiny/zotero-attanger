@@ -5,18 +5,24 @@ export function registerShortcut(
   prefKey: string,
   callback: () => Promise<void>,
 ) {
-  let shortcutString = (Zotero.Prefs.get(`${config.addonRef}.${prefKey}`) as string)
+  let shortcutString = (
+    Zotero.Prefs.get(`${config.addonRef}.${prefKey}`) as string
+  )
     .replace(/\s\+\s/g, ",")
-    .toLowerCase()
+    .toLowerCase();
 
-  shortcutString = shortcutString.replace("ctrl", "control")
+  shortcutString = shortcutString.replace("ctrl", "control");
   ztoolkit.Keyboard.register(async (ev, options) => {
-    const _shortcutString = shortcutString.slice(0, -1) + shortcutString.slice(-1)[0].toUpperCase()
-    if (options.keyboard && options.keyboard.equals(shortcutString) || options.keyboard && options.keyboard.equals(_shortcutString)) {
-      ztoolkit.log(shortcutString)
+    const _shortcutString =
+      shortcutString.slice(0, -1) + shortcutString.slice(-1)[0].toUpperCase();
+    if (
+      (options.keyboard && options.keyboard.equals(shortcutString)) ||
+      (options.keyboard && options.keyboard.equals(_shortcutString))
+    ) {
+      ztoolkit.log(shortcutString);
       callback();
     }
-  })
+  });
 }
 
 export function listenShortcut(
