@@ -481,7 +481,7 @@ async function matchAttangerAttachment() {
   }
   const fileTypes = getPref("fileTypes") as string;
   const fileTypeList = fileTypes.split(",")
-  ztoolkit.log('match attanger attachments for these file types: ', fileTypeList);
+  // ztoolkit.log('match attanger attachments for these file types: ', fileTypeList);
 
   const items = ZoteroPane.getSelectedItems()
     .filter((i) => i.isTopLevelItem() && i.isRegularItem())
@@ -489,8 +489,8 @@ async function matchAttangerAttachment() {
 
   for (const item of items) {
     // 使用 getCollectionPathsOfItem 获取条目所在的分类路径
-    let collectionPath = getCollectionPathsOfItem(item);
-    if (collectionPath === undefined) collectionPath = ''
+    // let collectionPath = getCollectionPathsOfItem(item);
+    // if (collectionPath === undefined) collectionPath = ''
 
     const existAttachments = item
       .getAttachments()
@@ -498,13 +498,14 @@ async function matchAttangerAttachment() {
       .filter((item) => item.isAttachment())
       .map((item) => item.getField('title'))
 
-    const realRoot = PathUtils.joinRelative(sourceDir, collectionPath); // 拼接出实际文件目录路径
+    const subfolder = getSubfolderPath(item)
+
+    const realRoot = PathUtils.joinRelative(sourceDir, subfolder); // 拼接出实际文件目录路径
     const attachmentBaseName = Zotero.Attachments.getFileBaseNameFromItem(item);
 
     ztoolkit.log('item: ', item.getDisplayTitle());
-    // ztoolkit.log('  collection:', collectionPath);
-    // ztoolkit.log('  realRoot:', realRoot);
-    // ztoolkit.log('  exist attachments:', existAttachments);
+    ztoolkit.log('  realRoot:', realRoot);
+    ztoolkit.log('  exist attachments:', existAttachments);
 
     for (const ext of fileTypeList) {
       const fullpath = PathUtils.joinRelative(realRoot, `${attachmentBaseName}.${ext}`)
@@ -522,8 +523,6 @@ async function matchAttangerAttachment() {
         } catch (error) {
           ztoolkit.log('Error importing attachment:', error);
         }
-      } else {
-        ztoolkit.log('File does not exist:', fullpath);
       }
     }
   }
@@ -616,39 +615,34 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   return attItem;
 }
 
+
 /**
- * 移动文件
- * @param item Attachment Item
+ * 得到附件的中间路径(对于subfolderFormat进行格式化)
+ * @param item Item
  */
-export async function moveFile(attItem: any) {
-  if (!checkFileType(attItem)) {
-    return;
-  }
-  let destDir = await checkDir("destDir", "destination directory");
-  // 1. 目标根路径
-  if (!destDir) return;
-  // 2. 中间路径
+export function getSubfolderPath(item: Zotero.Item) {
   let subfolder = "";
   const subfolderFormat = getPref("subfolderFormat") as string;
-  // Zotero.Attachments.getFileBaseNameFromItem 补充不支持的变量
-  // 3. 得到最终路径
-  // @ts-ignore 未添加属性
-  const _getValidFileName = Zotero.File.getValidFileName;
-  // @ts-ignore 未添加属性
-  Zotero.File.getValidFileName = (fileName) =>
-    // @ts-ignore no-useless-escape
-    fileName.replace(/[?\*:|"<>]/g, "");
   if (subfolderFormat.length > 0) {
+    // Zotero.Attachments.getFileBaseNameFromItem 补充不支持的变量
+    // 3. 得到最终路径
+    // @ts-ignore 未添加属性
+    const _getValidFileName = Zotero.File.getValidFileName;
+    // @ts-ignore 未添加属性
+    Zotero.File.getValidFileName = (fileName) =>
+      // @ts-ignore no-useless-escape
+      fileName.replace(/[?\*:|"<>]/g, "");
+
     subfolder = subfolderFormat
       .split(/[\\/]/)
       .map((formatString: string) => {
-        ztoolkit.log(formatString);
+        // ztoolkit.log(formatString);
         if (formatString == "{{collection}}") {
-          return getCollectionPathsOfItem(attItem.topLevelItem);
+          return getCollectionPathsOfItem(item);
         } else {
           return getValidFolderName(
             Zotero.Attachments.getFileBaseNameFromItem(
-              attItem.topLevelItem,
+              item,
               formatString,
             ),
           );
@@ -662,7 +656,24 @@ export async function moveFile(attItem: any) {
     }
     // @ts-ignore 未添加属性
     Zotero.File.getValidFileName = _getValidFileName;
-    ztoolkit.log("subfolder", subfolder);
+  }
+  return subfolder
+}
+
+/**
+ * 移动文件
+ * @param item Attachment Item
+ */
+export async function moveFile(attItem: any) {
+  if (!checkFileType(attItem)) {
+    return;
+  }
+  let destDir = await checkDir("destDir", "destination directory");
+  // 1. 目标根路径
+  if (!destDir) return;
+  // 2. 中间路径 (计算过程放入函数getSubfolderPath，其被多次复用)
+  const subfolder = getSubfolderPath(attItem.topLevelItem);
+  if (subfolder.length > 0) {
     destDir = PathUtils.joinRelative(destDir, subfolder);
   }
   const sourcePath = (await attItem.getFilePathAsync()) as string;
@@ -742,7 +753,6 @@ export async function moveFile(attItem: any) {
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
-  ztoolkit.log(sourcePath, destPath);
   try {
     await IOUtils.move(sourcePath, destPath);
   } catch (e) {
