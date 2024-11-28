@@ -109,6 +109,19 @@ export default class Menu {
     registerShortcut("matchAttachment.shortcut", async () => {
       await matchAttachment();
     });
+    // 精确匹配附件(匹配插件自己生成的附件)
+    ztoolkit.Menu.register("item", {
+      tag: "menuitem",
+      label: "Match Attanger Attachment",
+      icon: addon.data.icons.matchAttachment,
+      getVisibility: () => {
+        const items = ZoteroPane.getSelectedItems();
+        return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
+      },
+      commandListener: async (_ev) => {
+        await matchAttangerAttachment();
+      },
+    });
     // 附加新文件
     //   条目
     const attachNewFileCallback = async () => {
@@ -460,6 +473,62 @@ async function matchAttachment() {
   }
 }
 
+async function matchAttangerAttachment() {
+  const sourceDir = await checkDir("sourceDir", "source path");
+  if (!sourceDir) {
+    ztoolkit.log("source dir is empty, exit");
+    return
+  }
+  const fileTypes = getPref("fileTypes") as string;
+  const fileTypeList = fileTypes.split(",")
+  ztoolkit.log('match attanger attachments for these file types: ', fileTypeList);
+
+  const items = ZoteroPane.getSelectedItems()
+    .filter((i) => i.isTopLevelItem() && i.isRegularItem())
+    .sort((a, b) => getPlainTitle(a).length - getPlainTitle(b).length);
+
+  for (const item of items) {
+    // 使用 getCollectionPathsOfItem 获取条目所在的分类路径
+    let collectionPath = getCollectionPathsOfItem(item);
+    if (collectionPath === undefined) collectionPath = ''
+
+    const existAttachments = item
+      .getAttachments()
+      .map((id) => Zotero.Items.get(id))
+      .filter((item) => item.isAttachment())
+      .map((item) => item.getField('title'))
+
+    const realRoot = PathUtils.joinRelative(sourceDir, collectionPath); // 拼接出实际文件目录路径
+    const attachmentBaseName = Zotero.Attachments.getFileBaseNameFromItem(item);
+
+    ztoolkit.log('item: ', item.getDisplayTitle());
+    // ztoolkit.log('  collection:', collectionPath);
+    // ztoolkit.log('  realRoot:', realRoot);
+    // ztoolkit.log('  exist attachments:', existAttachments);
+
+    for (const ext of fileTypeList) {
+      const fullpath = PathUtils.joinRelative(realRoot, `${attachmentBaseName}.${ext}`)
+      const file = Zotero.File.pathToFile(fullpath);
+      // Check if the file exists before attempting to import
+      if (file.exists()) {
+        try {
+          const attItem = await Zotero.Attachments.importFromFile({
+            file: fullpath,
+            libraryID: item.libraryID,
+            parentItemID: item.id,
+          });
+          showAttachmentItem(attItem);
+          ztoolkit.log('Imported attachment:', attItem.getDisplayTitle());
+        } catch (error) {
+          ztoolkit.log('Error importing attachment:', error);
+        }
+      } else {
+        ztoolkit.log('File does not exist:', fullpath);
+      }
+    }
+  }
+}
+
 async function openUsing(fileHandler: string, fileType = "pdf") {
   const selectedItems = ZoteroPane.getSelectedItems();
   const ids: number[] = [];
@@ -673,7 +742,7 @@ export async function moveFile(attItem: any) {
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
-  ztoolkit.log(sourcePath, destPath)
+  ztoolkit.log(sourcePath, destPath);
   try {
     await IOUtils.move(sourcePath, destPath);
   } catch (e) {
