@@ -504,24 +504,29 @@ async function matchAttangerAttachment() {
     const attachmentBaseName = Zotero.Attachments.getFileBaseNameFromItem(item);
 
     ztoolkit.log('item: ', item.getDisplayTitle());
-    ztoolkit.log('  realRoot:', realRoot);
-    ztoolkit.log('  exist attachments:', existAttachments);
+    ztoolkit.log('|  realRoot:', realRoot);
+    ztoolkit.log('|  exist attachments:', existAttachments);
 
     for (const ext of fileTypeList) {
       const fullpath = PathUtils.joinRelative(realRoot, `${attachmentBaseName}.${ext}`)
       const file = Zotero.File.pathToFile(fullpath);
+      const basename = file.leafName
       // Check if the file exists before attempting to import
       if (file.exists()) {
-        try {
-          const attItem = await Zotero.Attachments.importFromFile({
-            file: fullpath,
-            libraryID: item.libraryID,
-            parentItemID: item.id,
-          });
-          showAttachmentItem(attItem);
-          ztoolkit.log('Imported attachment:', attItem.getDisplayTitle());
-        } catch (error) {
-          ztoolkit.log('Error importing attachment:', error);
+        if (!existAttachments.includes(basename)) {
+          try {
+            const attItem = await Zotero.Attachments.importFromFile({
+              file: fullpath,
+              libraryID: item.libraryID,
+              parentItemID: item.id,
+            });
+            showAttachmentItem(attItem);
+            ztoolkit.log('|  Imported attachment:', attItem.getDisplayTitle());
+          } catch (error) {
+            ztoolkit.log('|  Error importing attachment:', error);
+          }
+        } else {
+          ztoolkit.log('|  skip exists:', basename);
         }
       }
     }
