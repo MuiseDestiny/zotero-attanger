@@ -1,5 +1,5 @@
 import { Logger, isRunning } from "./utils.mjs";
-import cmd from "./zotero-cmd.json" assert { type: "json" };
+import cmd from "./zotero-cmd.json" with { type: "json" };
 import { execSync } from "child_process";
 import process from "process";
 

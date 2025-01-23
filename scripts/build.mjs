@@ -1,4 +1,4 @@
-import details from "../package.json" assert { type: "json" };
+import details from "../package.json" with { type: "json" };
 import {
   Logger,
   clearFolder,
@@ -64,83 +64,75 @@ function replaceString(buildTime) {
 }
 
 function prepareLocaleFiles() {
-  // Walk the builds/addon/locale folder's sub folders and rename *.ftl to addonRef-*.ftl
-  const localeDir = path.join(buildDir, "addon/locale");
-  const localeFolders = readdirSync(localeDir, { withFileTypes: true })
-    .filter((dirent) => dirent.isDirectory())
-    .map((dirent) => dirent.name);
-
-  for (const localeSubFolder of localeFolders) {
-    const localeSubDir = path.join(localeDir, localeSubFolder);
-    const localeSubFiles = readdirSync(localeSubDir, {
-      withFileTypes: true,
-    })
-      .filter((dirent) => dirent.isFile())
-      .map((dirent) => dirent.name);
-
-    for (const localeSubFile of localeSubFiles) {
-      if (localeSubFile.endsWith(".ftl")) {
-        renameSync(
-          path.join(localeSubDir, localeSubFile),
-          path.join(localeSubDir, `${config.addonRef}-${localeSubFile}`),
-        );
-      }
-    }
-  }
-
-  const localeMessage = new Set();
-  const localeMessageMiss = new Set();
-
-  const replaceResultFlt = replaceInFileSync({
-    files: [`${buildDir}/addon/locale/**/*.ftl`],
-    processor: (fltContent) => {
-      const lines = fltContent.split("\n");
-      const prefixedLines = lines.map((line) => {
-        // https://regex101.com/r/lQ9x5p/1
-        const match = line.match(
-          /^(?<message>[a-zA-Z]\S*)([ ]*=[ ]*)(?<pattern>.*)$/m,
-        );
-        if (match) {
-          localeMessage.add(match.groups.message);
-          return `${config.addonRef}-${line}`;
-        } else {
-          return line;
-        }
-      });
-      return prefixedLines.join("\n");
-    },
-  });
-
-  const replaceResultXhtml = replaceInFileSync({
-    files: [`${buildDir}/addon/**/*.xhtml`],
+  // Prefix Fluent messages in xhtml
+  const MessagesInHTML = new Set();
+  replaceInFileSync({
+    files: [`${buildDir}/addon/**/*.xhtml`, `${buildDir}/addon/**/*.html`],
     processor: (input) => {
       const matchs = [...input.matchAll(/(data-l10n-id)="(\S*)"/g)];
       matchs.map((match) => {
-        if (localeMessage.has(match[2])) {
-          input = input.replace(
-            match[0],
-            `${match[1]}="${config.addonRef}-${match[2]}"`,
-          );
-        } else {
-          localeMessageMiss.add(match[2]);
-        }
+        input = input.replace(
+          match[0],
+          `${match[1]}="${config.addonRef}-${match[2]}"`,
+        );
+        MessagesInHTML.add(match[2]);
       });
       return input;
     },
   });
 
-  Logger.debug(
-    "[Build] Prepare locale files OK",
-    // replaceResultFlt.filter((f) => f.hasChanged).map((f) => `${f.file} : OK`),
-    // replaceResultXhtml.filter((f) => f.hasChanged).map((f) => `${f.file} : OK`),
-  );
+  // Walk the sub folders of `build/addon/locale`
+  const localesPath = path.join(buildDir, "addon/locale"),
+    localeNames = readdirSync(localesPath, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name);
 
-  if (localeMessageMiss.size !== 0) {
-    Logger.warn(
-      `[Build] Fluent message [${new Array(
-        ...localeMessageMiss,
-      )}] do not exsit in addon's locale files.`,
-    );
+  for (const localeName of localeNames) {
+    const localePath = path.join(localesPath, localeName);
+    const ftlFiles = readdirSync(localePath, {
+      withFileTypes: true,
+    })
+      .filter((dirent) => dirent.isFile())
+      .map((dirent) => dirent.name);
+
+    // rename *.ftl to addonRef-*.ftl
+    for (const ftlFile of ftlFiles) {
+      if (ftlFile.endsWith(".ftl")) {
+        renameSync(
+          path.join(localePath, ftlFile),
+          path.join(localePath, `${config.addonRef}-${ftlFile}`),
+        );
+      }
+    }
+
+    // Prefix Fluent messages in each ftl
+    const MessageInThisLang = new Set();
+    replaceInFileSync({
+      files: [`${buildDir}/addon/locale/${localeName}/*.ftl`],
+      processor: (fltContent) => {
+        const lines = fltContent.split("\n");
+        const prefixedLines = lines.map((line) => {
+          // https://regex101.com/r/lQ9x5p/1
+          const match = line.match(
+            /^(?<message>[a-zA-Z]\S*)([ ]*=[ ]*)(?<pattern>.*)$/m,
+          );
+          if (match) {
+            MessageInThisLang.add(match.groups.message);
+            return `${config.addonRef}-${line}`;
+          } else {
+            return line;
+          }
+        });
+        return prefixedLines.join("\n");
+      },
+    });
+
+    // If a message in xhtml but not in ftl of current language, log it
+    MessagesInHTML.forEach((message) => {
+      if (!MessageInThisLang.has(message)) {
+        Logger.error(`[Build] ${message} don't exist in ${localeName}`);
+      }
+    });
   }
 }
 
@@ -175,10 +167,9 @@ function prepareUpdateJson() {
   });
 
   Logger.debug(
-    `[Build] Prepare Update.json for ${
-      isPreRelease
-        ? "\u001b[31m Prerelease \u001b[0m"
-        : "\u001b[32m Release \u001b[0m"
+    `[Build] Prepare Update.json for ${isPreRelease
+      ? "\u001b[31m Prerelease \u001b[0m"
+      : "\u001b[32m Release \u001b[0m"
     }`,
     replaceResult
       .filter((f) => f.hasChanged)
@@ -198,7 +189,7 @@ export const esbuildOptions = {
     `addon/chrome/content/scripts/${config.addonRef}.js`,
   ),
   // Don't turn minify on
-  minify: env.NODE_ENV === "production",
+  // minify: env.NODE_ENV === "production",
 };
 
 export async function main() {
@@ -212,19 +203,21 @@ export async function main() {
   );
 
   clearFolder(buildDir);
-
   copyFolderRecursiveSync("addon", buildDir);
-  replaceString(buildTime);
-  Logger.debug("[Build] Replace OK");
 
+  Logger.debug("[Build] Replacing");
+  replaceString(buildTime);
+
+  Logger.debug("[Build] Preparing locale files");
   prepareLocaleFiles();
 
+  Logger.debug("[Build] Running esbuild");
   await build(esbuildOptions);
-  Logger.debug("[Build] Run esbuild OK");
 
   Logger.debug("[Build] Addon prepare OK");
 
   if (process.env.NODE_ENV === "production") {
+    Logger.debug("[Build] Packing Addon");
     await zip.compressDir(
       path.join(buildDir, "addon"),
       path.join(buildDir, `${name}.xpi`),
@@ -232,7 +225,6 @@ export async function main() {
         ignoreBase: true,
       },
     );
-    Logger.debug("[Build] Addon pack OK");
 
     prepareUpdateJson();
 

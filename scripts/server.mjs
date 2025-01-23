@@ -2,7 +2,7 @@ import { main as build, esbuildOptions } from "./build.mjs";
 import { openDevToolScript, reloadScript } from "./scripts.mjs";
 import { main as startZotero } from "./start.mjs";
 import { Logger } from "./utils.mjs";
-import cmd from "./zotero-cmd.json" assert { type: "json" };
+import cmd from "./zotero-cmd.json" with { type: "json" };
 import { execSync } from "child_process";
 import chokidar from "chokidar";
 import { context } from "esbuild";

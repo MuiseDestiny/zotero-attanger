@@ -12,20 +12,21 @@ async function onStartup() {
     Zotero.uiReadyPromise,
   ]);
   initLocale();
+  Zotero.PreferencePanes.register(
+    {
+      pluginID: config.addonID,
+      src: rootURI + "chrome/content/preferences.xhtml",
+      label: "Attanger",
+      image: `chrome://${config.addonRef}/content/icons/favicon.png`,
+      // defaultXUL: true,
+    }
+  );
   await onMainWindowLoad(window);
 }
 
 async function onMainWindowLoad(win: Window): Promise<void> {
   addon.data.ztoolkit = createZToolkit();
   new Menu();
-  const prefOptions = {
-    pluginID: config.addonID,
-    src: rootURI + "chrome/content/preferences.xhtml",
-    label: "Attanger",
-    image: `chrome://${config.addonRef}/content/icons/favicon.png`,
-    defaultXUL: true,
-  };
-  Zotero.PreferencePanes.register(prefOptions);
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {

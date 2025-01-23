@@ -1,4 +1,4 @@
-import details from "../package.json" assert { type: "json" };
+import details from "../package.json" with { type: "json" };
 
 const { addonID, addonName } = details.config;
 const { version } = details;

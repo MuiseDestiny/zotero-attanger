@@ -141,22 +141,25 @@
       <html:h2 data-l10n-id="other-title"></html:h2>
     </label>
     <vbox align="start">
-      <hbox style="display: inline-block">
-        <label data-l10n-id="attach-new-file-shortcut"></label>
+      <hbox>
+        <checkbox native="true" data-l10n-id="attach-new-file-shortcut" 
+        preference="extensions.zotero.__addonRef__.attachNewFile.shortcut.enable" 
+        />
         <html:input
           type="text"
           class="shortcut"
-          style="width: 8em"
+          style="width: 8em; display: inline-block;"
           preference="extensions.zotero.__addonRef__.attachNewFile.shortcut"
         >
         </html:input>
       </hbox>
-      <hbox style="display: inline-block">
-        <label data-l10n-id="match-attachment-shortcut"></label>
+      <hbox >
+        <checkbox native="true" data-l10n-id="match-attachment-shortcut"
+          preference="extensions.zotero.__addonRef__.matchAttachment.shortcut.enable" />
         <html:input
           type="text"
           class="shortcut"
-          style="width: 8em"
+          style="width: 8em; display: inline-block;"
           preference="extensions.zotero.__addonRef__.matchAttachment.shortcut"
         >
         </html:input>

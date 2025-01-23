@@ -49,3 +49,8 @@ preferences-file-renaming-customize-button =
     .label = Dateinamenformat anpassen...
 
 preferences-file-renaming-format-instructions-more = Weitere Informationen finden Sie in der <label data-l10n-name="file-renaming-format-help-link">Dokumentation</label>.
+
+attach-new-file-shortcut = 
+    .label = Shortcut for Attach New File
+match-attachment-shortcut = 
+    .label = Shortcut for Match Attachment

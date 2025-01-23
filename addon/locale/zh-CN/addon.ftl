@@ -2,6 +2,7 @@ attachment-manager = 附件管理
 attach-new-file = 附加新文件
 rename-move-attachment = 重命名并移动附件
 match-attachment = 匹配附件
+match-attanger-attachment = 匹配Attanger附件
 rename-attachment = 重命名附件
 move-attachment = 移动附件
 undo-move-attachment = 撤销移动附件

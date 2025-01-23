@@ -51,4 +51,4 @@ preferences-file-renaming-customize-button =
 preferences-file-renaming-format-instructions-more = 阅读<label data-l10n-name="file-renaming-format-help-link">文档</label>获取更多帮助。
 
 attach-new-file-shortcut = 附加新文件快捷键
-match-attachment-shortcut = 匹配附件快捷键
+match-attachment-shortcut =  匹配附件快捷键

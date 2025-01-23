@@ -1,6 +1,6 @@
-import details from "../package.json" assert { type: "json" };
+import details from "../package.json" with { type: "json" };
 import { Logger } from "./utils.mjs";
-import cmd from "./zotero-cmd.json" assert { type: "json" };
+import cmd from "./zotero-cmd.json" with { type: "json" };
 import { spawn } from "child_process";
 import { existsSync, readFileSync, writeFileSync, rmSync } from "fs";
 import { clearFolder } from "./utils.mjs";

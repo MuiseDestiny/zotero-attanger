@@ -112,7 +112,7 @@ export default class Menu {
     // 精确匹配附件(匹配插件自己生成的附件)
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
-      label: "Match Attanger Attachment",
+      label: getString("match-attanger-attachment"),
       icon: addon.data.icons.matchAttachment,
       getVisibility: () => {
         const items = ZoteroPane.getSelectedItems();

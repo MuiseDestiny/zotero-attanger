@@ -5,12 +5,12 @@ export function registerShortcut(
   prefKey: string,
   callback: () => Promise<void>,
 ) {
+  if (!Zotero.Prefs.get(`${config.addonRef}.${prefKey}.enable`)) { return }
   let shortcutString = (
     Zotero.Prefs.get(`${config.addonRef}.${prefKey}`) as string
   )
     .replace(/\s\+\s/g, ",")
     .toLowerCase();
-
   shortcutString = shortcutString.replace("ctrl", "control");
   ztoolkit.Keyboard.register(async (ev, options) => {
     const _shortcutString =
