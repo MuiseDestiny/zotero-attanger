@@ -31,7 +31,9 @@ function bindPrefEvents(_window: Window) {
   doc
     .querySelector("#choose-source-dir")
     ?.addEventListener("command", async () => {
-      const oldPath = getPref("sourceDir") as string;
+      let oldPath = getPref("sourceDir") as string;
+      try { PathUtils.normalize(oldPath) } catch { oldPath = "" }
+
       // @ts-ignore _window
       const fp = new _window.FilePicker();
       if (oldPath) {
@@ -51,7 +53,8 @@ function bindPrefEvents(_window: Window) {
   doc
     .querySelector("#choose-dest-dir")
     ?.addEventListener("command", async () => {
-      const oldPath = getPref("destDir") as string;
+      let oldPath = getPref("destDir") as string;
+      try { PathUtils.normalize(oldPath) } catch { oldPath  = ""}
       // @ts-ignore _window
       const fp = new _window.FilePicker();
       if (oldPath) {
