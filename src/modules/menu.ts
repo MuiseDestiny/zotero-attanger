@@ -671,7 +671,7 @@ export function getSubfolderPath(item: Zotero.Item) {
  */
 export async function moveFile(attItem: any) {
   const attachType = getPref("attachType")
-  if (attachType != "link") { return }
+  if (attachType != "linking") { return }
   if (!checkFileType(attItem)) {
     return;
   }
