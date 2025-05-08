@@ -8,15 +8,8 @@ import { registerShortcut } from "../utils/shortcut";
 
 export default class Menu {
   constructor() {
-    this.init();
-    this.register();
-    const callback = {
-      notify: async (
-        event: string,
-        type: string,
-        ids: number[] | string[],
-        extraData: { [key: string]: any },
-      ) => {
+    registerNotify(["item"],
+      async (event: _ZoteroTypes.Notifier.Event, type: _ZoteroTypes.Notifier.Type, ids: string[] | number[], extraData: _ZoteroTypes.anyObj) => {
         ztoolkit.log(event, type, extraData);
         if (type == "item" && event == "add") {
           window.setTimeout(async () => {
@@ -25,12 +18,12 @@ export default class Menu {
             for (const item of items) {
               if (
                 item.isImportedAttachment() &&
-                !item.isTopLevelItem() &&
                 (await item.fileExists())
               ) {
+                await Zotero.RecognizeDocument.recognizeItems([item]);
                 attItems.push(item);
               }
-              if (item.isTopLevelItem()) {
+              if (item.isTopLevelItem() && item.isRegularItem()) {
                 // 等待是否有新增附件
                 await Zotero.Promise.delay(1000);
                 for (const id of item.getAttachments()) {
@@ -38,6 +31,7 @@ export default class Menu {
                 }
               }
             }
+            ztoolkit.log(attItems)
             if (attItems.length > 0) {
               attItems.map(async (att: Zotero.Item) => {
                 try {
@@ -58,24 +52,11 @@ export default class Menu {
             }
           });
         }
-      },
-    };
-
-    // Register the callback in Zotero as an item observer
-    addon.data.notifierID = Zotero.Notifier.registerObserver(callback, [
-      "tab",
-      "item",
-      "file",
-    ]);
-
-    // Unregister callback when the window closes (important to avoid a memory leak)
-    window.addEventListener(
-      "unload",
-      (_ev: Event) => {
-        Zotero.Notifier.unregisterObserver(addon.data.notifierID);
-      },
-      false,
-    );
+      }
+    )
+    this.init();
+    this.register();
+    
   }
 
   private init() {
@@ -174,7 +155,7 @@ export default class Menu {
     ztoolkit.Menu.register("item", {
       tag: "menu",
       getVisibility: () => {
-        return getAttachmentItems().length > 0;
+        return getAttachmentItems(false).length > 0;
       },
       label: getString("attachment-manager"),
       icon: addon.data.icons.favicon,
@@ -184,7 +165,7 @@ export default class Menu {
           label: getString("rename-move-attachment"),
           icon: addon.data.icons.renameMoveAttachment,
           commandListener: async (_ev) => {
-            for (const item of getAttachmentItems()) {
+            for (const item of getAttachmentItems(false)) {
               try {
                 const attItem = (await renameFile(item)) as Zotero.Item;
                 attItem && (await moveFile(attItem));
@@ -216,7 +197,7 @@ export default class Menu {
           label: getString("move-attachment"),
           icon: addon.data.icons.moveFile,
           commandListener: async (_ev) => {
-            for (const item of getAttachmentItems()) {
+            for (const item of getAttachmentItems(false)) {
               try {
                 const attItem = await moveFile(item);
                 attItem && showAttachmentItem(attItem);
@@ -227,23 +208,7 @@ export default class Menu {
           },
         },
 
-        // {
-        //   tag: "menuitem",
-        //   label: getString("restore-pdf-annotation"),
-        //   commandListener: async () => {
-        //     ZoteroPane.getSelectedItems().forEach(async (item) => {
-        //       const attItem = Zotero.Items.get(item.getAttachments()[0]);
-        //       const trashedAttItem = item
-        //         .getAttachments(true)
-        //         .filter((i) => i != attItem.id)
-        //         .map((i) => Zotero.Items.get(i))
-        //         .find((i) => i.getAnnotations().length > 0);
-        //       if (trashedAttItem) {
-        //         await transferItem(trashedAttItem, attItem);
-        //       }
-        //     });
-        //   },
-        // },
+     
         {
           tag: "menuitem",
           label: getString("undo-move-attachment"),
@@ -465,7 +430,7 @@ async function matchAttachment() {
       });
       showAttachmentItem(attItem);
       if (!attItem.parentItemID) {
-        Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
+        Zotero.RecognizeDocument.recognizeItems([attItem]);
       }
       removeFile(matchedFile.path);
       files = files.filter((file) => file !== matchedFile);
@@ -593,6 +558,8 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   }
   const file = (await attItem.getFilePathAsync()) as string;
   const parentItemID = attItem.parentItemID as number;
+  // 无父元素不进行重命名
+  if (!parentItemID) { return attItem}
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
   let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem);
@@ -802,7 +769,7 @@ async function attachNewFile(options: {
     });
     showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
-      Zotero.RecognizeDocument.autoRecognizeItems([attItem]);
+      Zotero.RecognizeDocument.recognizeItems([attItem]);
     }
     removeFile(path);
   }
@@ -1163,4 +1130,30 @@ async function getPDFData(path: string) {
 
     return result;
   }, false);
+}
+
+function unregisterNotify(notifyID: string) {
+  Zotero.Notifier.unregisterObserver(notifyID);
+}
+
+export function registerNotify(types: _ZoteroTypes.Notifier.Type[], onNotify: (...data: Parameters<_ZoteroTypes.Notifier.Notify>) => Promise<void>) {
+  const callback = {
+    notify: async (...data: Parameters<_ZoteroTypes.Notifier.Notify>) => {
+      if (!addon?.data.alive) {
+        unregisterNotify(notifyID);
+        return;
+      }
+      onNotify(...data);
+    },
+  };
+
+  const notifyID = Zotero.Notifier.registerObserver(callback, types);
+
+  window.addEventListener(
+    "unload",
+    (e: Event) => {
+      unregisterNotify(notifyID);
+    },
+    false,
+  );
 }
