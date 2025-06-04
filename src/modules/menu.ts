@@ -56,7 +56,7 @@ export default class Menu {
     )
     this.init();
     this.register();
-    
+
   }
 
   private init() {
@@ -66,100 +66,31 @@ export default class Menu {
   }
 
   private register() {
-    // 分隔符
-    ztoolkit.Menu.register("item", {
-      tag: "menuseparator",
-      getVisibility: () => {
-        const items = ZoteroPane.getSelectedItems();
-        return items.some((i) => i.isTopLevelItem() || i.isAttachment());
-      },
-    });
-    // 匹配附件
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      label: getString("match-attachment"),
-      icon: addon.data.icons.matchAttachment,
-      getVisibility: () => {
-        const items = ZoteroPane.getSelectedItems();
-        return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
-      },
-      commandListener: async (_ev) => {
-        await matchAttachment();
-      },
-    });
-    registerShortcut("matchAttachment.shortcut", async () => {
-      await matchAttachment();
-    });
-    // 精确匹配附件(匹配插件自己生成的附件)
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      label: getString("match-attanger-attachment"),
-      icon: addon.data.icons.matchAttachment,
-      getVisibility: () => {
-        const items = ZoteroPane.getSelectedItems();
-        return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
-      },
-      commandListener: async (_ev) => {
-        await matchAttangerAttachment();
-      },
-    });
-    // 附加新文件
-    //   条目
-    const attachNewFileCallback = async () => {
-      const item = ZoteroPane.getSelectedItems()[0];
-      await attachNewFile({
-        libraryID: item.libraryID,
-        parentItemID: item.id,
-        collections: undefined,
-      });
-    };
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      label: getString("attach-new-file"),
-      icon: addon.data.icons.attachNewFile,
-      getVisibility: () => {
-        // 只选择一个父级条目
-        const items = ZoteroPane.getSelectedItems();
-        return (
-          items.length == 1 &&
-          items[0].isTopLevelItem() &&
-          items[0].isRegularItem()
-        );
-      },
-      commandListener: async () => {
-        await attachNewFileCallback();
-      },
-    });
-    registerShortcut("attachNewFile.shortcut", async () => {
-      await attachNewFileCallback();
-    });
-    // 分类
-    ztoolkit.Menu.register("collection", {
-      tag: "menuitem",
-      label: getString("attach-new-file"),
-      icon: addon.data.icons.attachNewFile,
-      getVisibility: () => {
-        return ZoteroPane.getCollectionTreeRow()?.isCollection();
-      },
-      commandListener: async (_ev) => {
-        const collection =
-          ZoteroPane.getSelectedCollection() as Zotero.Collection;
-        await attachNewFile({
-          libraryID: collection.libraryID,
-          parentItemID: undefined,
-          collections: [collection.id],
-        });
-      },
-    });
-    // 附件管理
     ztoolkit.Menu.register("item", {
       tag: "menu",
-      getVisibility: () => {
-        return getAttachmentItems(false).length > 0;
-      },
-      label: getString("attachment-manager"),
+      id: "attanger-menu",
+      label: "Attanger",
       icon: addon.data.icons.favicon,
       children: [
+        // 附加新文件
+        {
+          tag: "menuitem",
+          label: getString("attach-new-file"),
+          icon: addon.data.icons.attachNewFile,
+          getVisibility: () => {
+            // 只选择一个父级条目
+            const items = ZoteroPane.getSelectedItems();
+            return (
+              items.length == 1 &&
+              items[0].isTopLevelItem() &&
+              items[0].isRegularItem()
+            );
+          },
+          commandListener: async () => {
+            await attachNewFileCallback();
+          },
+        },
+        // 重命名并移动
         {
           tag: "menuitem",
           label: getString("rename-move-attachment"),
@@ -174,6 +105,33 @@ export default class Menu {
                 ztoolkit.log(e);
               }
             }
+          },
+        },
+        {tag: "menuseparator"},
+        // 匹配附件
+        {
+          tag: "menuitem",
+          label: getString("match-attachment"),
+          icon: addon.data.icons.matchAttachment,
+          getVisibility: () => {
+            const items = ZoteroPane.getSelectedItems();
+            return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
+          },
+          commandListener: async (_ev) => {
+            await matchAttachment();
+          },
+        },
+        // 精确匹配附件(匹配插件自己生成的附件)
+        {
+          tag: "menuitem",
+          label: getString("match-attanger-attachment"),
+          icon: addon.data.icons.matchAttachment,
+          getVisibility: () => {
+            const items = ZoteroPane.getSelectedItems();
+            return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
+          },
+          commandListener: async (_ev) => {
+            await matchAttangerAttachment();
           },
         },
         { tag: "menuseparator" },
@@ -207,8 +165,6 @@ export default class Menu {
             }
           },
         },
-
-     
         {
           tag: "menuitem",
           label: getString("undo-move-attachment"),
@@ -217,8 +173,162 @@ export default class Menu {
             await ZoteroPane.convertLinkedFilesToStoredFiles();
           },
         },
-      ],
+
+      ]
+    })
+    // 分隔符
+    // ztoolkit.Menu.register("item", {
+    //   tag: "menuseparator",
+    //   getVisibility: () => {
+    //     const items = ZoteroPane.getSelectedItems();
+    //     return items.some((i) => i.isTopLevelItem() || i.isAttachment());
+    //   },
+    // });
+    // 匹配附件
+    // ztoolkit.Menu.register("item", {
+    //   tag: "menuitem",
+    //   label: getString("match-attachment"),
+    //   icon: addon.data.icons.matchAttachment,
+    //   getVisibility: () => {
+    //     const items = ZoteroPane.getSelectedItems();
+    //     return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
+    //   },
+    //   commandListener: async (_ev) => {
+    //     await matchAttachment();
+    //   },
+    // });
+    registerShortcut("matchAttachment.shortcut", async () => {
+      await matchAttachment();
     });
+    // 精确匹配附件(匹配插件自己生成的附件)
+    // ztoolkit.Menu.register("item", {
+    //   tag: "menuitem",
+    //   label: getString("match-attanger-attachment"),
+    //   icon: addon.data.icons.matchAttachment,
+    //   getVisibility: () => {
+    //     const items = ZoteroPane.getSelectedItems();
+    //     return items.some((i) => i.isTopLevelItem() && i.isRegularItem());
+    //   },
+    //   commandListener: async (_ev) => {
+    //     await matchAttangerAttachment();
+    //   },
+    // });
+    // 附加新文件
+    //   条目
+    const attachNewFileCallback = async () => {
+      const item = ZoteroPane.getSelectedItems()[0];
+      await attachNewFile({
+        libraryID: item.libraryID,
+        parentItemID: item.id,
+        collections: undefined,
+      });
+    };
+    // ztoolkit.Menu.register("item", {
+    //   tag: "menuitem",
+    //   label: getString("attach-new-file"),
+    //   icon: addon.data.icons.attachNewFile,
+    //   getVisibility: () => {
+    //     // 只选择一个父级条目
+    //     const items = ZoteroPane.getSelectedItems();
+    //     return (
+    //       items.length == 1 &&
+    //       items[0].isTopLevelItem() &&
+    //       items[0].isRegularItem()
+    //     );
+    //   },
+    //   commandListener: async () => {
+    //     await attachNewFileCallback();
+    //   },
+    // });
+    registerShortcut("attachNewFile.shortcut", async () => {
+      await attachNewFileCallback();
+    });
+    // 分类
+    ztoolkit.Menu.register("collection", {
+      tag: "menuitem",
+      label: getString("attach-new-file"),
+      icon: addon.data.icons.attachNewFile,
+      getVisibility: () => {
+        return ZoteroPane.getCollectionTreeRow()?.isCollection();
+      },
+      commandListener: async (_ev) => {
+        const collection =
+          ZoteroPane.getSelectedCollection() as Zotero.Collection;
+        await attachNewFile({
+          libraryID: collection.libraryID,
+          parentItemID: undefined,
+          collections: [collection.id],
+        });
+      },
+    });
+    // 附件管理
+    // ztoolkit.Menu.register("item", {
+    //   tag: "menu",
+    //   getVisibility: () => {
+    //     return getAttachmentItems(false).length > 0;
+    //   },
+    //   label: getString("attachment-manager"),
+    //   icon: addon.data.icons.favicon,
+    //   children: [
+    //     {
+    //       tag: "menuitem",
+    //       label: getString("rename-move-attachment"),
+    //       icon: addon.data.icons.renameMoveAttachment,
+    //       commandListener: async (_ev) => {
+    //         for (const item of getAttachmentItems(false)) {
+    //           try {
+    //             const attItem = (await renameFile(item)) as Zotero.Item;
+    //             attItem && (await moveFile(attItem));
+    //             attItem && showAttachmentItem(attItem);
+    //           } catch (e) {
+    //             ztoolkit.log(e);
+    //           }
+    //         }
+    //       },
+    //     },
+    //     { tag: "menuseparator" },
+    //     {
+    //       tag: "menuitem",
+    //       label: getString("rename-attachment"),
+    //       icon: addon.data.icons.renameAttachment,
+    //       commandListener: async (_ev) => {
+    //         for (const item of getAttachmentItems()) {
+    //           try {
+    //             const attItem = await renameFile(item);
+    //             attItem && showAttachmentItem(attItem);
+    //           } catch (e) {
+    //             ztoolkit.log(e);
+    //           }
+    //         }
+    //       },
+    //     },
+    //     {
+    //       tag: "menuitem",
+    //       label: getString("move-attachment"),
+    //       icon: addon.data.icons.moveFile,
+    //       commandListener: async (_ev) => {
+    //         for (const item of getAttachmentItems(false)) {
+    //           try {
+    //             const attItem = await moveFile(item);
+    //             attItem && showAttachmentItem(attItem);
+    //           } catch (e) {
+    //             ztoolkit.log(e);
+    //           }
+    //         }
+    //       },
+    //     },
+
+
+    //     {
+    //       tag: "menuitem",
+    //       label: getString("undo-move-attachment"),
+    //       icon: addon.data.icons.undoMoveFile,
+    //       commandListener: async () => {
+    //         await ZoteroPane.convertLinkedFilesToStoredFiles();
+    //       },
+    //     },
+    //   ],
+    // });
     // 打开方式
     const fileHandlerArr = JSON.parse(
       (Zotero.Prefs.get(`${config.addonRef}.openUsing`) as string) || "[]",
@@ -254,12 +364,12 @@ export default class Menu {
             openUsing("system", "pdf");
           },
         },
-        ...((() => {
-          const children = [];
-          for (const fileHandler of fileHandlerArr) {
-            children.push({
+        ...fileHandlerArr.map((fileHandler: string) =>{
+          return (
+            {
               tag: "menuitem",
-              label: PathUtils.filename(fileHandler),
+              label: fileHandler.split(/(?:\\|\/)/).slice(-1)[0],
+
               commandListener: async (ev: MouseEvent) => {
                 if (ev.button == 2) {
                   if (window.confirm("Delete?")) {
@@ -272,10 +382,31 @@ export default class Menu {
                   openUsing(fileHandler, "pdf");
                 }
               },
-            });
-          }
-          return children;
-        })() as any),
+            }
+          )
+        }),
+        // ...((() => {
+        //   const children = [];
+        //   for (const fileHandler of fileHandlerArr) {
+        //     children.push({
+        //       tag: "menuitem",
+        //       label: PathUtils.filename(fileHandler),
+        //       commandListener: async (ev: MouseEvent) => {
+        //         if (ev.button == 2) {
+        //           if (window.confirm("Delete?")) {
+        //             const _fileHandlerArr = fileHandlerArr.filter(
+        //               (i: string) => i != fileHandler,
+        //             ) as string[];
+        //             setPref(_fileHandlerArr);
+        //           }
+        //         } else {
+        //           openUsing(fileHandler, "pdf");
+        //         }
+        //       },
+        //     });
+        //   }
+        //   return children;
+        // })() as any),
         {
           tag: "menuitem",
           label: getString("choose-other-app"),
@@ -559,7 +690,7 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   const file = (await attItem.getFilePathAsync()) as string;
   const parentItemID = attItem.parentItemID as number;
   // 无父元素不进行重命名
-  if (!parentItemID) { return attItem}
+  if (!parentItemID) { return attItem }
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
   let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem);
