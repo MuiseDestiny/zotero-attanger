@@ -7,15 +7,15 @@
 
 var chromeHandle;
 
-function install(data, reason) {}
+function install(data, reason) { }
 
 async function startup({ id, version, resourceURI, rootURI }, reason) {
-  await Zotero.initializationPromise;
+  // await Zotero.initializationPromise;
 
   // String 'rootURI' introduced in Zotero 7
-  if (!rootURI) {
-    rootURI = resourceURI.spec;
-  }
+  // if (!rootURI) {
+  //   rootURI = resourceURI.spec;
+  // }
 
   var aomStartup = Components.classes[
     "@mozilla.org/addons/addon-manager-startup;1"
@@ -40,7 +40,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
     `${rootURI}/chrome/content/scripts/__addonRef__.js`,
     ctx,
   );
-  Zotero.__addonInstance__.hooks.onStartup();
+  await Zotero.__addonInstance__.hooks.onStartup();
 }
 
 async function onMainWindowLoad({ window }, reason) {
@@ -51,28 +51,27 @@ async function onMainWindowUnload({ window }, reason) {
   Zotero.__addonInstance__?.hooks.onMainWindowUnload(window);
 }
 
-function shutdown({ id, version, resourceURI, rootURI }, reason) {
+async function shutdown({ id, version, resourceURI, rootURI }, reason) {
   if (reason === APP_SHUTDOWN) {
     return;
   }
 
-  if (typeof Zotero === "undefined") {
-    Zotero = Components.classes["@zotero.org/Zotero;1"].getService(
-      Components.interfaces.nsISupports,
-    ).wrappedJSObject;
-  }
-  Zotero.__addonInstance__?.hooks.onShutdown();
+  // if (typeof Zotero === "undefined") {
+  //   Zotero = Components.classes["@zotero.org/Zotero;1"].getService(
+  //     Components.interfaces.nsISupports,
+  //   ).wrappedJSObject;
+  // }
+  await Zotero.__addonInstance__?.hooks.onShutdown();
 
-  Cc["@mozilla.org/intl/stringbundle;1"]
-    .getService(Components.interfaces.nsIStringBundleService)
-    .flushBundles();
+  // Cc["@mozilla.org/intl/stringbundle;1"]
+  //   .getService(Components.interfaces.nsIStringBundleService)
+  //   .flushBundles();
 
-  Cu.unload(`${rootURI}/chrome/content/scripts/__addonRef__.js`);
-
+  // Cu.unload(`${rootURI}/chrome/content/scripts/__addonRef__.js`);
   if (chromeHandle) {
     chromeHandle.destruct();
     chromeHandle = null;
   }
 }
 
-function uninstall(data, reason) {}
+async function uninstall(data, reason) { }
