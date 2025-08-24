@@ -737,7 +737,7 @@ export function getSubfolderPath(item: Zotero.Item) {
       fileName.replace(/[?\*:|"<>]/g, "");
 
     subfolder = subfolderFormat
-      .split(/[\\/]/)
+      .split(/(?<=\}\})\/(?=\{\{)/)
       .map((formatString: string) => {
         // ztoolkit.log(formatString);
         if (formatString == "{{collection}}") {
@@ -778,6 +778,7 @@ export async function moveFile(attItem: any) {
   if (!destDir) return;
   // 2. 中间路径 (计算过程放入函数getSubfolderPath，其被多次复用)
   const subfolder = getSubfolderPath(attItem.topLevelItem);
+
   if (subfolder.length > 0) {
     destDir = PathUtils.joinRelative(destDir, subfolder);
   }
