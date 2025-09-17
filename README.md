@@ -13,6 +13,7 @@
 📺[视频演示](https://www.bilibili.com/video/BV1x64y1J7Rv)
 
 ## 教程
+[French Document](https://docs.zotero-fr.org/kbfr/kbfr_attanger_zotmoov/)
 
 1. 选择**源路径**的*根目录*
 2. 根据你的同步方式选择**附加类型**
