@@ -36,12 +36,9 @@ function bindPrefEvents(_window: Window) {
 
       // @ts-ignore _window
       const fp = new window.FilePicker();
-      try {
-
-        if (oldPath) {
-          fp.displayDirectory = PathUtils.normalize(PathUtils.join(...PathUtils.split(oldPath).slice(0, -1)));
-        }
-      } catch { }
+      if (oldPath) {
+        fp.displayDirectory = PathUtils.normalize(oldPath)
+      }
       fp.init(window, "Select Source Directory", fp.modeGetFolder);
       fp.appendFilters(fp.filterAll);
       if ((await fp.show()) != fp.returnOK) {
@@ -60,11 +57,9 @@ function bindPrefEvents(_window: Window) {
       try { PathUtils.normalize(oldPath) } catch { oldPath  = ""}
       // @ts-ignore _window
       const fp = new window.FilePicker();
-      try {
-        if (oldPath) {
-          fp.displayDirectory = PathUtils.normalize(PathUtils.join(...PathUtils.split(oldPath).slice(0, -1)));
-        }
-      } catch { }
+      if (oldPath) {
+        fp.displayDirectory = PathUtils.normalize(oldPath)
+      }
       fp.init(window, "Select Destination Directory", fp.modeGetFolder);
       fp.appendFilters(fp.filterAll);
       if ((await fp.show()) != fp.returnOK) {
