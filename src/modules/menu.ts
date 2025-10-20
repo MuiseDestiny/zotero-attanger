@@ -100,6 +100,7 @@ export default class Menu {
           label: getString("rename-move-attachment"),
           icon: addon.data.icons.renameMoveAttachment,
           commandListener: async (_ev) => {
+            selectedCollection = ZoteroPane.getSelectedCollection()
             for (const item of getAttachmentItems(false)) {
               try {
                 const attItem = (await renameFile(item)) as Zotero.Item;
@@ -159,6 +160,7 @@ export default class Menu {
           label: getString("move-attachment"),
           icon: addon.data.icons.moveFile,
           commandListener: async (_ev) => {
+            selectedCollection = ZoteroPane.getSelectedCollection()
             for (const item of getAttachmentItems(false)) {
               try {
                 const attItem = await moveFile(item);
@@ -256,8 +258,7 @@ export default class Menu {
         return ZoteroPane.getCollectionTreeRow()?.isCollection();
       },
       commandListener: async (_ev) => {
-        const collection =
-          ZoteroPane.getSelectedCollection() as Zotero.Collection;
+        const collection = ZoteroPane.getSelectedCollection() as Zotero.Collection;
         await attachNewFile({
           libraryID: collection.libraryID,
           parentItemID: undefined,
@@ -773,7 +774,7 @@ export function getSubfolderPath(item: Zotero.Item) {
  * @param item Attachment Item
  */
 export async function moveFile(attItem: any) {
-  selectedCollection = ZoteroPane.getSelectedCollection()
+  
   const attachType = getPref("attachType")
   if (attachType != "linking") { return }
   if (!checkFileType(attItem)) {
