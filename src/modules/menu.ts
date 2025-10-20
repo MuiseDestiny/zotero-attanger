@@ -6,6 +6,10 @@ import { waitUntil, waitUtilAsync } from "../utils/wait";
 import comparison from "string-comparison";
 import { registerShortcut } from "../utils/shortcut";
 
+/**
+ * 避免因为选中A操作移动，移动过程中点击了B分类
+ */
+let selectedCollection: Zotero.Collection | undefined
 export default class Menu {
   constructor() {
     registerNotify(["item"],
@@ -763,11 +767,13 @@ export function getSubfolderPath(item: Zotero.Item) {
   return subfolder
 }
 
+
 /**
  * 移动文件
  * @param item Attachment Item
  */
 export async function moveFile(attItem: any) {
+  selectedCollection = ZoteroPane.getSelectedCollection()
   const attachType = getPref("attachType")
   if (attachType != "linking") { return }
   if (!checkFileType(attItem)) {
@@ -957,9 +963,9 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
       collection.name
     );
   };
-  try {
-    return [ZoteroPane.getSelectedCollection()!.id].map(getCollectionPath)[0];
-  } catch {
+  if (selectedCollection) {
+    return [selectedCollection.id].map(getCollectionPath)[0];
+  } else {
     return item.getCollections().map(getCollectionPath).slice(0, 1)[0];
   }
 }
