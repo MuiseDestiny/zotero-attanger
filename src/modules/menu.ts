@@ -706,7 +706,18 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   if (ext) {
     newName = newName + ext[0];
   }
+  // fix https://github.com/MuiseDestiny/zotero-attanger/issues/263
   const origFilenameNoExt = origFilename.replace(extRE, "");
+  const filenameAsPrefixRules = (getPref("filenameAsPrefixRules") as string || "").split(/,\s*/)
+  ztoolkit.log({ filenameAsPrefixRules, origFilenameNoExt })
+  if (filenameAsPrefixRules) {
+    filenameAsPrefixRules.find((rule: string) => {
+      if ((new RegExp(rule)).test(origFilenameNoExt)) {
+        newName = origFilenameNoExt + "_" + newName
+      }
+    })
+  }
+  ztoolkit.log({ newName })
   const renamed = await attItem.renameAttachmentFile(newName, false, true);
   if (renamed !== true) {
     ztoolkit.log("renamed = " + renamed, "newName", newName);
@@ -774,7 +785,6 @@ export function getSubfolderPath(item: Zotero.Item) {
  * @param item Attachment Item
  */
 export async function moveFile(attItem: any) {
-  
   const attachType = getPref("attachType")
   if (attachType != "linking") { return }
   if (!checkFileType(attItem)) {
@@ -964,11 +974,24 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
       collection.name
     );
   };
+  const itemCollections = item.getCollections().map(getCollectionPath)
   if (selectedCollection) {
-    return [selectedCollection.id].map(getCollectionPath)[0];
+    const preferredCollection = [selectedCollection.id].map(getCollectionPath)[0] as string
+    ztoolkit.log({ preferredCollection, itemCollections })
+    const isExist = itemCollections.find(i => i == preferredCollection)
+    if (isExist) {
+      return preferredCollection
+    }
   } else {
-    return item.getCollections().map(getCollectionPath).slice(0, 1)[0];
+    ztoolkit.log({ itemCollections })
+    return itemCollections[0]
   }
+  // fix https://github.com/MuiseDestiny/zotero-attanger/issues/264
+  // if (selectedCollection) {
+  //   return [selectedCollection.id].map(getCollectionPath)[0];
+  // } else {
+  //   return item.getCollections().map(getCollectionPath).slice(0, 1)[0];
+  // }
 }
 
 /**

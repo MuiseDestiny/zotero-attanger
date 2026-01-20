@@ -40,7 +40,7 @@ auto-move =
 auto-remove-empty-folder = 
     .label = 自动删除移动后为空的文件夹
 file-types = 重命名/移动的附件类型
-
+filename-as-prefix-rules = 符合下面命名规则时，在重命名时原文件名会被保留作为前缀
 about-title = 关于
 about-intro = Attanger 是 Attachment Manager 的缩写，本项目大量参考了 Zotero 6 版本的 ZotFile 插件。
 

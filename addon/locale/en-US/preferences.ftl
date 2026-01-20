@@ -40,7 +40,7 @@ auto-move =
 auto-remove-empty-folder = 
     .label = Automatically delete empty folders after moving
 file-types = Types of Attachments for Renaming/Moving
-
+filename-as-prefix-rules = When the following naming rules are followed, the original filename will be retained as a prefix during renaming.
 about-title = About
 about-intro = Attanger is an abbreviation for Attachment Manager, and this project heavily references the ZotFile plugin of Zotero version 6.
 

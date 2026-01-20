@@ -40,7 +40,7 @@ auto-move =
 auto-remove-empty-folder =
     .label = Leere Ordner nach dem Verschieben automatisch löschen
 file-types = Arten von Anhängen zur Umbenennung/Verschiebung
-
+filename-as-prefix-rules = Bei Einhaltung der folgenden Namensregeln bleibt der ursprüngliche Dateiname beim Umbenennen als Präfix erhalten.
 about-title = Über Attanger
 about-intro = 🌠 Frohes Neues Jahr! Attanger ist eine Abkürzung für Attachment Manager, und dieses Projekt bezieht sich stark auf das ZotFile-Plugin der Zotero-Version 6.
 

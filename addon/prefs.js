@@ -18,4 +18,8 @@ pref(
   "extensions.zotero.__addonRef__.fileTypes",
   "pdf,doc,docx,txt,rtf,djvu,epub",
 );
+pref(
+  "extensions.zotero.__addonRef__.filenameAsPrefixRules",
+  "",
+);
 pref("extensions.zotero.__addonRef__.autoRemoveEmptyFolder", false);
