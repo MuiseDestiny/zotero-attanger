@@ -708,9 +708,8 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   }
   // fix https://github.com/MuiseDestiny/zotero-attanger/issues/263
   const origFilenameNoExt = origFilename.replace(extRE, "");
-  const filenameAsPrefixRules = (getPref("filenameAsPrefixRules") as string || "").split(/,\s*/)
-  ztoolkit.log({ filenameAsPrefixRules, origFilenameNoExt })
-  if (filenameAsPrefixRules) {
+  const filenameAsPrefixRules = (getPref("filenameAsPrefixRules") as string || "").split(/,\s*/).filter(Boolean)
+  if (filenameAsPrefixRules.length>0) {
     filenameAsPrefixRules.find((rule: string) => {
       if ((new RegExp(rule)).test(origFilenameNoExt)) {
         newName = origFilenameNoExt + "_" + newName
