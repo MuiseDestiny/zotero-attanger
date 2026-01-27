@@ -11,6 +11,8 @@ export async function registerPrefsScripts(_window: Window) {
   } else {
     addon.data.prefs.window = _window;
   }
+  ensureStringPref("filenameSkipRenameRules");
+  ensureStringPref("filenameSkipAutoMoveRenameRules");
   updatePrefsUI();
   bindPrefEvents(_window);
 }
@@ -22,6 +24,13 @@ async function updatePrefsUI() {
     destSettingBox.style.opacity = ".6";
   } else {
     destSettingBox.style.opacity = "1";
+  }
+}
+
+function ensureStringPref(key: string) {
+  const value = getPref(key);
+  if (typeof value !== "string") {
+    setPref(key, "");
   }
 }
 

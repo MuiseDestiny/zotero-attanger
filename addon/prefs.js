@@ -22,4 +22,12 @@ pref(
   "extensions.zotero.__addonRef__.filenameAsPrefixRules",
   "",
 );
+pref(
+  "extensions.zotero.__addonRef__.filenameSkipRenameRules",
+  "",
+);
+pref(
+  "extensions.zotero.__addonRef__.filenameSkipAutoMoveRenameRules",
+  "",
+);
 pref("extensions.zotero.__addonRef__.autoRemoveEmptyFolder", false);
