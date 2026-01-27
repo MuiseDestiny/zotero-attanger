@@ -33,6 +33,9 @@ auto-remove-empty-folder =
     .label = Elimina automaticamente le cartelle vuote dopo lo spostamento
 file-types = Tipi di allegati per la rinominazione/spostamento
 filename-as-prefix-rules = Se si seguono le seguenti regole di denominazione, il nome file originale verrà mantenuto come prefisso durante la rinomina.
+filename-rules-instructions = Utilizzare espressioni regolari, separando più espressioni con ','.
+filename-skip-rename-rules = Se si seguono le seguenti regole di denominazione, gli allegati non verranno rinominati.
+filename-skip-auto-move-rename-rules = Se si seguono le seguenti regole di denominazione, gli allegati non verranno spostati o rinominati automaticamente.
 about-title = Info
 about-intro = 🌠 Attanger è un'abbreviazione per Attachment Manager (gestore di allegati); questo progetto si basa grandemende sul plugin zotfile per Zotero 6.
 

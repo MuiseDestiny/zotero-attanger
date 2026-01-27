@@ -6,6 +6,8 @@ import { waitUntil, waitUtilAsync } from "../utils/wait";
 import comparison from "string-comparison";
 import { registerShortcut } from "../utils/shortcut";
 
+const filenameExtRE = /\.[^.]+$/;
+
 /**
  * 避免因为选中A操作移动，移动过程中点击了B分类
  */
@@ -39,10 +41,19 @@ export default class Menu {
             if (attItems.length > 0) {
               attItems.map(async (att: Zotero.Item) => {
                 try {
-                  if (Zotero.Prefs.get("autoRenameFiles")) {
+                  const canProcess = checkFileType(att);
+                  const filenameNoExt = canProcess
+                    ? await getAttachmentFilenameNoExt(att)
+                    : null;
+                  if (isFilenameMatched("filenameSkipAutoMoveRenameRules", filenameNoExt)) {
+                    showAttachmentItem(att);
+                    return;
+                  }
+                  if (canProcess && Zotero.Prefs.get("autoRenameFiles")) {
                     await renameFile(att);
                   }
                   if (
+                    canProcess &&
                     getPref("autoMove") &&
                     getPref("attachType") == "linking"
                   ) {
@@ -683,6 +694,24 @@ function getLastFileInFolder(path: string) {
   return lastmod.path;
 }
 
+function getRuleList(prefName: string) {
+  return (getPref(prefName) as string || "").split(/,\s*/).filter(Boolean);
+}
+
+function isFilenameMatched(prefName: string, filenameNoExt: string | null) {
+  if (!filenameNoExt) return false;
+  const rules = getRuleList(prefName);
+  if (rules.length === 0) return false;
+  return rules.some((rule: string) => (new RegExp(rule)).test(filenameNoExt));
+}
+
+async function getAttachmentFilenameNoExt(attItem: Zotero.Item) {
+  const file = (await attItem.getFilePathAsync()) as string;
+  if (!file) return null;
+  const origFilename = PathUtils.split(file).pop() as string;
+  return origFilename.replace(filenameExtRE, "");
+}
+
 /**
  * 重命名文件，但不重命名Zotero内显示的名称 - 来自Zotero官方代码
  * @param item
@@ -700,21 +729,18 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   // getFileBaseNameFromItem
   let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem);
 
-  const extRE = /\.[^.]+$/;
   const origFilename = PathUtils.split(file).pop() as string;
-  const ext = origFilename.match(extRE);
+  const ext = origFilename.match(filenameExtRE);
   if (ext) {
     newName = newName + ext[0];
   }
   // fix https://github.com/MuiseDestiny/zotero-attanger/issues/263
-  const origFilenameNoExt = origFilename.replace(extRE, "");
-  const filenameAsPrefixRules = (getPref("filenameAsPrefixRules") as string || "").split(/,\s*/).filter(Boolean)
-  if (filenameAsPrefixRules.length>0) {
-    filenameAsPrefixRules.find((rule: string) => {
-      if ((new RegExp(rule)).test(origFilenameNoExt)) {
-        newName = origFilenameNoExt + "_" + newName
-      }
-    })
+  const origFilenameNoExt = origFilename.replace(filenameExtRE, "");
+  if (isFilenameMatched("filenameSkipRenameRules", origFilenameNoExt)) {
+    return attItem;
+  }
+  if (isFilenameMatched("filenameAsPrefixRules", origFilenameNoExt)) {
+    newName = origFilenameNoExt + "_" + newName;
   }
   ztoolkit.log({ newName })
   const renamed = await attItem.renameAttachmentFile(newName, false, true);

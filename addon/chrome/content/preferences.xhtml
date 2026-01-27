@@ -132,12 +132,24 @@
       <vbox style="margin-top: 1em;">
 
         <label data-l10n-id="filename-as-prefix-rules"></label>
-        <label style="opacity: .6;">Please use regular expressions, separating multiple expressions with ','.</label>
+        <label style="opacity: .6;" data-l10n-id="filename-rules-instructions"></label>
         <hbox align="center">
           <html:input type="text" flex="1" style="width: 100%;" placeholder="SI\d+, .+_si"
             preference="extensions.zotero.__addonRef__.filenameAsPrefixRules">
           </html:input>
 
+        </hbox>
+        <label data-l10n-id="filename-skip-rename-rules"></label>
+        <hbox align="center">
+          <html:input type="text" flex="1" style="width: 100%;" placeholder="SI\d+, .+_si"
+            preference="extensions.zotero.__addonRef__.filenameSkipRenameRules">
+          </html:input>
+        </hbox>
+        <label data-l10n-id="filename-skip-auto-move-rename-rules"></label>
+        <hbox align="center">
+          <html:input type="text" flex="1" style="width: 100%;" placeholder="SI\d+, .+_si"
+            preference="extensions.zotero.__addonRef__.filenameSkipAutoMoveRenameRules">
+          </html:input>
         </hbox>
       </vbox>
     </vbox>
