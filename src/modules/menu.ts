@@ -727,7 +727,7 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   if (!parentItemID) { return attItem }
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
-  let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem);
+  let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, { attachmentTitle: attItem.getField("title") as string });
 
   const origFilename = PathUtils.split(file).pop() as string;
   const ext = origFilename.match(filenameExtRE);
@@ -751,14 +751,12 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
       return await renameFile(attItem, retry + 1);
     }
   }
-  // const origTitle = attItem.getField("title");
-  // if (origTitle == origFilename || origTitle == origFilenameNoExt) {
-  attItem.setField("title", newName);
+  const origTitle = attItem.getField("title") as string;
+  if (origTitle === origFilename || origTitle === origFilenameNoExt) {
+    attItem.setField("title", newName);
+  }
   await attItem.saveTx();
-  // }
-  return attItem;
 }
-
 
 /**
  * 得到附件的中间路径(对于subfolderFormat进行格式化)
