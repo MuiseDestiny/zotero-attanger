@@ -12,6 +12,26 @@ const filenameExtRE = /\.[^.]+$/;
  * 避免因为选中A操作移动，移动过程中点击了B分类
  */
 let selectedCollection: Zotero.Collection | undefined
+type RenamePlan = {
+  newName: string;
+  nextTitle: string | null;
+  shouldRenameFile: boolean;
+  shouldUpdateTitle: boolean;
+};
+const autoRenameOnModifyTimers = new Map<number, number>();
+const autoRenameOnModifyTokens = new Map<number, number>();
+const autoRenameOnModifyInFlight = new Set<number>();
+const zoteroWithExtras = Zotero as typeof Zotero & {
+  RecognizeDocument: {
+    recognizeItems: (items: Zotero.Item[]) => Promise<unknown> | void;
+  };
+  Relations: {
+    copyObjectSubjectRelations: (
+      originalItem: Zotero.Item,
+      targetItem: Zotero.Item,
+    ) => Promise<void>;
+  };
+};
 export default class Menu {
   constructor() {
     registerNotify(["item"],
@@ -26,7 +46,7 @@ export default class Menu {
                 item.isImportedAttachment() &&
                 (await item.fileExists())
               ) {
-                await Zotero.RecognizeDocument.recognizeItems([item]);
+                await zoteroWithExtras.RecognizeDocument.recognizeItems([item]);
                 attItems.push(item);
               }
               if (item.isTopLevelItem() && item.isRegularItem()) {
@@ -66,6 +86,9 @@ export default class Menu {
               });
             }
           });
+        }
+        if (type == "item" && event == "modify") {
+          await queueLinkedAttachmentRenameOnModify(ids as number[]);
         }
       }
     )
@@ -577,7 +600,7 @@ async function matchAttachment() {
       });
       showAttachmentItem(attItem);
       if (!attItem.parentItemID) {
-        Zotero.RecognizeDocument.recognizeItems([attItem]);
+        zoteroWithExtras.RecognizeDocument.recognizeItems([attItem]);
       }
       removeFile(matchedFile.path);
       files = files.filter((file) => file !== matchedFile);
@@ -677,21 +700,33 @@ async function openUsing(fileHandler: string, fileType = "pdf") {
 function getLastFileInFolder(path: string) {
   const dir = Zotero.File.pathToFile(path);
   const files = dir.directoryEntries;
-  let lastmod = { lastModifiedTime: 0, path: undefined };
+  let lastmod: nsIFile | null = null;
   while (files.hasMoreElements()) {
     // get next file
-    const file = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    const nextFile = files.getNext();
+    if (!nextFile) {
+      continue;
+    }
+    const file = nextFile.QueryInterface?.(
+      Components.interfaces.nsIFile,
+    ) as nsIFile | undefined;
+    if (!file) {
+      continue;
+    }
     // skip if directory, hidden file or certain file types
     if (file.isDirectory() || file.isHidden()) {
       continue;
     }
     // check modification time
-    if (file.isFile() && file.lastModifiedTime > lastmod.lastModifiedTime) {
+    if (
+      file.isFile() &&
+      (!lastmod || file.lastModifiedTime > lastmod.lastModifiedTime)
+    ) {
       lastmod = file;
     }
   }
   // return sorted directory entries
-  return lastmod.path;
+  return lastmod?.path;
 }
 
 function getRuleList(prefName: string) {
@@ -712,23 +747,160 @@ async function getAttachmentFilenameNoExt(attItem: Zotero.Item) {
   return origFilename.replace(filenameExtRE, "");
 }
 
-/**
- * 重命名文件，但不重命名Zotero内显示的名称 - 来自Zotero官方代码
- * @param item
- * @returns
- */
-async function renameFile(attItem: Zotero.Item, retry = 0) {
-  if (!checkFileType(attItem)) {
+function getNonNegativeIntegerPref(key: string, fallback: number) {
+  const value = getPref(key);
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(`${value ?? ""}`, 10);
+  return Number.isFinite(parsed) && parsed >= 0
+    ? Math.floor(parsed)
+    : fallback;
+}
+
+function isLinkedAttachment(attItem: Zotero.Item) {
+  const json = attItem.toJSON() as { linkMode?: string };
+  return attItem.isAttachment() && json.linkMode === "linked_file";
+}
+
+async function canAutoRenameLinkedAttachment(attItem: Zotero.Item) {
+  if (!attItem || !isLinkedAttachment(attItem) || !checkFileType(attItem)) {
+    return false;
+  }
+  return await attItem.fileExists();
+}
+
+async function collectLinkedAttachmentsForModify(ids: number[]) {
+  const items = Zotero.Items.get(ids) as Zotero.Item[];
+  const attachmentIDs = new Set<number>();
+  for (const item of items) {
+    if (!item) {
+      continue;
+    }
+    if (item.isAttachment()) {
+      if (autoRenameOnModifyInFlight.has(item.id)) {
+        continue;
+      }
+      if (await canAutoRenameLinkedAttachment(item)) {
+        attachmentIDs.add(item.id);
+      }
+      continue;
+    }
+    if (!item.isTopLevelItem() || !item.isRegularItem()) {
+      continue;
+    }
+    for (const attachmentID of item.getAttachments()) {
+      const attItem = Zotero.Items.get(attachmentID);
+      if (!attItem || autoRenameOnModifyInFlight.has(attItem.id)) {
+        continue;
+      }
+      if (await canAutoRenameLinkedAttachment(attItem)) {
+        attachmentIDs.add(attItem.id);
+      }
+    }
+  }
+  return [...attachmentIDs];
+}
+
+async function queueLinkedAttachmentRenameOnModify(ids: number[]) {
+  if (!getPref("autoRenameOnModify")) {
     return;
   }
+  const attachmentIDs = await collectLinkedAttachmentsForModify(ids);
+  for (const attachmentID of attachmentIDs) {
+    scheduleLinkedAttachmentRenameOnModify(attachmentID);
+  }
+}
+
+function scheduleLinkedAttachmentRenameOnModify(attItemID: number) {
+  const prevTimer = autoRenameOnModifyTimers.get(attItemID);
+  if (prevTimer) {
+    window.clearTimeout(prevTimer);
+  }
+  const token = (autoRenameOnModifyTokens.get(attItemID) || 0) + 1;
+  autoRenameOnModifyTokens.set(attItemID, token);
+  const debounceMs = getNonNegativeIntegerPref(
+    "autoRenameOnModifyDebounceMs",
+    1000,
+  );
+  const timer = window.setTimeout(async () => {
+    autoRenameOnModifyTimers.delete(attItemID);
+    const delayMs = getNonNegativeIntegerPref(
+      "autoRenameOnModifyDelayMs",
+      0,
+    );
+    if (delayMs > 0) {
+      await Zotero.Promise.delay(delayMs);
+    }
+    if (autoRenameOnModifyTokens.get(attItemID) !== token) {
+      return;
+    }
+    await runLinkedAttachmentRenameOnModify(attItemID);
+    if (autoRenameOnModifyTokens.get(attItemID) === token) {
+      autoRenameOnModifyTokens.delete(attItemID);
+    }
+  }, debounceMs);
+  autoRenameOnModifyTimers.set(attItemID, timer);
+}
+
+function showLinkedAttachmentRenameError(attItem: Zotero.Item) {
+  new ztoolkit.ProgressWindow("Attanger", {
+    closeTime: 5000,
+    closeOtherProgressWindows: true,
+  })
+    .createLine({
+      text: `Failed to rename linked attachment: ${attItem.getField("title") as string}`,
+      icon: addon.data.icons.renameAttachment,
+    })
+    .show();
+}
+
+async function runLinkedAttachmentRenameOnModify(attItemID: number) {
+  if (!getPref("autoRenameOnModify")) {
+    return;
+  }
+  const attItem = await Zotero.Items.getAsync(attItemID);
+  if (!attItem || !(await canAutoRenameLinkedAttachment(attItem))) {
+    return;
+  }
+  const filenameNoExt = await getAttachmentFilenameNoExt(attItem);
+  if (isFilenameMatched("filenameSkipAutoMoveRenameRules", filenameNoExt)) {
+    return;
+  }
+  autoRenameOnModifyInFlight.add(attItemID);
+  try {
+    await renameFile(attItem);
+  } catch (e) {
+    ztoolkit.log(e);
+    showLinkedAttachmentRenameError(attItem);
+  } finally {
+    autoRenameOnModifyInFlight.delete(attItemID);
+  }
+}
+
+async function getRenamePlan(attItem: Zotero.Item) {
+  if (!checkFileType(attItem)) {
+    return null;
+  }
   const file = (await attItem.getFilePathAsync()) as string;
+  if (!file) {
+    return null;
+  }
   const parentItemID = attItem.parentItemID as number;
   // 无父元素不进行重命名
-  if (!parentItemID) { return attItem }
+  if (!parentItemID) {
+    return null;
+  }
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
-  let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, { attachmentTitle: attItem.getField("title") as string });
-
+  const getFileBaseNameFromItem = Zotero.Attachments
+    .getFileBaseNameFromItem as unknown as (
+      item: Zotero.Item,
+      formatStringOrOptions?: string | { attachmentTitle: string },
+    ) => string;
+  let newName = getFileBaseNameFromItem(parentItem, {
+    attachmentTitle: attItem.getField("title") as string,
+  });
   const origFilename = PathUtils.split(file).pop() as string;
   const ext = origFilename.match(filenameExtRE);
   if (ext) {
@@ -737,25 +909,62 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   // fix https://github.com/MuiseDestiny/zotero-attanger/issues/263
   const origFilenameNoExt = origFilename.replace(filenameExtRE, "");
   if (isFilenameMatched("filenameSkipRenameRules", origFilenameNoExt)) {
-    return attItem;
+    return {
+      newName: origFilename,
+      nextTitle: null,
+      shouldRenameFile: false,
+      shouldUpdateTitle: false,
+    };
   }
   if (isFilenameMatched("filenameAsPrefixRules", origFilenameNoExt)) {
     newName = origFilenameNoExt + "_" + newName;
   }
-  ztoolkit.log({ newName })
-  const renamed = await attItem.renameAttachmentFile(newName, false, true);
-  if (renamed !== true) {
-    ztoolkit.log("renamed = " + renamed, "newName", newName);
-    await Zotero.Promise.delay(3e3);
-    if (retry < 5) {
-      return await renameFile(attItem, retry + 1);
+  const origTitle = attItem.getField("title") as string;
+  const nextTitle =
+    origTitle === origFilename || origTitle === origFilenameNoExt
+      ? newName
+      : null;
+  return {
+    newName,
+    nextTitle,
+    shouldRenameFile: newName !== origFilename,
+    shouldUpdateTitle: Boolean(nextTitle && nextTitle !== origTitle),
+  };
+}
+
+/**
+ * 重命名文件，但不重命名Zotero内显示的名称 - 来自Zotero官方代码
+ * @param item
+ * @returns
+ */
+async function renameFile(attItem: Zotero.Item, retry = 0) {
+  const renamePlan = await getRenamePlan(attItem);
+  if (!renamePlan) {
+    return attItem;
+  }
+  if (!renamePlan.shouldRenameFile && !renamePlan.shouldUpdateTitle) {
+    return attItem;
+  }
+  ztoolkit.log({ newName: renamePlan.newName });
+  if (renamePlan.shouldRenameFile) {
+    const renamed = await attItem.renameAttachmentFile(
+      renamePlan.newName,
+      false,
+      true,
+    );
+    if (renamed !== true) {
+      ztoolkit.log("renamed = " + renamed, "newName", renamePlan.newName);
+      await Zotero.Promise.delay(3e3);
+      if (retry < 5) {
+        return await renameFile(attItem, retry + 1);
+      }
     }
   }
-  const origTitle = attItem.getField("title") as string;
-  if (origTitle === origFilename || origTitle === origFilenameNoExt) {
-    attItem.setField("title", newName);
+  if (renamePlan.shouldUpdateTitle && renamePlan.nextTitle) {
+    attItem.setField("title", renamePlan.nextTitle);
+    await attItem.saveTx();
   }
-  await attItem.saveTx();
+  return attItem;
 }
 
 /**
@@ -941,7 +1150,7 @@ async function attachNewFile(options: {
     });
     showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
-      Zotero.RecognizeDocument.recognizeItems([attItem]);
+      zoteroWithExtras.RecognizeDocument.recognizeItems([attItem]);
     }
     removeFile(path);
   }
@@ -965,7 +1174,13 @@ function removeFile(file: any, force = false) {
     else {
       const files = file.directoryEntries;
       while (files.hasMoreElements()) {
-        const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+        const nextFile = files.getNext();
+        if (!nextFile) {
+          continue;
+        }
+        const f = nextFile.QueryInterface(
+          Components.interfaces.nsIFile,
+        ) as nsIFile;
         if (!f.isHidden()) return;
       }
       file.remove(true);
@@ -1148,7 +1363,13 @@ async function removeEmptyFolder(path: string | nsIFile) {
   const files = folder.directoryEntries;
   let fileCount = 0;
   while (files.hasMoreElements()) {
-    const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    const nextFile = files.getNext();
+    const f = nextFile?.QueryInterface?.(
+      Components.interfaces.nsIFile,
+    ) as nsIFile | undefined;
+    if (!f) {
+      continue;
+    }
     fileCount++;
     if (f.leafName !== ".DS_Store" && f.leafName !== "Thumbs.db") {
       return true;
@@ -1174,7 +1395,10 @@ async function transferItem(
   });
   // 迁移相关
   ztoolkit.log("迁移相关");
-  await Zotero.Relations.copyObjectSubjectRelations(originalItem, targetItem);
+  await zoteroWithExtras.Relations.copyObjectSubjectRelations(
+    originalItem,
+    targetItem,
+  );
   // 迁移索引
   ztoolkit.log("迁移索引");
   await Zotero.DB.executeTransaction(async function () {
@@ -1182,7 +1406,11 @@ async function transferItem(
   });
   // 迁移标签
   ztoolkit.log("迁移标签");
-  targetItem.setTags(originalItem.getTags());
+  targetItem.setTags(
+    originalItem
+      .getTags()
+      .map((tag) => ({ tag: tag.tag, type: tag.type ?? 0 })),
+  );
   // 迁移PDF笔记
   ztoolkit.log("迁移PDF笔记");
   targetItem.setNote(originalItem.getNote());

@@ -5,6 +5,8 @@ import { createZToolkit } from "./utils/ztoolkit";
 import Menu from "./modules/menu";
 // import { getPref } from "./utils/prefs";
 
+const zoteroGlobal = Zotero as typeof Zotero & Record<string, unknown>;
+
 async function onStartup() {
   await Promise.all([
     Zotero.initializationPromise,
@@ -40,7 +42,7 @@ function onShutdown(): void {
   Zotero.Notifier.unregisterObserver(addon.data.notifierID);
   // Remove addon object
   addon.data.alive = false;
-  delete Zotero[config.addonInstance];
+  delete zoteroGlobal[config.addonInstance];
 }
 
 /**

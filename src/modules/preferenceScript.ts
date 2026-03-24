@@ -13,6 +13,8 @@ export async function registerPrefsScripts(_window: Window) {
   }
   ensureStringPref("filenameSkipRenameRules");
   ensureStringPref("filenameSkipAutoMoveRenameRules");
+  ensureNumberPref("autoRenameOnModifyDebounceMs", 1000);
+  ensureNumberPref("autoRenameOnModifyDelayMs", 0);
   updatePrefsUI();
   bindPrefEvents(_window);
 }
@@ -25,6 +27,33 @@ async function updatePrefsUI() {
   } else {
     destSettingBox.style.opacity = "1";
   }
+  const autoRenameOnModify = Boolean(getPref("autoRenameOnModify"));
+  const debounceInput = doc.querySelector(
+    "#auto-rename-on-modify-debounce-ms",
+  ) as HTMLInputElement | null;
+  const delayInput = doc.querySelector(
+    "#auto-rename-on-modify-delay-ms",
+  ) as HTMLInputElement | null;
+  if (debounceInput) {
+    debounceInput.disabled = !autoRenameOnModify;
+    debounceInput.value = `${getNonNegativeIntegerPref(
+      "autoRenameOnModifyDebounceMs",
+      1000,
+    )}`;
+  }
+  if (delayInput) {
+    delayInput.disabled = !autoRenameOnModify;
+    delayInput.value = `${getNonNegativeIntegerPref(
+      "autoRenameOnModifyDelayMs",
+      0,
+    )}`;
+  }
+  doc
+    .querySelectorAll(".auto-rename-on-modify-setting")
+    // @ts-ignore forEach
+    .forEach((settingNode: HTMLElement) => {
+      settingNode.style.opacity = autoRenameOnModify ? "1" : ".6";
+    });
 }
 
 function ensureStringPref(key: string) {
@@ -32,6 +61,38 @@ function ensureStringPref(key: string) {
   if (typeof value !== "string") {
     setPref(key, "");
   }
+}
+
+function normalizeNonNegativeInteger(value: unknown, fallback: number) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(`${value ?? ""}`, 10);
+  return Number.isFinite(parsed) && parsed >= 0
+    ? Math.floor(parsed)
+    : fallback;
+}
+
+function getNonNegativeIntegerPref(key: string, fallback: number) {
+  return normalizeNonNegativeInteger(getPref(key), fallback);
+}
+
+function ensureNumberPref(key: string, fallback: number) {
+  setPref(key, getNonNegativeIntegerPref(key, fallback));
+}
+
+function bindNumberPrefInput(
+  selector: string,
+  key: string,
+  fallback: number,
+  doc: Document,
+) {
+  const inputNode = doc.querySelector(selector) as HTMLInputElement | null;
+  inputNode?.addEventListener("change", () => {
+    const normalized = normalizeNonNegativeInteger(inputNode.value, fallback);
+    inputNode.value = `${normalized}`;
+    setPref(key, normalized);
+  });
 }
 
 function bindPrefEvents(_window: Window) {
@@ -82,6 +143,23 @@ function bindPrefEvents(_window: Window) {
   doc.querySelector("#attach-type")?.addEventListener("command", async () => {
     await updatePrefsUI();
   });
+  doc
+    .querySelector("#auto-rename-on-modify")
+    ?.addEventListener("command", async () => {
+      await updatePrefsUI();
+    });
+  bindNumberPrefInput(
+    "#auto-rename-on-modify-debounce-ms",
+    "autoRenameOnModifyDebounceMs",
+    1000,
+    doc,
+  );
+  bindNumberPrefInput(
+    "#auto-rename-on-modify-delay-ms",
+    "autoRenameOnModifyDelayMs",
+    0,
+    doc,
+  );
 
   doc
     .querySelectorAll(".shortcut")
