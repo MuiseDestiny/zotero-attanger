@@ -12,6 +12,17 @@ const filenameExtRE = /\.[^.]+$/;
  * 避免因为选中A操作移动，移动过程中点击了B分类
  */
 let selectedCollection: Zotero.Collection | undefined
+const zoteroWithExtras = Zotero as typeof Zotero & {
+  RecognizeDocument: {
+    recognizeItems: (items: Zotero.Item[]) => Promise<unknown> | void;
+  };
+  Relations: {
+    copyObjectSubjectRelations: (
+      originalItem: Zotero.Item,
+      targetItem: Zotero.Item,
+    ) => Promise<void>;
+  };
+};
 export default class Menu {
   constructor() {
     registerNotify(["item"],
@@ -26,7 +37,7 @@ export default class Menu {
                 item.isImportedAttachment() &&
                 (await item.fileExists())
               ) {
-                await Zotero.RecognizeDocument.recognizeItems([item]);
+                await zoteroWithExtras.RecognizeDocument.recognizeItems([item]);
                 attItems.push(item);
               }
               if (item.isTopLevelItem() && item.isRegularItem()) {
@@ -577,7 +588,7 @@ async function matchAttachment() {
       });
       showAttachmentItem(attItem);
       if (!attItem.parentItemID) {
-        Zotero.RecognizeDocument.recognizeItems([attItem]);
+        zoteroWithExtras.RecognizeDocument.recognizeItems([attItem]);
       }
       removeFile(matchedFile.path);
       files = files.filter((file) => file !== matchedFile);
@@ -677,21 +688,33 @@ async function openUsing(fileHandler: string, fileType = "pdf") {
 function getLastFileInFolder(path: string) {
   const dir = Zotero.File.pathToFile(path);
   const files = dir.directoryEntries;
-  let lastmod = { lastModifiedTime: 0, path: undefined };
+  let lastmod: nsIFile | null = null;
   while (files.hasMoreElements()) {
     // get next file
-    const file = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    const nextFile = files.getNext();
+    if (!nextFile) {
+      continue;
+    }
+    const file = nextFile.QueryInterface?.(
+      Components.interfaces.nsIFile,
+    ) as nsIFile | undefined;
+    if (!file) {
+      continue;
+    }
     // skip if directory, hidden file or certain file types
     if (file.isDirectory() || file.isHidden()) {
       continue;
     }
     // check modification time
-    if (file.isFile() && file.lastModifiedTime > lastmod.lastModifiedTime) {
+    if (
+      file.isFile() &&
+      (!lastmod || file.lastModifiedTime > lastmod.lastModifiedTime)
+    ) {
       lastmod = file;
     }
   }
   // return sorted directory entries
-  return lastmod.path;
+  return lastmod?.path;
 }
 
 function getRuleList(prefName: string) {
@@ -727,7 +750,14 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   if (!parentItemID) { return attItem }
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
-  let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, { attachmentTitle: attItem.getField("title") as string });
+  const getFileBaseNameFromItem = Zotero.Attachments
+    .getFileBaseNameFromItem as unknown as (
+      item: Zotero.Item,
+      formatStringOrOptions?: string | { attachmentTitle: string },
+    ) => string;
+  let newName = getFileBaseNameFromItem(parentItem, {
+    attachmentTitle: attItem.getField("title") as string,
+  });
 
   const origFilename = PathUtils.split(file).pop() as string;
   const ext = origFilename.match(filenameExtRE);
@@ -941,7 +971,7 @@ async function attachNewFile(options: {
     });
     showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
-      Zotero.RecognizeDocument.recognizeItems([attItem]);
+      zoteroWithExtras.RecognizeDocument.recognizeItems([attItem]);
     }
     removeFile(path);
   }
@@ -965,7 +995,13 @@ function removeFile(file: any, force = false) {
     else {
       const files = file.directoryEntries;
       while (files.hasMoreElements()) {
-        const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+        const nextFile = files.getNext();
+        if (!nextFile) {
+          continue;
+        }
+        const f = nextFile.QueryInterface(
+          Components.interfaces.nsIFile,
+        ) as nsIFile;
         if (!f.isHidden()) return;
       }
       file.remove(true);
@@ -1148,7 +1184,13 @@ async function removeEmptyFolder(path: string | nsIFile) {
   const files = folder.directoryEntries;
   let fileCount = 0;
   while (files.hasMoreElements()) {
-    const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
+    const nextFile = files.getNext();
+    const f = nextFile?.QueryInterface?.(
+      Components.interfaces.nsIFile,
+    ) as nsIFile | undefined;
+    if (!f) {
+      continue;
+    }
     fileCount++;
     if (f.leafName !== ".DS_Store" && f.leafName !== "Thumbs.db") {
       return true;
@@ -1174,7 +1216,10 @@ async function transferItem(
   });
   // 迁移相关
   ztoolkit.log("迁移相关");
-  await Zotero.Relations.copyObjectSubjectRelations(originalItem, targetItem);
+  await zoteroWithExtras.Relations.copyObjectSubjectRelations(
+    originalItem,
+    targetItem,
+  );
   // 迁移索引
   ztoolkit.log("迁移索引");
   await Zotero.DB.executeTransaction(async function () {
@@ -1182,7 +1227,11 @@ async function transferItem(
   });
   // 迁移标签
   ztoolkit.log("迁移标签");
-  targetItem.setTags(originalItem.getTags());
+  targetItem.setTags(
+    originalItem
+      .getTags()
+      .map((tag) => ({ tag: tag.tag, type: tag.type ?? 0 })),
+  );
   // 迁移PDF笔记
   ztoolkit.log("迁移PDF笔记");
   targetItem.setNote(originalItem.getNote());

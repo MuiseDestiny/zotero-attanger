@@ -3,8 +3,9 @@ import Addon from "./addon";
 import { config } from "../package.json";
 
 const basicTool = new BasicTool();
+const zoteroGlobal = Zotero as typeof Zotero & Record<string, unknown>;
 
-if (!basicTool.getGlobal("Zotero")[config.addonInstance]) {
+if (!(basicTool.getGlobal("Zotero") as Record<string, unknown>)[config.addonInstance]) {
   defineGlobal("window");
   defineGlobal("document");
   defineGlobal("ZoteroPane");
@@ -15,7 +16,7 @@ if (!basicTool.getGlobal("Zotero")[config.addonInstance]) {
   defineGlobal("ztoolkit", () => {
     return _globalThis.addon.data.ztoolkit;
   });
-  Zotero[config.addonInstance] = addon;
+  zoteroGlobal[config.addonInstance] = addon;
 }
 
 function defineGlobal(name: Parameters<BasicTool["getGlobal"]>[0]): void;
