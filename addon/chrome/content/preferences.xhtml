@@ -121,6 +121,22 @@
         </html:input>
       </hbox>
       <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />
+      <checkbox id="auto-rename-on-modify" native="true" data-l10n-id="auto-rename-on-modify"
+        preference="extensions.zotero.__addonRef__.autoRenameOnModify" />
+      <hbox align="center" class="auto-rename-on-modify-setting">
+        <label data-l10n-id="auto-rename-on-modify-debounce"></label>
+        <html:input id="auto-rename-on-modify-debounce-ms" class="auto-rename-on-modify-control" type="number"
+          min="0" step="100" style="width: 8em; margin-inline-start: 1em;"
+          preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceMs">
+        </html:input>
+      </hbox>
+      <hbox align="center" class="auto-rename-on-modify-setting">
+        <label data-l10n-id="auto-rename-on-modify-delay"></label>
+        <html:input id="auto-rename-on-modify-delay-ms" class="auto-rename-on-modify-control" type="number"
+          min="0" step="100" style="width: 8em; margin-inline-start: 1em;"
+          preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayMs">
+        </html:input>
+      </hbox>
       <checkbox native="true" data-l10n-id="auto-move" preference="extensions.zotero.__addonRef__.autoMove" />
       <checkbox native="true" data-l10n-id="auto-remove-empty-folder"
         preference="extensions.zotero.__addonRef__.autoRemoveEmptyFolder" />
