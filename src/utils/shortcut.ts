@@ -30,7 +30,7 @@ export function listenShortcut(inputNode: HTMLInputElement, callback: (shortcut:
     ) {
       shortcut.key = e.key.toUpperCase();
     }
-    let keys = []
+    let keys: string[] = []
     if (shortcut.control) {
       keys.push("Ctrl")
     }
