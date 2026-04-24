@@ -886,18 +886,8 @@ export async function moveFile(attItem: any) {
     }
   }
   // 创建中间路径
-  if (!(await pathExists(destDir, "directory"))) {
-    const create = [destDir];
-    let parent = PathUtils.parent(destDir);
-    while (parent && !(await pathExists(parent, "directory"))) {
-      create.push(parent);
-      parent = PathUtils.parent(parent);
-    }
-    await Promise.all(
-      create
-        .reverse()
-        .map(async (f) => await Zotero.File.createDirectoryIfMissingAsync(f)),
-    );
+  if (!(await createDirectoryPath(destDir))) {
+    return;
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
@@ -1315,6 +1305,40 @@ function getNsIFileKind(file: any, kind: PathKind) {
   } catch {
     return false;
   }
+}
+
+async function createDirectoryPath(destDir: string) {
+  if (await pathExists(destDir, "directory")) {
+    return true;
+  }
+
+  const create: string[] = [];
+  let current: string | null = destDir;
+  while (current && !(await pathExists(current, "directory"))) {
+    if (await pathExists(current, "file")) {
+      showPathConflict(current);
+      return false;
+    }
+    create.push(current);
+    current = PathUtils.parent(current) as string | null;
+  }
+
+  await Promise.all(
+    create
+      .reverse()
+      .map(async (f) => await Zotero.File.createDirectoryIfMissingAsync(f)),
+  );
+  return true;
+}
+
+function showPathConflict(path: string) {
+  ztoolkit.log("Cannot create directory because a file already exists", path);
+  new ztoolkit.ProgressWindow(config.addonName)
+    .createLine({
+      text: `Cannot create directory because a file already exists: ${path}`,
+      type: "default",
+    })
+    .show();
 }
 
 /**
