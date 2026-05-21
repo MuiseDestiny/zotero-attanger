@@ -735,7 +735,9 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
   if (!parentItemID) { return attItem }
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
-  let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, { attachmentTitle: attItem.getField("title") as string });
+  let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, {
+    attachmentTitle: attItem.getField("title") as string,
+  } as any);
 
   const origFilename = PathUtils.split(file).pop() as string;
   const ext = origFilename.match(filenameExtRE);
@@ -835,7 +837,7 @@ export async function moveFile(attItem: any) {
   const filename = PathUtils.filename(sourcePath);
   let destPath = PathUtils.joinRelative(destDir, filename);
   if (sourcePath == destPath) return;
-  if (await IOUtils.exists(destPath)) {
+  if (await pathExists(destPath)) {
     ztoolkit.log("目标目录存在", file2md5(sourcePath), file2md5(destPath));
     if (file2md5(sourcePath) != file2md5(destPath)) {
       ztoolkit.log("不是同一个文件");
@@ -892,23 +894,13 @@ export async function moveFile(attItem: any) {
     }
   }
   // 创建中间路径
-  if (!(await IOUtils.exists(destDir))) {
-    const create = [destDir];
-    let parent = PathUtils.parent(destDir);
-    while (parent && !(await IOUtils.exists(parent))) {
-      create.push(parent);
-      parent = PathUtils.parent(parent);
-    }
-    await Promise.all(
-      create
-        .reverse()
-        .map(async (f) => await Zotero.File.createDirectoryIfMissingAsync(f)),
-    );
+  if (!(await createDirectoryPath(destDir))) {
+    return;
   }
   // await Zotero.File.createDirectoryIfMissingAsync(destDir);
   // 移动文件到目标文件夹
   try {
-    await IOUtils.copy(sourcePath, destPath);
+    await movePath(sourcePath, destPath);
   } catch (e) {
     ztoolkit.log(e);
     return await moveFile(attItem);
@@ -917,7 +909,7 @@ export async function moveFile(attItem: any) {
   json.linkMode = "linked_file";
   json.path = destPath;
   delete json.filename;
-  const newAttItem = new Zotero.Item("attachment");
+  const newAttItem = new Zotero.Item("attachment" as any);
   newAttItem.libraryID = attItem.libraryID;
   newAttItem.fromJSON(json);
   await newAttItem.saveTx();
@@ -1227,7 +1219,7 @@ async function addSuffixToFilename(filename: string, suffix?: string) {
     destPath = destName; // 假设 destPath 是目标文件路径
 
     // 检查文件是否存在
-    if (await IOUtils.exists(destPath)) {
+    if (await pathExists(destPath)) {
       incr++;
     } else {
       return destPath;
@@ -1237,7 +1229,7 @@ async function addSuffixToFilename(filename: string, suffix?: string) {
 
 async function checkDir(prefName: string, prefDisplay: string) {
   let dir = getPref(prefName);
-  if (typeof dir !== "string" || !(await IOUtils.exists(dir))) {
+  if (typeof dir !== "string" || !(await pathExists(dir, "directory"))) {
     // @ts-ignore window
     const fp = new window.FilePicker();
 
@@ -1259,6 +1251,102 @@ async function checkDir(prefName: string, prefDisplay: string) {
     }
   }
   return dir;
+}
+
+type PathKind = "file" | "directory";
+
+async function pathExists(path: string, kind?: PathKind) {
+  try {
+    if (await IOUtils.exists(path)) {
+      if (!kind) {
+        return true;
+      }
+      return pathMatchesKind(path, kind);
+    }
+  } catch (e) {
+    ztoolkit.log("IOUtils.exists failed", path, e);
+  }
+
+  try {
+    const file = Zotero.File.pathToFile(path) as any;
+    const exists = file.exists();
+    const isDirectory = getNsIFileKind(file, "directory");
+    const isFile = getNsIFileKind(file, "file");
+    if (!kind) {
+      return exists || isDirectory || isFile;
+    }
+    // Some Windows mount-point roots report exists() as false while
+    // isDirectory() still correctly identifies the target as a directory.
+    return kind === "directory" ? isDirectory : isFile;
+  } catch (e) {
+    ztoolkit.log("nsIFile exists fallback failed", path, e);
+    return false;
+  }
+}
+
+function pathMatchesKind(path: string, kind: PathKind) {
+  try {
+    const file = Zotero.File.pathToFile(path) as any;
+    return kind === "directory" ? file.isDirectory() : file.isFile();
+  } catch (e) {
+    ztoolkit.log("nsIFile type check failed", path, e);
+    return false;
+  }
+}
+
+async function movePath(sourcePath: string, destPath: string) {
+  try {
+    await IOUtils.move(sourcePath, destPath);
+    return;
+  } catch (e) {
+    ztoolkit.log("IOUtils.move failed; retrying with nsIFile.moveTo", e);
+  }
+
+  const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
+  const destFile = Zotero.File.pathToFile(destPath) as any;
+  sourceFile.moveTo(destFile.parent, destFile.leafName);
+}
+
+function getNsIFileKind(file: any, kind: PathKind) {
+  try {
+    return kind === "directory" ? file.isDirectory() : file.isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function createDirectoryPath(destDir: string) {
+  if (await pathExists(destDir, "directory")) {
+    return true;
+  }
+
+  const create: string[] = [];
+  let current: string | null = destDir;
+  while (current && !(await pathExists(current, "directory"))) {
+    if (await pathExists(current, "file")) {
+      showPathConflict(current);
+      return false;
+    }
+    create.push(current);
+    current = PathUtils.parent(current) as string | null;
+  }
+
+  await Promise.all(
+    create
+      .reverse()
+      .map(async (f) => await Zotero.File.createDirectoryIfMissingAsync(f)),
+  );
+  return true;
+}
+
+function showPathConflict(path: string) {
+  ztoolkit.log("Cannot create directory because a file already exists", path);
+  new ztoolkit.ProgressWindow(config.addonName)
+    .createLine({
+      text: `Cannot create directory because a file already exists: ${path}`,
+      type: "default",
+    })
+    .show();
 }
 
 /**
