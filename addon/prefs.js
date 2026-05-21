@@ -31,3 +31,5 @@ pref(
   "",
 );
 pref("extensions.zotero.__addonRef__.autoRemoveEmptyFolder", false);
+
+pref("extensions.zotero.__addonRef__.moveWithoutDeleting", false);

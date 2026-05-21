@@ -795,7 +795,7 @@ export function getSubfolderPath(item: Zotero.Item) {
           return getValidFolderName(
             Zotero.Attachments.getFileBaseNameFromItem(
               item,
-              formatString,
+              {formatString},
             ),
           );
         }
@@ -948,7 +948,7 @@ async function attachNewFile(options: {
 }
 
 function removeFile(file: any, force = false) {
-  if (addon.data.env == "development" && force == false) {
+  if (force == false) {
     return;
   }
   if (ZoteroPane.getSelectedLibraryID() != 1) {
@@ -959,6 +959,7 @@ function removeFile(file: any, force = false) {
   try {
     // remove file
     if (!file.isDirectory()) {
+      ztoolkit.log("removeFile", file.path)
       file.remove(false);
     }
     // ... for directories, remove them if no non-hidden files are inside
@@ -1057,6 +1058,7 @@ function getValidFolderName(folderName: string): string {
 }
 
 function checkFileType(attItem: Zotero.Item) {
+  if (!attItem) return false 
   const fileTypes = getPref("fileTypes") as string;
   if (!fileTypes) return true;
   const pos = attItem.attachmentFilename.lastIndexOf("."),
@@ -1075,6 +1077,8 @@ function checkFileType(attItem: Zotero.Item) {
  * @param type
  */
 function showAttachmentItem(attItem: Zotero.Item) {
+  ztoolkit.log("showAttachmentItem", attItem)
+  if (!attItem) { return }
   const popupWin = new ztoolkit.ProgressWindow("Attanger", {
     closeTime: -1,
     closeOtherProgressWindows: true,
@@ -1294,17 +1298,30 @@ function pathMatchesKind(path: string, kind: PathKind) {
   }
 }
 
+// async function movePath(sourcePath: string, destPath: string) {
+//   const moveWithoutDeleting = Zotero.Prefs.get(`${config.addonRef}.moveWithoutDeleting`) as boolean || false
+//   try {
+//     await IOUtils.move(sourcePath, destPath);
+//   } catch (e) {
+//     ztoolkit.log("IOUtils.move failed; retrying with nsIFile.moveTo", e);
+//     const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
+//     const destFile = Zotero.File.pathToFile(destPath) as any;
+//     sourceFile.moveTo(destFile.parent, destFile.leafName);
+//   }
+// }
 async function movePath(sourcePath: string, destPath: string) {
+  ztoolkit.log("movePath is called")
   try {
-    await IOUtils.move(sourcePath, destPath);
-    return;
+    ztoolkit.log("Copying file (keep original):", sourcePath);
+    await IOUtils.copy(sourcePath, destPath);
   } catch (e) {
-    ztoolkit.log("IOUtils.move failed; retrying with nsIFile.moveTo", e);
-  }
+    ztoolkit.log("Operation failed; retrying with nsIFile", e);
 
-  const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
-  const destFile = Zotero.File.pathToFile(destPath) as any;
-  sourceFile.moveTo(destFile.parent, destFile.leafName);
+    const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
+    const destFile = Zotero.File.pathToFile(destPath) as any;
+
+    sourceFile.copyTo(destFile.parent, destFile.leafName);
+  }
 }
 
 function getNsIFileKind(file: any, kind: PathKind) {
