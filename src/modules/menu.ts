@@ -23,17 +23,25 @@ export default class Menu {
             const attItems = [];
             for (const item of items) {
               if (
-                item.isImportedAttachment() &&
+                item.isAttachment() &&
                 (await item.fileExists())
               ) {
-                await Zotero.RecognizeDocument.recognizeItems([item]);
+                if (item.isImportedAttachment()) {
+                  await Zotero.RecognizeDocument.recognizeItems([item]);
+                }
                 attItems.push(item);
               }
               if (item.isTopLevelItem() && item.isRegularItem()) {
                 // 等待是否有新增附件
                 await Zotero.Promise.delay(1000);
                 for (const id of item.getAttachments()) {
-                  attItems.push(Zotero.Items.get(id));
+                  const att = Zotero.Items.get(id);
+                  if (
+                    att.isAttachment() &&
+                    (await att.fileExists())
+                  ) {
+                    attItems.push(att);
+                  }
                 }
               }
             }
@@ -49,15 +57,15 @@ export default class Menu {
                     showAttachmentItem(att);
                     return;
                   }
-                  if (canProcess && Zotero.Prefs.get("autoRenameFiles")) {
-                    await renameFile(att);
-                  }
                   if (
                     canProcess &&
                     getPref("autoMove") &&
                     getPref("attachType") == "linking"
                   ) {
                     att = (await moveFile(att)) as Zotero.Item;
+                  }
+                  if (canProcess && Zotero.Prefs.get("autoRenameFiles")) {
+                    await renameFile(att);
                   }
                 } catch (e) {
                   ztoolkit.log(e);
@@ -114,8 +122,8 @@ export default class Menu {
             selectedCollection = ZoteroPane.getSelectedCollection()
             for (const item of getAttachmentItems(false)) {
               try {
-                const attItem = (await renameFile(item)) as Zotero.Item;
-                attItem && (await moveFile(attItem));
+                const attItem = await moveFile(item) as Zotero.Item;
+                attItem && ((await renameFile(attItem)));
                 attItem && showAttachmentItem(attItem);
               } catch (e) {
                 ztoolkit.log(e);
@@ -908,7 +916,7 @@ export async function moveFile(attItem: any) {
   window.setTimeout(async () => {
     // 迁移标注
     await transferItem(attItem, newAttItem);
-    removeEmptyFolder(PathUtils.parent(sourcePath) as string);
+    // removeEmptyFolder(PathUtils.parent(sourcePath) as string);
     await attItem.eraseTx();
   });
   return newAttItem;
