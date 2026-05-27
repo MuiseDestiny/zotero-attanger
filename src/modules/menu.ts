@@ -120,13 +120,25 @@ export default class Menu {
           icon: addon.data.icons.renameMoveAttachment,
           commandListener: async (_ev) => {
             selectedCollection = ZoteroPane.getSelectedCollection()
-            for (const item of getAttachmentItems(false)) {
+            const attachmentItems = getAttachmentItems(false);
+            if (!attachmentItems.length) {
+              showMoveMessage("No attachment selected.");
+              return;
+            }
+            for (const item of attachmentItems) {
               try {
-                const attItem = await moveFile(item) as Zotero.Item;
-                attItem && ((await renameFile(attItem)));
-                attItem && showAttachmentItem(attItem);
+                const movedItem = await moveFile(item) as Zotero.Item;
+                if (!movedItem) {
+                  showMoveMessage(
+                    `Move skipped or failed: ${item.getDisplayTitle()}`,
+                  );
+                  continue;
+                }
+                const renamedItem = await renameFile(movedItem);
+                showAttachmentItem(renamedItem || movedItem);
               } catch (e) {
                 ztoolkit.log(e);
+                showMoveMessage(`Move error: ${(e as Error).message || e}`);
               }
             }
           },
@@ -873,8 +885,8 @@ export function getSubfolderPath(item: Zotero.Item) {
  */
 export async function moveFile(attItem: any) {
   const attachType = getPref("attachType")
-  if (attachType != "linking") { return }
-  if (!checkFileType(attItem)) {
+  if (attachType != "linking") {
+    ztoolkit.log("moveFile skipped: attach type is not linking", attachType);
     return;
   }
   let destDir = await checkDir("destDir", "destination directory");
@@ -889,8 +901,15 @@ export async function moveFile(attItem: any) {
   const sourcePath = (await attItem.getFilePathAsync()) as string;
   if (!sourcePath) return;
   const filename = PathUtils.filename(sourcePath);
+  if (!checkFileType(attItem, filename)) {
+    ztoolkit.log("moveFile skipped: unsupported file type", filename);
+    return;
+  }
   let destPath = PathUtils.joinRelative(destDir, filename);
-  if (sourcePath == destPath) return;
+  if (sourcePath == destPath) {
+    ztoolkit.log("moveFile skipped: source already at destination", sourcePath);
+    return attItem;
+  }
   if (await pathExists(destPath)) {
     ztoolkit.log("目标目录存在", file2md5(sourcePath), file2md5(destPath));
     if (file2md5(sourcePath) != file2md5(destPath)) {
@@ -1060,9 +1079,10 @@ function getCollectionPathsOfItem(item: Zotero.Item) {
     if (isExist) {
       return preferredCollection
     }
+    return itemCollections[0] || "";
   } else {
     ztoolkit.log({ itemCollections })
-    return itemCollections[0]
+    return itemCollections[0] || "";
   }
   // fix https://github.com/MuiseDestiny/zotero-attanger/issues/264
   // if (selectedCollection) {
@@ -1134,6 +1154,18 @@ function showRenameMessage(text: string) {
     .createLine({
       text,
       icon: addon.data.icons.renameAttachment,
+    })
+    .show();
+}
+
+function showMoveMessage(text: string) {
+  new ztoolkit.ProgressWindow("Attanger", {
+    closeTime: 5000,
+    closeOtherProgressWindows: true,
+  })
+    .createLine({
+      text,
+      icon: addon.data.icons.renameMoveAttachment,
     })
     .show();
 }
