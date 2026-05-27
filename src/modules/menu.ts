@@ -164,12 +164,26 @@ export default class Menu {
           label: getString("rename-attachment"),
           icon: addon.data.icons.renameAttachment,
           commandListener: async (_ev) => {
-            for (const item of getAttachmentItems()) {
+            const attachmentItems = getAttachmentItems();
+            if (!attachmentItems.length) {
+              showRenameMessage(
+                "No child attachment selected. Select a regular item or a child attachment with a parent item.",
+              );
+              return;
+            }
+            for (const item of attachmentItems) {
               try {
                 const attItem = await renameFile(item);
-                attItem && showAttachmentItem(attItem);
+                if (attItem) {
+                  showAttachmentItem(attItem);
+                } else {
+                  showRenameMessage(
+                    `Rename skipped or failed: ${item.getDisplayTitle()}`,
+                  );
+                }
               } catch (e) {
                 ztoolkit.log(e);
+                showRenameMessage(`Rename error: ${(e as Error).message || e}`);
               }
             }
           },
@@ -720,26 +734,47 @@ async function getAttachmentFilenameNoExt(attItem: Zotero.Item) {
   return origFilename.replace(filenameExtRE, "");
 }
 
+async function renameAttachmentFile(attItem: Zotero.Item, newName: string) {
+  const renameAttachment = attItem.renameAttachmentFile as any;
+  if (renameAttachment.length <= 1) {
+    return await renameAttachment.call(attItem, newName, {
+      overwrite: false,
+      unique: true,
+      updateTitle: false,
+      out: {},
+    });
+  }
+  return await renameAttachment.call(attItem, newName, false, true);
+}
+
 /**
  * 重命名文件，但不重命名Zotero内显示的名称 - 来自Zotero官方代码
  * @param item
  * @returns
  */
 async function renameFile(attItem: Zotero.Item, retry = 0) {
-  if (!checkFileType(attItem)) {
+  const file = (await attItem.getFilePathAsync()) as string;
+  if (!file) {
+    ztoolkit.log("renameFile skipped: attachment file not found", attItem);
     return;
   }
-  const file = (await attItem.getFilePathAsync()) as string;
+  const origFilename = PathUtils.split(file).pop() as string;
+  if (!checkFileType(attItem, origFilename)) {
+    ztoolkit.log("renameFile skipped: unsupported file type", origFilename);
+    return;
+  }
   const parentItemID = attItem.parentItemID as number;
   // 无父元素不进行重命名
-  if (!parentItemID) { return attItem }
+  if (!parentItemID) {
+    ztoolkit.log("renameFile skipped: attachment has no parent item", attItem);
+    return attItem
+  }
   const parentItem = await Zotero.Items.getAsync(parentItemID);
   // getFileBaseNameFromItem
   let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, {
     attachmentTitle: attItem.getField("title") as string,
   } as any);
 
-  const origFilename = PathUtils.split(file).pop() as string;
   const ext = origFilename.match(filenameExtRE);
   if (ext) {
     newName = newName + ext[0];
@@ -753,19 +788,38 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
     newName = origFilenameNoExt + "_" + newName;
   }
   ztoolkit.log({ newName })
-  const renamed = await attItem.renameAttachmentFile(newName, false, true);
+  const renamed = await renameAttachmentFile(attItem, newName);
   if (renamed !== true) {
     ztoolkit.log("renamed = " + renamed, "newName", newName);
     await Zotero.Promise.delay(3e3);
     if (retry < 5) {
       return await renameFile(attItem, retry + 1);
     }
+    return;
   }
   const origTitle = attItem.getField("title") as string;
-  if (origTitle === origFilename || origTitle === origFilenameNoExt) {
-    attItem.setField("title", newName);
+  if (shouldSyncAttachmentTitle(attItem, origTitle, origFilename, origFilenameNoExt)) {
+    const renamedFile = (await attItem.getFilePathAsync()) as string;
+    const actualFilename = renamedFile
+      ? PathUtils.split(renamedFile).pop() as string
+      : newName;
+    ztoolkit.log("renameFile sync attachment title", { origTitle, actualFilename });
+    attItem.setField("title", actualFilename);
   }
   await attItem.saveTx();
+  return attItem;
+}
+
+function shouldSyncAttachmentTitle(
+  attItem: Zotero.Item,
+  title: string,
+  filename: string,
+  filenameNoExt: string,
+) {
+  if (title === filename || title === filenameNoExt) {
+    return true;
+  }
+  return title === "PDF" && attItem.attachmentContentType === "application/pdf";
 }
 
 /**
@@ -795,7 +849,7 @@ export function getSubfolderPath(item: Zotero.Item) {
           return getValidFolderName(
             Zotero.Attachments.getFileBaseNameFromItem(
               item,
-              {formatString},
+              {formatString} as any,
             ),
           );
         }
@@ -1057,18 +1111,31 @@ function getValidFolderName(folderName: string): string {
   return folderName;
 }
 
-function checkFileType(attItem: Zotero.Item) {
+function checkFileType(attItem: Zotero.Item, filename?: string) {
   if (!attItem) return false 
   const fileTypes = getPref("fileTypes") as string;
   if (!fileTypes) return true;
-  const pos = attItem.attachmentFilename.lastIndexOf("."),
+  const attachmentFilename = filename || attItem.attachmentFilename || "";
+  const pos = attachmentFilename.lastIndexOf("."),
     fileType =
       pos == -1
         ? ""
-        : attItem.attachmentFilename.substring(pos + 1).toLowerCase(),
+        : attachmentFilename.substring(pos + 1).toLowerCase(),
     regex = fileTypes.toLowerCase().replace(/,/gi, "|");
   // return value
   return fileType.search(new RegExp(regex)) >= 0 ? true : false;
+}
+
+function showRenameMessage(text: string) {
+  new ztoolkit.ProgressWindow("Attanger", {
+    closeTime: 5000,
+    closeOtherProgressWindows: true,
+  })
+    .createLine({
+      text,
+      icon: addon.data.icons.renameAttachment,
+    })
+    .show();
 }
 
 /**
