@@ -23,8 +23,13 @@
 如何自定义重命名规则以及定义子目录？
 见[Zotero官方教程](https://www.zotero.org/support/file_renaming)，在配置*子目录*时多层级目录请用`/`隔开。
 
-![image](https://github.com/MuiseDestiny/zotero-attanger/assets/51939531/630268da-582f-47af-882f-ab04eabd0eea)
+## 界面
 
-## 支持
+<img width="300" height="" alt="image" src="https://github.com/user-attachments/assets/3125e608-7891-4afa-91f5-be8120a98988" />
 
-[Here](https://github.com/MuiseDestiny/zotero-reference#%E8%B5%9E%E5%8A%A9)
+<img width="300" height="" alt="image" src="https://github.com/user-attachments/assets/9414737c-5d3d-43f3-83be-cf39d8f9c2b7" />
+
+<img width="300" height="" alt="image" src="https://github.com/user-attachments/assets/9c2ff395-66a1-4f1e-8e6a-7c90c3bc4121" />
+
+
+
