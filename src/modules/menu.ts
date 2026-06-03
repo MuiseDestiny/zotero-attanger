@@ -989,7 +989,7 @@ export async function moveFile(attItem: any) {
   window.setTimeout(async () => {
     // 迁移标注
     await transferItem(attItem, newAttItem);
-    // removeEmptyFolder(PathUtils.parent(sourcePath) as string);
+    removeEmptyFolder(PathUtils.parent(sourcePath) as string);
     await attItem.eraseTx();
   });
   return newAttItem;
@@ -1020,8 +1020,9 @@ async function attachNewFile(options: {
   }
 }
 
-function removeFile(file: any, force = false) {
-  if (force == false) {
+function removeFile(file: any) {
+  // 勾选“移动但不删除原文件”时，保留源文件，不做任何删除
+  if (getPref("moveWithoutDeleting")) {
     return;
   }
   if (ZoteroPane.getSelectedLibraryID() != 1) {
@@ -1030,6 +1031,7 @@ function removeFile(file: any, force = false) {
   file = Zotero.File.pathToFile(file);
   if (!file.exists()) return;
   try {
+    ztoolkit.log("remove file", file.path)
     // remove file
     if (!file.isDirectory()) {
       ztoolkit.log("removeFile", file.path)
@@ -1260,7 +1262,7 @@ async function removeEmptyFolder(path: string | nsIFile) {
     }
   }
   ztoolkit.log("Remove empty folder: ", folder.path);
-  removeFile(folder, true);
+  removeFile(folder);
   return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
 }
 
@@ -1397,29 +1399,32 @@ function pathMatchesKind(path: string, kind: PathKind) {
   }
 }
 
-// async function movePath(sourcePath: string, destPath: string) {
-//   const moveWithoutDeleting = Zotero.Prefs.get(`${config.addonRef}.moveWithoutDeleting`) as boolean || false
-//   try {
-//     await IOUtils.move(sourcePath, destPath);
-//   } catch (e) {
-//     ztoolkit.log("IOUtils.move failed; retrying with nsIFile.moveTo", e);
-//     const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
-//     const destFile = Zotero.File.pathToFile(destPath) as any;
-//     sourceFile.moveTo(destFile.parent, destFile.leafName);
-//   }
-// }
 async function movePath(sourcePath: string, destPath: string) {
-  ztoolkit.log("movePath is called")
+  const moveWithoutDeleting = getPref("moveWithoutDeleting") as boolean;
+  // 先复制：跨盘 / 跨文件系统安全，同时保留 Windows 兼容性修复
   try {
-    ztoolkit.log("Copying file (keep original):", sourcePath);
     await IOUtils.copy(sourcePath, destPath);
   } catch (e) {
-    ztoolkit.log("Operation failed; retrying with nsIFile", e);
-
+    ztoolkit.log("IOUtils.copy failed; retrying with nsIFile.copyTo", e);
     const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
     const destFile = Zotero.File.pathToFile(destPath) as any;
-
     sourceFile.copyTo(destFile.parent, destFile.leafName);
+  }
+  // 默认语义是“移动”：复制成功后删除原文件；勾选“移动但不删除”时则保留（即复制）
+  if (moveWithoutDeleting) {
+    return;
+  }
+  // 删源前确认目标已写入，避免误删
+  if (!(await pathExists(destPath, "file"))) {
+    ztoolkit.log("movePath: dest missing after copy, keep source", destPath);
+    return;
+  }
+  try {
+    await IOUtils.remove(sourcePath);
+  } catch (e) {
+    ztoolkit.log("IOUtils.remove failed; retrying with nsIFile.remove", e);
+    const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
+    sourceFile.remove(false);
   }
 }
 

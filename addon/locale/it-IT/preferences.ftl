@@ -6,7 +6,15 @@ setting = Impostazioni
 source-title = Percorso sorgente
 source-intro = &lt;Allega nuovo file&gt; recupererà i nuovi file aggiunti alla directory selezionata e li allegherà all'elemento o alla collezione in Zotero.
 
-attach-title = Allega come 
+read-pdf-title = leggi il titolo dal file PDF
+readPDFtitle-never =
+    .label = Mai
+readPDFtitle-nonCJK =
+    .label = Tranne per CJK
+readPDFtitle-always =
+    .label = Sempre
+
+attach-title = Allega come
 attach-intro = Se si usa il servizio di sincronizzazione di Zotero, o WebDAV scegliere &lt;Copia salvata&gt;; se si usa un servizio esterno tipo OneDrive, ecc., scegliere &lt;Link&gt; e configurare correttamente il &lt;Percorso di destinazione&gt;. I file saranno spostati nel percorso di destinazione e da lì importati in Zotero come allegati collegati.
 attach-type-start = Allega file
 attach-type-end = all'elemento/collezione Zotero
@@ -32,7 +40,7 @@ auto-move =
 auto-remove-empty-folder = 
     .label = Elimina automaticamente le cartelle vuote dopo lo spostamento
 move-without-deleting = 
-    .label = Sposta senza eliminare il file originale
+    .label = Mantieni i file originali (non eliminare mai i file di origine)
 file-types = Tipi di allegati per la rinominazione/spostamento
 filename-as-prefix-rules = Se si seguono le seguenti regole di denominazione, il nome file originale verrà mantenuto come prefisso durante la rinomina.
 filename-rules-instructions = Utilizzare espressioni regolari, separando più espressioni con ','.
