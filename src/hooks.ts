@@ -26,7 +26,7 @@ async function onStartup() {
 
 async function onMainWindowLoad(win: Window): Promise<void> {
   addon.data.ztoolkit = createZToolkit();
-  new Menu();
+  addon.data.menu = new Menu();
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {

@@ -1,11 +1,14 @@
 attachment-manager = Attachment Manager
 attach-new-file = Attach New File
 rename-move-attachment = Rename and Move Attachment
+rename-copy-attachment = Rename and Copy Attachment
 match-attachment = Match Attachment
 match-attanger-attachment = Match Attanger Attachment
 rename-attachment = Rename Attachment
 move-attachment = Move Attachment
+copy-attachment = Copy Attachment
 undo-move-attachment = Undo Move Attachment
+undo-copy-attachment = Undo Copy Attachment
 restore-pdf-annotation = Restore PDF Annotation
 open-using = Open Using
 choose-other-app = Choose Other App
