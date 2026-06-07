@@ -7,6 +7,10 @@ import comparison from "string-comparison";
 import { registerShortcut } from "../utils/shortcut";
 
 const filenameExtRE = /\.[^.]+$/;
+const ATTANGER_MENU_ID = "attanger-menu";
+const RENAME_MOVE_MENU_ID = "attanger-rename-move-attachment";
+const MOVE_MENU_ID = "attanger-move-attachment";
+const UNDO_MOVE_MENU_ID = "attanger-undo-move-attachment";
 
 /**
  * 避免因为选中A操作移动，移动过程中点击了B分类
@@ -14,6 +18,7 @@ const filenameExtRE = /\.[^.]+$/;
 let selectedCollection: Zotero.Collection | undefined
 export default class Menu {
   constructor() {
+    addon.data.menu = this;
     registerNotify(["item"],
       async (event: _ZoteroTypes.Notifier.Event, type: _ZoteroTypes.Notifier.Type, ids: string[] | number[], extraData: _ZoteroTypes.anyObj) => {
         ztoolkit.log(event, type, extraData);
@@ -88,10 +93,50 @@ export default class Menu {
     }
   }
 
+  private getMoveMenuStringKey(moveKey: string, copyKey: string) {
+    return getPref("moveWithoutDeleting") ? copyKey : moveKey;
+  }
+
+  public refreshItemMenu() {
+    for (const win of Zotero.getMainWindows()) {
+      win.document.getElementById(RENAME_MOVE_MENU_ID)?.setAttribute(
+        "label",
+        getString(
+          this.getMoveMenuStringKey(
+            "rename-move-attachment",
+            "rename-copy-attachment",
+          ),
+        ),
+      );
+      win.document.getElementById(MOVE_MENU_ID)?.setAttribute(
+        "label",
+        getString(this.getMoveMenuStringKey("move-attachment", "copy-attachment")),
+      );
+      win.document.getElementById(UNDO_MOVE_MENU_ID)?.setAttribute(
+        "label",
+        getString(
+          this.getMoveMenuStringKey(
+            "undo-move-attachment",
+            "undo-copy-attachment",
+          ),
+        ),
+      );
+    }
+  }
+
   private register() {
+    const attachNewFileCallback = async () => {
+      const item = ZoteroPane.getSelectedItems()[0];
+      await attachNewFile({
+        libraryID: item.libraryID,
+        parentItemID: item.id,
+        collections: undefined,
+      });
+    };
+
     ztoolkit.Menu.register("item", {
       tag: "menu",
-      id: "attanger-menu",
+      id: ATTANGER_MENU_ID,
       label: "Attanger",
       icon: addon.data.icons.favicon,
       children: [
@@ -116,7 +161,13 @@ export default class Menu {
         // 重命名并移动
         {
           tag: "menuitem",
-          label: getString("rename-move-attachment"),
+          id: RENAME_MOVE_MENU_ID,
+          label: getString(
+            this.getMoveMenuStringKey(
+              "rename-move-attachment",
+              "rename-copy-attachment",
+            ),
+          ),
           icon: addon.data.icons.renameMoveAttachment,
           commandListener: async (_ev) => {
             selectedCollection = ZoteroPane.getSelectedCollection()
@@ -202,7 +253,10 @@ export default class Menu {
         },
         {
           tag: "menuitem",
-          label: getString("move-attachment"),
+          id: MOVE_MENU_ID,
+          label: getString(
+            this.getMoveMenuStringKey("move-attachment", "copy-attachment"),
+          ),
           icon: addon.data.icons.moveFile,
           commandListener: async (_ev) => {
             selectedCollection = ZoteroPane.getSelectedCollection()
@@ -218,7 +272,13 @@ export default class Menu {
         },
         {
           tag: "menuitem",
-          label: getString("undo-move-attachment"),
+          id: UNDO_MOVE_MENU_ID,
+          label: getString(
+            this.getMoveMenuStringKey(
+              "undo-move-attachment",
+              "undo-copy-attachment",
+            ),
+          ),
           icon: addon.data.icons.undoMoveFile,
           commandListener: async () => {
             await ZoteroPane.convertLinkedFilesToStoredFiles();
@@ -264,16 +324,6 @@ export default class Menu {
     //     await matchAttangerAttachment();
     //   },
     // });
-    // 附加新文件
-    //   条目
-    const attachNewFileCallback = async () => {
-      const item = ZoteroPane.getSelectedItems()[0];
-      await attachNewFile({
-        libraryID: item.libraryID,
-        parentItemID: item.id,
-        collections: undefined,
-      });
-    };
     // ztoolkit.Menu.register("item", {
     //   tag: "menuitem",
     //   label: getString("attach-new-file"),
@@ -311,6 +361,7 @@ export default class Menu {
         });
       },
     });
+    this.refreshItemMenu();
     // 附件管理
     // ztoolkit.Menu.register("item", {
     //   tag: "menu",
