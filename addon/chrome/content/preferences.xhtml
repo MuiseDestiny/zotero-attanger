@@ -107,18 +107,41 @@
       <html:h2 data-l10n-id="other-title"></html:h2>
     </label>
     <vbox align="start">
-      <hbox>
-        <checkbox native="true" data-l10n-id="attach-new-file-shortcut"
+      <hbox align="center">
+        <checkbox native="true" class="shortcut-enable" data-l10n-id="attach-new-file-shortcut"
           preference="extensions.zotero.__addonRef__.attachNewFile.shortcut.enable" />
         <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
           preference="extensions.zotero.__addonRef__.attachNewFile.shortcut">
         </html:input>
       </hbox>
-      <hbox>
-        <checkbox native="true" data-l10n-id="match-attachment-shortcut"
+      <hbox align="center">
+        <checkbox native="true" class="shortcut-enable" data-l10n-id="match-attachment-shortcut"
           preference="extensions.zotero.__addonRef__.matchAttachment.shortcut.enable" />
         <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
           preference="extensions.zotero.__addonRef__.matchAttachment.shortcut">
+        </html:input>
+      </hbox>
+      <hbox align="center">
+        <checkbox native="true" class="shortcut-enable" data-l10n-id="rename-attachment-shortcut"
+          preference="extensions.zotero.__addonRef__.renameAttachment.shortcut.enable" />
+        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
+          preference="extensions.zotero.__addonRef__.renameAttachment.shortcut">
+        </html:input>
+      </hbox>
+      <hbox align="center">
+        <checkbox native="true" class="shortcut-enable"
+          data-l10n-id="rename-move-attachment-shortcut"
+          preference="extensions.zotero.__addonRef__.renameMoveAttachment.shortcut.enable" />
+        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
+          preference="extensions.zotero.__addonRef__.renameMoveAttachment.shortcut">
+        </html:input>
+      </hbox>
+      <hbox align="center">
+        <checkbox native="true" class="shortcut-enable"
+          data-l10n-id="move-attachment-shortcut"
+          preference="extensions.zotero.__addonRef__.moveAttachment.shortcut.enable" />
+        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
+          preference="extensions.zotero.__addonRef__.moveAttachment.shortcut">
         </html:input>
       </hbox>
       <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />

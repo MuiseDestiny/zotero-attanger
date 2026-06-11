@@ -4,13 +4,29 @@ import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
 import { waitUntil, waitUtilAsync } from "../utils/wait";
 import comparison from "string-comparison";
-import { registerShortcut } from "../utils/shortcut";
+import {
+  registerShortcut,
+  isShortcutEnabled,
+  getShortcutText,
+} from "../utils/shortcut";
 
 const filenameExtRE = /\.[^.]+$/;
 const ATTANGER_MENU_ID = "attanger-menu";
+const ATTACH_NEW_FILE_MENU_ID = "attanger-attach-new-file";
+const MATCH_ATTACHMENT_MENU_ID = "attanger-match-attachment";
+const RENAME_MENU_ID = "attanger-rename-attachment";
 const RENAME_MOVE_MENU_ID = "attanger-rename-move-attachment";
 const MOVE_MENU_ID = "attanger-move-attachment";
 const UNDO_MOVE_MENU_ID = "attanger-undo-move-attachment";
+
+/**
+ * 菜单项后缀显示的快捷键提示，如 " (Ctrl + I)"；快捷键未启用或未设置时为空
+ */
+function getShortcutHint(shortcutPref: string) {
+  if (!isShortcutEnabled(shortcutPref)) return "";
+  const shortcut = getShortcutText(shortcutPref);
+  return shortcut ? ` (${shortcut})` : "";
+}
 
 /**
  * 避免因为选中A操作移动，移动过程中点击了B分类
@@ -99,26 +115,33 @@ export default class Menu {
 
   public refreshItemMenu() {
     for (const win of Zotero.getMainWindows()) {
-      win.document.getElementById(RENAME_MOVE_MENU_ID)?.setAttribute(
-        "label",
-        getString(
-          this.getMoveMenuStringKey(
-            "rename-move-attachment",
-            "rename-copy-attachment",
-          ),
+      const setLabel = (id: string, stringKey: string, shortcutPref?: string) => {
+        win.document.getElementById(id)?.setAttribute(
+          "label",
+          getString(stringKey) + (shortcutPref ? getShortcutHint(shortcutPref) : ""),
+        );
+      };
+      setLabel(ATTACH_NEW_FILE_MENU_ID, "attach-new-file", "attachNewFile.shortcut");
+      setLabel(MATCH_ATTACHMENT_MENU_ID, "match-attachment", "matchAttachment.shortcut");
+      setLabel(RENAME_MENU_ID, "rename-attachment", "renameAttachment.shortcut");
+      setLabel(
+        RENAME_MOVE_MENU_ID,
+        this.getMoveMenuStringKey(
+          "rename-move-attachment",
+          "rename-copy-attachment",
         ),
+        "renameMoveAttachment.shortcut",
       );
-      win.document.getElementById(MOVE_MENU_ID)?.setAttribute(
-        "label",
-        getString(this.getMoveMenuStringKey("move-attachment", "copy-attachment")),
+      setLabel(
+        MOVE_MENU_ID,
+        this.getMoveMenuStringKey("move-attachment", "copy-attachment"),
+        "moveAttachment.shortcut",
       );
-      win.document.getElementById(UNDO_MOVE_MENU_ID)?.setAttribute(
-        "label",
-        getString(
-          this.getMoveMenuStringKey(
-            "undo-move-attachment",
-            "undo-copy-attachment",
-          ),
+      setLabel(
+        UNDO_MOVE_MENU_ID,
+        this.getMoveMenuStringKey(
+          "undo-move-attachment",
+          "undo-copy-attachment",
         ),
       );
     }
@@ -126,12 +149,79 @@ export default class Menu {
 
   private register() {
     const attachNewFileCallback = async () => {
+      // 与菜单项的 getVisibility 条件保持一致，快捷键触发时同样需要校验
       const item = ZoteroPane.getSelectedItems()[0];
+      if (!item || !item.isTopLevelItem() || !item.isRegularItem()) {
+        ztoolkit.log("attachNewFile skipped: no top-level regular item selected");
+        return;
+      }
       await attachNewFile({
         libraryID: item.libraryID,
         parentItemID: item.id,
         collections: undefined,
       });
+    };
+
+    const renameMoveAttachmentCallback = async () => {
+      selectedCollection = ZoteroPane.getSelectedCollection()
+      const attachmentItems = getAttachmentItems(false);
+      if (!attachmentItems.length) {
+        showMoveMessage("No attachment selected.");
+        return;
+      }
+      for (const item of attachmentItems) {
+        try {
+          const movedItem = await moveFile(item) as Zotero.Item;
+          if (!movedItem) {
+            showMoveMessage(
+              `Move skipped or failed: ${item.getDisplayTitle()}`,
+            );
+            continue;
+          }
+          const renamedItem = await renameFile(movedItem);
+          showAttachmentItem(renamedItem || movedItem);
+        } catch (e) {
+          ztoolkit.log(e);
+          showMoveMessage(`Move error: ${(e as Error).message || e}`);
+        }
+      }
+    };
+
+    const renameAttachmentCallback = async () => {
+      const attachmentItems = getAttachmentItems();
+      if (!attachmentItems.length) {
+        showRenameMessage(
+          "No child attachment selected. Select a regular item or a child attachment with a parent item.",
+        );
+        return;
+      }
+      for (const item of attachmentItems) {
+        try {
+          const attItem = await renameFile(item);
+          if (attItem) {
+            showAttachmentItem(attItem);
+          } else {
+            showRenameMessage(
+              `Rename skipped or failed: ${item.getDisplayTitle()}`,
+            );
+          }
+        } catch (e) {
+          ztoolkit.log(e);
+          showRenameMessage(`Rename error: ${(e as Error).message || e}`);
+        }
+      }
+    };
+
+    const moveAttachmentCallback = async () => {
+      selectedCollection = ZoteroPane.getSelectedCollection()
+      for (const item of getAttachmentItems(false)) {
+        try {
+          const attItem = await moveFile(item);
+          attItem && showAttachmentItem(attItem);
+        } catch (e) {
+          ztoolkit.log(e);
+        }
+      }
     };
 
     ztoolkit.Menu.register("item", {
@@ -143,7 +233,10 @@ export default class Menu {
         // 附加新文件
         {
           tag: "menuitem",
-          label: getString("attach-new-file"),
+          id: ATTACH_NEW_FILE_MENU_ID,
+          label:
+            getString("attach-new-file") +
+            getShortcutHint("attachNewFile.shortcut"),
           icon: addon.data.icons.attachNewFile,
           getVisibility: () => {
             // 只选择一个父级条目
@@ -162,43 +255,26 @@ export default class Menu {
         {
           tag: "menuitem",
           id: RENAME_MOVE_MENU_ID,
-          label: getString(
-            this.getMoveMenuStringKey(
-              "rename-move-attachment",
-              "rename-copy-attachment",
-            ),
-          ),
+          label:
+            getString(
+              this.getMoveMenuStringKey(
+                "rename-move-attachment",
+                "rename-copy-attachment",
+              ),
+            ) + getShortcutHint("renameMoveAttachment.shortcut"),
           icon: addon.data.icons.renameMoveAttachment,
           commandListener: async (_ev) => {
-            selectedCollection = ZoteroPane.getSelectedCollection()
-            const attachmentItems = getAttachmentItems(false);
-            if (!attachmentItems.length) {
-              showMoveMessage("No attachment selected.");
-              return;
-            }
-            for (const item of attachmentItems) {
-              try {
-                const movedItem = await moveFile(item) as Zotero.Item;
-                if (!movedItem) {
-                  showMoveMessage(
-                    `Move skipped or failed: ${item.getDisplayTitle()}`,
-                  );
-                  continue;
-                }
-                const renamedItem = await renameFile(movedItem);
-                showAttachmentItem(renamedItem || movedItem);
-              } catch (e) {
-                ztoolkit.log(e);
-                showMoveMessage(`Move error: ${(e as Error).message || e}`);
-              }
-            }
+            await renameMoveAttachmentCallback();
           },
         },
         {tag: "menuseparator"},
         // 匹配附件
         {
           tag: "menuitem",
-          label: getString("match-attachment"),
+          id: MATCH_ATTACHMENT_MENU_ID,
+          label:
+            getString("match-attachment") +
+            getShortcutHint("matchAttachment.shortcut"),
           icon: addon.data.icons.matchAttachment,
           getVisibility: () => {
             const items = ZoteroPane.getSelectedItems();
@@ -224,50 +300,25 @@ export default class Menu {
         { tag: "menuseparator" },
         {
           tag: "menuitem",
-          label: getString("rename-attachment"),
+          id: RENAME_MENU_ID,
+          label:
+            getString("rename-attachment") +
+            getShortcutHint("renameAttachment.shortcut"),
           icon: addon.data.icons.renameAttachment,
           commandListener: async (_ev) => {
-            const attachmentItems = getAttachmentItems();
-            if (!attachmentItems.length) {
-              showRenameMessage(
-                "No child attachment selected. Select a regular item or a child attachment with a parent item.",
-              );
-              return;
-            }
-            for (const item of attachmentItems) {
-              try {
-                const attItem = await renameFile(item);
-                if (attItem) {
-                  showAttachmentItem(attItem);
-                } else {
-                  showRenameMessage(
-                    `Rename skipped or failed: ${item.getDisplayTitle()}`,
-                  );
-                }
-              } catch (e) {
-                ztoolkit.log(e);
-                showRenameMessage(`Rename error: ${(e as Error).message || e}`);
-              }
-            }
+            await renameAttachmentCallback();
           },
         },
         {
           tag: "menuitem",
           id: MOVE_MENU_ID,
-          label: getString(
-            this.getMoveMenuStringKey("move-attachment", "copy-attachment"),
-          ),
+          label:
+            getString(
+              this.getMoveMenuStringKey("move-attachment", "copy-attachment"),
+            ) + getShortcutHint("moveAttachment.shortcut"),
           icon: addon.data.icons.moveFile,
           commandListener: async (_ev) => {
-            selectedCollection = ZoteroPane.getSelectedCollection()
-            for (const item of getAttachmentItems(false)) {
-              try {
-                const attItem = await moveFile(item);
-                attItem && showAttachmentItem(attItem);
-              } catch (e) {
-                ztoolkit.log(e);
-              }
-            }
+            await moveAttachmentCallback();
           },
         },
         {
@@ -343,6 +394,18 @@ export default class Menu {
     // });
     registerShortcut("attachNewFile.shortcut", async () => {
       await attachNewFileCallback();
+    });
+    // 重命名附件
+    registerShortcut("renameAttachment.shortcut", async () => {
+      await renameAttachmentCallback();
+    });
+    // 重命名并移动/复制附件
+    registerShortcut("renameMoveAttachment.shortcut", async () => {
+      await renameMoveAttachmentCallback();
+    });
+    // 移动/复制附件
+    registerShortcut("moveAttachment.shortcut", async () => {
+      await moveAttachmentCallback();
     });
     // 分类
     ztoolkit.Menu.register("collection", {

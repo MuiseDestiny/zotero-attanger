@@ -40,7 +40,7 @@ auto-move =
 auto-remove-empty-folder = 
     .label = 自动删除移动后为空的文件夹
 move-without-deleting = 
-    .label = 保留原始文件，不删除源文件（移动/匹配/附加均生效）
+    .label = 保留原始文件，不删除源文件，移动操作变为复制（移动/匹配/附加均生效）
 file-types = 重命名/移动的附件类型
 filename-as-prefix-rules = 符合下面命名规则时，在重命名时原文件名会被保留作为前缀
 filename-rules-instructions = 请使用正则表达式，多个表达式用 “,” 分隔
@@ -55,5 +55,13 @@ preferences-file-renaming-customize-button =
 
 preferences-file-renaming-format-instructions-more = 阅读<label data-l10n-name="file-renaming-format-help-link">文档</label>获取更多帮助。
 
-attach-new-file-shortcut = 附加新文件快捷键
-match-attachment-shortcut =  匹配附件快捷键
+attach-new-file-shortcut =
+    .label = 附加新文件快捷键
+match-attachment-shortcut =
+    .label = 匹配附件快捷键
+rename-attachment-shortcut =
+    .label = 重命名附件快捷键
+rename-move-attachment-shortcut =
+    .label = 重命名并移动/复制附件快捷键
+move-attachment-shortcut =
+    .label = 移动/复制附件快捷键

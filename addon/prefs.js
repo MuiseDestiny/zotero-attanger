@@ -10,9 +10,24 @@ pref("extensions.zotero.__addonRef__.autoMove", true);
 
 pref("extensions.zotero.__addonRef__.attachNewFile.shortcut", "Ctrl + I");
 pref("extensions.zotero.__addonRef__.matchAttachment.shortcut", "Ctrl + M");
+pref("extensions.zotero.__addonRef__.renameAttachment.shortcut", "Ctrl + R");
+pref(
+  "extensions.zotero.__addonRef__.renameMoveAttachment.shortcut",
+  "Ctrl + Shift + R",
+);
+pref(
+  "extensions.zotero.__addonRef__.moveAttachment.shortcut",
+  "Ctrl + Shift + M",
+);
 
 pref("extensions.zotero.__addonRef__.attachNewFile.shortcut.enable", true);
 pref("extensions.zotero.__addonRef__.matchAttachment.shortcut.enable", true);
+pref("extensions.zotero.__addonRef__.renameAttachment.shortcut.enable", false);
+pref(
+  "extensions.zotero.__addonRef__.renameMoveAttachment.shortcut.enable",
+  false,
+);
+pref("extensions.zotero.__addonRef__.moveAttachment.shortcut.enable", false);
 
 pref(
   "extensions.zotero.__addonRef__.fileTypes",

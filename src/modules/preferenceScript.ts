@@ -25,6 +25,27 @@ async function updatePrefsUI() {
   } else {
     destSettingBox.style.opacity = "1";
   }
+  updateShortcutRows();
+}
+
+/**
+ * 快捷键勾选框未勾选时，对应输入框置灰禁用
+ */
+function updateShortcutRows() {
+  const doc = addon.data.prefs!.window.document;
+  doc
+    .querySelectorAll("checkbox.shortcut-enable")
+    // @ts-ignore forEach
+    .forEach((checkbox: XUL.Checkbox) => {
+      const input = checkbox
+        .closest("hbox")
+        ?.querySelector("input.shortcut") as HTMLInputElement | null;
+      if (!input) return;
+      const prefName = checkbox.getAttribute("preference") as string;
+      const enabled = Zotero.Prefs.get(prefName, true) !== false;
+      input.disabled = !enabled;
+      input.style.opacity = enabled ? "1" : "0.5";
+    });
 }
 
 function ensureStringPref(key: string) {
@@ -104,6 +125,23 @@ function bindPrefEvents(_window: Window) {
           shortcut,
           true,
         );
+        // 同步更新右键菜单中的快捷键提示
+        addon.data.menu?.refreshItemMenu();
+      });
+    });
+
+  doc
+    .querySelectorAll("checkbox.shortcut-enable")
+    // @ts-ignore forEach
+    .forEach((checkbox: XUL.Checkbox) => {
+      checkbox.addEventListener("command", () => {
+        Zotero.Prefs.set(
+          checkbox.getAttribute("preference") as string,
+          checkbox.checked,
+          true,
+        );
+        updateShortcutRows();
+        addon.data.menu?.refreshItemMenu();
       });
     });
 }

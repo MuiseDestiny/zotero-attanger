@@ -1,14 +1,33 @@
-import { config } from "../../package.json";
+import { getPref } from "./prefs";
 
-export function registerShortcut(value: string, callback: Function, type: "prefKey" | "key" = "prefKey") {
-  let shortcutString = (type == "prefKey" ? Zotero.Prefs.get(`${config.addonRef}.${value}`) as string : value)
-    .replace(/\s\+\s/g, ",")
-    .toLowerCase()
+/**
+ * 快捷键是否启用（设置面板中的勾选框，未勾选表示不启用）
+ */
+export function isShortcutEnabled(prefKey: string) {
+  return getPref(`${prefKey}.enable`) !== false;
+}
 
-  shortcutString = shortcutString.replace("ctrl", "control")
+/**
+ * 读取快捷键的显示文本，如 "Ctrl + I"；未设置返回空字符串
+ */
+export function getShortcutText(prefKey: string) {
+  const shortcut = getPref(prefKey);
+  return typeof shortcut === "string" ? shortcut.trim() : "";
+}
+
+export function registerShortcut(prefKey: string, callback: Function) {
   ztoolkit.Keyboard.register(async (ev, options) => {
+    if (!options.keyboard) return;
+    if (!isShortcutEnabled(prefKey)) return;
+    // 按键时实时读取，修改设置后无需重启即可生效
+    const raw = getShortcutText(prefKey);
+    if (!raw) return;
+    const shortcutString = raw
+      .replace(/\s\+\s/g, ",")
+      .toLowerCase()
+      .replace("ctrl", "control");
     const _shortcutString = shortcutString.slice(0, -1) + shortcutString.slice(-1)[0].toUpperCase()
-    if (options.keyboard && options.keyboard.equals(shortcutString) || options.keyboard && options.keyboard.equals(_shortcutString)) {
+    if (options.keyboard.equals(shortcutString) || options.keyboard.equals(_shortcutString)) {
       ztoolkit.log(shortcutString)
       callback();
     }
