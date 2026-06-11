@@ -18,6 +18,9 @@ class Addon {
       // columns: Array<ColumnOptions>;
       // rows: Array<{ [dataKey: string]: string }>;
     };
+    menu?: {
+      refreshItemMenu: () => void;
+    };
     dialog?: DialogHelper;
     icons: { [name: string]: string };
     folderSep: string;

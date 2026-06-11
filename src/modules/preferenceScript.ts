@@ -88,6 +88,11 @@ function bindPrefEvents(_window: Window) {
   doc.querySelector("#attach-type")?.addEventListener("command", async () => {
     await updatePrefsUI();
   });
+  doc
+    .querySelector('[preference$=".moveWithoutDeleting"]')
+    ?.addEventListener("command", () => {
+      addon.data.menu?.refreshItemMenu();
+    });
 
   doc
     .querySelectorAll(".shortcut")
