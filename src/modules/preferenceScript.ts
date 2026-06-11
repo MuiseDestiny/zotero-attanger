@@ -38,6 +38,12 @@ function bindPrefEvents(_window: Window) {
   // 选择源目录
   const doc = addon.data.prefs!.window.document;
   doc
+    .querySelector("#file-renaming-button")
+    ?.addEventListener("command", () => {
+      // @ts-ignore
+      _window.Zotero_Preferences.General.openFileRenamingDialog()
+    })
+  doc
     .querySelector("#choose-source-dir")
     ?.addEventListener("command", async () => {
       let oldPath = getPref("sourceDir") as string;
