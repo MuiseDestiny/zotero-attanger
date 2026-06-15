@@ -924,11 +924,15 @@ async function renameFile(attItem: Zotero.Item, retry = 0) {
     return;
   }
   const origTitle = attItem.getField("title") as string;
-  if (shouldSyncAttachmentTitle(attItem, origTitle, origFilename, origFilenameNoExt)) {
-    const renamedFile = (await attItem.getFilePathAsync()) as string;
-    const actualFilename = renamedFile
-      ? PathUtils.split(renamedFile).pop() as string
-      : newName;
+  const renamedFile = (await attItem.getFilePathAsync()) as string;
+  const actualFilename = renamedFile
+    ? PathUtils.split(renamedFile).pop() as string
+    : newName;
+  const forceSyncTitle = getPref("syncAttachmentTitle") === true;
+  if (
+    forceSyncTitle ||
+    shouldSyncAttachmentTitle(attItem, origTitle, origFilename, origFilenameNoExt)
+  ) {
     ztoolkit.log("renameFile sync attachment title", { origTitle, actualFilename });
     attItem.setField("title", actualFilename);
   }

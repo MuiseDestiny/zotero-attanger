@@ -65,3 +65,5 @@ rename-move-attachment-shortcut =
     .label = Shortcut for Rename and Move/Copy Attachment
 move-attachment-shortcut =
     .label = Shortcut for Move/Copy Attachment
+sync-attachment-title = 
+    .label = Anhangtitel nach Umbenennung synchronisieren

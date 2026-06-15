@@ -65,3 +65,5 @@ rename-move-attachment-shortcut =
     .label = 重命名并移动/复制附件快捷键
 move-attachment-shortcut =
     .label = 移动/复制附件快捷键
+sync-attachment-title = 
+    .label = 重命名后同步修改附件标题
