@@ -47,9 +47,6 @@ export default class Menu {
                 item.isAttachment() &&
                 (await item.fileExists())
               ) {
-                if (item.isImportedAttachment()) {
-                  await Zotero.RecognizeDocument.recognizeItems([item]);
-                }
                 attItems.push(item);
               }
               if (item.isTopLevelItem() && item.isRegularItem()) {
