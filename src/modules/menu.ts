@@ -814,7 +814,7 @@ async function queueLinkedAttachmentRenameOnModify(ids: number[]) {
 
 function scheduleLinkedAttachmentRenameOnModify(attItemID: number) {
   const prevTimer = autoRenameOnModifyTimers.get(attItemID);
-  if (prevTimer) {
+  if (prevTimer !== undefined) {
     window.clearTimeout(prevTimer);
   }
   const token = (autoRenameOnModifyTokens.get(attItemID) || 0) + 1;
