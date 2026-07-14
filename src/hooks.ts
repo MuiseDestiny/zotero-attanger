@@ -30,14 +30,15 @@ async function onMainWindowLoad(win: Window): Promise<void> {
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
+  addon.data.menu?.dispose();
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
 }
 
 function onShutdown(): void {
+  addon.data.menu?.dispose();
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
-  Zotero.Notifier.unregisterObserver(addon.data.notifierID);
   // Remove addon object
   addon.data.alive = false;
   delete Zotero[config.addonInstance];

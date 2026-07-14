@@ -12,3 +12,6 @@ undo-copy-attachment = 撤销复制附件
 restore-pdf-annotation = 恢复PDF标注
 open-using = 打开方式
 choose-other-app = 选择其它应用
+dir-not-set-destDir = 靶目录未设置，请前往 Attanger 设置中选择靶目录
+dir-not-set-sourceDir = 源目录未设置，请前往 Attanger 设置中选择源目录
+rename-linked-attachment-error = 重命名链接附件失败：{ $title }

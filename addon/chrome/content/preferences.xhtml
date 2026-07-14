@@ -145,6 +145,68 @@
         </html:input>
       </hbox>
       <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />
+      <hbox align="center">
+        <checkbox id="auto-rename-on-modify" native="true" data-l10n-id="auto-rename-on-modify" preference="extensions.zotero.__addonRef__.autoRenameOnModify" />
+        <hbox data-l10n-id="auto-rename-on-modify-help" role="img" align="center"
+          style="width: 16px; height: 16px; margin-inline-start: 8px; opacity: .65; cursor: pointer;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
+            style="pointer-events: none;" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
+        </hbox>
+      </hbox>
+      <vbox id="auto-rename-on-modify-options" hidden="true" style="margin-inline-start: 2em;">
+      <hbox align="center" class="auto-rename-on-modify-setting">
+        <checkbox id="auto-rename-on-modify-debounce" native="true" data-l10n-id="auto-rename-on-modify-debounce" preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceEnabled" />
+        <html:input
+          id="auto-rename-on-modify-debounce-ms"
+          type="number"
+          min="0"
+          step="100"
+          style="width: 8em; display: inline-block"
+          preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceMs"
+        >
+        </html:input>
+        <hbox data-l10n-id="auto-rename-on-modify-debounce-help" role="img" align="center"
+          style="width: 16px; height: 16px; margin-inline-start: 8px; opacity: .65; cursor: pointer;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
+            style="pointer-events: none;" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
+        </hbox>
+      </hbox>
+      <hbox align="center" class="auto-rename-on-modify-setting">
+        <checkbox id="auto-rename-on-modify-delay" native="true" data-l10n-id="auto-rename-on-modify-delay" preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayEnabled" />
+        <html:input
+          id="auto-rename-on-modify-delay-ms"
+          type="number"
+          min="0"
+          step="100"
+          style="width: 8em; display: inline-block"
+          preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayMs"
+        >
+        </html:input>
+        <hbox data-l10n-id="auto-rename-on-modify-delay-help" role="img" align="center"
+          style="width: 16px; height: 16px; margin-inline-start: 8px; opacity: .65; cursor: pointer;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
+            style="pointer-events: none;" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
+        </hbox>
+      </hbox>
+      </vbox>
       <checkbox native="true" data-l10n-id="auto-move" preference="extensions.zotero.__addonRef__.autoMove" />
       <checkbox native="true" data-l10n-id="auto-remove-empty-folder"
         preference="extensions.zotero.__addonRef__.autoRemoveEmptyFolder" />

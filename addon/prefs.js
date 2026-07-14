@@ -4,9 +4,14 @@ pref("extensions.zotero.__addonRef__.attachType", "linking");
 pref("extensions.zotero.__addonRef__.subfolderFormat", `{{collection}}`);
 pref("extensions.zotero.__addonRef__.slashAsSubfolderDelimiter", true);
 pref("extensions.zotero.__addonRef__.sourceDir", "");
-pref("extensions.zotero.__addonRef__.readPdfTitle", "nonCJK");
+pref("extensions.zotero.__addonRef__.readPDFtitle", "nonCJK");
 pref("extensions.zotero.__addonRef__.destDir", "");
 pref("extensions.zotero.__addonRef__.autoMove", true);
+pref("extensions.zotero.__addonRef__.autoRenameOnModify", false);
+pref("extensions.zotero.__addonRef__.autoRenameOnModifyDebounceEnabled", true);
+pref("extensions.zotero.__addonRef__.autoRenameOnModifyDebounceMs", 1000);
+pref("extensions.zotero.__addonRef__.autoRenameOnModifyDelayEnabled", false);
+pref("extensions.zotero.__addonRef__.autoRenameOnModifyDelayMs", 0);
 
 pref("extensions.zotero.__addonRef__.attachNewFile.shortcut", "Ctrl + I");
 pref("extensions.zotero.__addonRef__.matchAttachment.shortcut", "Ctrl + M");

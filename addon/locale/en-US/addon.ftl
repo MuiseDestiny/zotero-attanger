@@ -12,3 +12,6 @@ undo-copy-attachment = Undo Copy Attachment
 restore-pdf-annotation = Restore PDF Annotation
 open-using = Open Using
 choose-other-app = Choose Other App
+dir-not-set-destDir = Destination directory not set. Please select it in Attanger preferences.
+dir-not-set-sourceDir = Source directory not set. Please select it in Attanger preferences.
+rename-linked-attachment-error = Failed to rename linked attachment: { $title }

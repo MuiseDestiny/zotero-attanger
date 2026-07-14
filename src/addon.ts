@@ -19,6 +19,7 @@ class Addon {
       // rows: Array<{ [dataKey: string]: string }>;
     };
     menu?: {
+      dispose: () => void;
       refreshItemMenu: () => void;
     };
     dialog?: DialogHelper;

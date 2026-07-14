@@ -10,3 +10,6 @@ undo-copy-attachment = Anhangkopie rueckgaengig machen
 restore-pdf-annotation = PDF-Anmerkung wiederherstellen
 open-using = Öffnen mit
 choose-other-app = Andere App auswählen
+dir-not-set-destDir = Zielverzeichnis nicht festgelegt. Bitte in den Attanger-Einstellungen auswählen.
+dir-not-set-sourceDir = Quellverzeichnis nicht festgelegt. Bitte in den Attanger-Einstellungen auswählen.
+rename-linked-attachment-error = Verknüpfter Anhang konnte nicht umbenannt werden: { $title }

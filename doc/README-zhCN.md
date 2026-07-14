@@ -1,420 +1,187 @@
-# Zotero Plugin Template
+# Zotero Attanger
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
-[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/muisedestiny/zotero-plugin-template)
+<p>
+  <img src="../addon/chrome/content/icons/favicon.png" width="48" height="48" alt="Attanger 图标">
+</p>
 
-这是 [Zotero](https://www.zotero.org/) 的插件模板.
+Attanger 是 Attachment Manager 的缩写，用于管理 Zotero 附件：附加最近下载的文件、将文件匹配到条目、按照 Zotero 原生模板重命名，以及按规则移动或复制到固定的目录结构。
 
-[English](../README.md) | [简体中文](./README-zhCN.md)
+[English](../README.md) | 简体中文 | [Deutsch](README-de.md) | [Italiano](README-itIT.md)
 
-📖 [插件开发文档](https://zotero.yuque.com/books/share/8d230829-6004-4934-b4c6-685a7001bfa0/vec88d) (中文版，已过时)
+[![最新版本](https://img.shields.io/github/v/release/MuiseDestiny/zotero-attanger)](https://github.com/MuiseDestiny/zotero-attanger/releases)
+[![发布日期](https://img.shields.io/github/release-date/MuiseDestiny/zotero-attanger)](https://github.com/MuiseDestiny/zotero-attanger/releases)
+[![下载量](https://img.shields.io/github/downloads/MuiseDestiny/zotero-attanger/latest/total)](https://github.com/MuiseDestiny/zotero-attanger/releases)
+[![许可证：AGPL-3.0-or-later](https://img.shields.io/github/license/MuiseDestiny/zotero-attanger)](../LICENSE)
+[![Zotero 7-10](https://img.shields.io/badge/Zotero-7--10-CC2936?logo=zotero&logoColor=white)](https://www.zotero.org/)
 
-[📖 Zotero 7 插件开发文档](https://www.zotero.org/support/dev/zotero_7_for_developers)
+## 主要功能
 
-🛠️ [Zotero 插件工具包](https://github.com/muisedestiny/zotero-plugin-toolkit) | [API 文档](https://github.com/muisedestiny/zotero-plugin-toolkit/blob/master/docs/zotero-plugin-toolkit.md)
+- 将指定源目录中最近修改的文件附加到一个 Zotero 条目，或直接附加到一个分类。
+- 将附件保存为 Zotero 存储副本，或把导入的附件转换为外部目录中的链接附件。
+- 使用 Zotero 原生文件重命名模板批量重命名，并可同步更新附件标题。
+- 根据条目元数据或 `{{collection}}` 创建子目录，并可将变量中的 `/` 解析为多级目录。
+- 自动重命名、移动新导入的附件。
+- 在条目元数据变化后自动重命名链接附件。防抖和延迟设置适用于 Better BibTeX 引用键等导入后才稳定的字段。
+- 按标题相似度将 PDF/CAJ 文件匹配到所选条目，也可读取 PDF 元数据或正文标题辅助匹配。
+- 精确重新连接已经符合 Attanger 目录和文件名规则的文件。
+- 移动或复制现有附件，并在转换为链接附件时迁移标注、关联关系、全文索引、标签和附件笔记。
+- 使用 Zotero、系统默认程序或自定义程序打开附件。
+- 自定义快捷键、支持的扩展名、空目录清理和重命名/移动例外正则规则。
 
-ℹ️ [Zotero 类型定义](https://github.com/muisedestiny/zotero-types)
+## 安装
 
-📜 [Zotero 源代码](https://github.com/zotero/zotero)
+1. 从 [Releases 页面](https://github.com/MuiseDestiny/zotero-attanger/releases)下载最新 `.xpi`。
+2. 在 Zotero 中打开**工具 > 插件**；旧版 Zotero 中该入口可能显示为**工具 > 附加组件**。
+3. 打开齿轮菜单，选择**从文件安装插件**，然后选择下载的 `.xpi`。
+4. 如果 Zotero 提示，请重新启动。
 
-📌 [Zotero 插件模板](https://github.com/muisedestiny/zotero-plugin-template) (即本仓库)
+当前清单支持 Zotero 7 至 Zotero 10。
 
-> [!tip]
-> 👁 Watch 本仓库，以及时收到修复或更新的通知.
+## 首次配置
 
-## 使用此模板构建的插件
+打开 **Zotero 设置 > Attanger**：
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-better-notes?label=zotero-better-notes&style=flat-square)](https://github.com/muisedestiny/zotero-better-notes)
-[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-pdf-preview?label=zotero-pdf-preview&style=flat-square)](https://github.com/muisedestiny/zotero-pdf-preview)
-[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-pdf-translate?label=zotero-pdf-translate&style=flat-square)](https://github.com/muisedestiny/zotero-pdf-translate)
-[![GitHub Repo stars](https://img.shields.io/github/stars/muisedestiny/zotero-tag?label=zotero-tag&style=flat-square)](https://github.com/muisedestiny/zotero-tag)
-[![GitHub Repo stars](https://img.shields.io/github/stars/iShareStuff/ZoteroTheme?label=zotero-theme&style=flat-square)](https://github.com/iShareStuff/ZoteroTheme)
-[![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/zotero-reference?label=zotero-reference&style=flat-square)](https://github.com/MuiseDestiny/zotero-reference)
-[![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/zotero-citation?label=zotero-citation&style=flat-square)](https://github.com/MuiseDestiny/zotero-citation)
-[![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/ZoteroStyle?label=zotero-style&style=flat-square)](https://github.com/MuiseDestiny/ZoteroStyle)
-[![GitHub Repo stars](https://img.shields.io/github/stars/volatile-static/Chartero?label=Chartero&style=flat-square)](https://github.com/volatile-static/Chartero)
-[![GitHub Repo stars](https://img.shields.io/github/stars/l0o0/tara?label=tara&style=flat-square)](https://github.com/l0o0/tara)
-[![GitHub Repo stars](https://img.shields.io/github/stars/redleafnew/delitemwithatt?label=delitemwithatt&style=flat-square)](https://github.com/redleafnew/delitemwithatt)
-[![GitHub Repo stars](https://img.shields.io/github/stars/redleafnew/zotero-updateifsE?label=zotero-updateifsE&style=flat-square)](https://github.com/redleafnew/zotero-updateifsE)
-[![GitHub Repo stars](https://img.shields.io/github/stars/northword/zotero-format-metadata?label=zotero-format-metadata&style=flat-square)](https://github.com/northword/zotero-format-metadata)
-[![GitHub Repo stars](https://img.shields.io/github/stars/inciteful-xyz/inciteful-zotero-plugin?label=inciteful-zotero-plugin&style=flat-square)](https://github.com/inciteful-xyz/inciteful-zotero-plugin)
-[![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/zotero-gpt?label=zotero-gpt&style=flat-square)](https://github.com/MuiseDestiny/zotero-gpt)
-[![GitHub Repo stars](https://img.shields.io/github/stars/zoushucai/zotero-journalabbr?label=zotero-journalabbr&style=flat-square)](https://github.com/zoushucai/zotero-journalabbr)
-[![GitHub Repo stars](https://img.shields.io/github/stars/MuiseDestiny/zotero-figure?label=zotero-figure&style=flat-square)](https://github.com/MuiseDestiny/zotero-figure)
-[![GitHub Repo stars](https://img.shields.io/github/stars/l0o0/jasminum?label=jasminum&style=flat-square)](https://github.com/l0o0/jasminum)
-[![GitHub Repo stars](https://img.shields.io/github/stars/lifan0127/ai-research-assistant?label=ai-research-assistant&style=flat-square)](https://github.com/lifan0127/ai-research-assistant)
+1. 设置**源路径**：浏览器、扫描软件或其他工具存放新文件的目录。
+2. 选择**附加类型**：
+   - 使用 Zotero 官方存储或 WebDAV 时选择**存储副本**。
+   - 使用 OneDrive、Dropbox、坚果云等第三方同步时选择**链接**。
+3. 使用**链接**模式时设置**靶路径**。若希望导入文件自动转换为链接附件，请保持**自动移动添加的附件**开启。
+4. 按需设置**子目录**模板。默认值 `{{collection}}` 使用条目所在的分类层级。
+5. 点击**设置重命名规则**编辑 Zotero 原生文件名模板。变量语法见 [Zotero 文件重命名文档](https://www.zotero.org/support/file_renaming)。
+6. 批量操作前检查自动化、文件类型、快捷键和源文件保留选项。
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/daeh/zotero-markdb-connect?label=zotero-markdb-connect&style=flat-square)](https://github.com/daeh/zotero-markdb-connect)
+链接附件不会由 Zotero 文件同步上传，靶目录需要使用其他工具同步或单独备份。
 
-如果你正在使用此库，我建议你将这个标志 ([![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/muisedestiny/zotero-plugin-template)) 放在 README 文件中:
+## 常用工作流
 
-```md
-[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/muisedestiny/zotero-plugin-template)
+### 附加最近下载的文件
+
+1. 将文件保存到已配置的源路径。
+2. 在 Zotero 中只选择一个普通条目。
+3. 右键选择 **Attanger > 附加新文件**，或按 `Ctrl + I`。
+
+Attanger 会选择源目录中最近修改的非隐藏文件。也可以右键一个分类并选择**附加新文件**，在该分类中创建顶级附件。除非开启**保留原文件**，成功导入后源文件会被删除。
+
+### 为多个条目匹配附件
+
+1. 将 PDF 或 CAJ 文件直接放在源路径根目录。
+2. 选择一个或多个普通 Zotero 条目。
+3. 选择 **Attanger > 匹配附件**。
+
+每个源文件最多匹配一次。Attanger 会比较条目标题与文件名，并根据**从 PDF 文件读取标题**设置选择是否读取 PDF 元数据或正文。匹配后的文件先导入 Zotero，再按自动重命名和自动移动设置处理。
+
+### 重新连接现有 Attanger 文件库
+
+当文件已经符合以下结构时，使用 **Attanger > 匹配 Attanger 附件**：
+
+```text
+源路径 / 渲染后的子目录 / Zotero 生成的文件名.扩展名
 ```
 
-## Features 特性
+Attanger 会对每个所选条目检查已配置的扩展名，并直接创建链接附件，不复制文件。
 
-- 事件驱动、函数式编程的可扩展框架；
-- 简单易用，开箱即用；
-- ⭐[新特性!]自动热重载！每当修改源码时，都会自动编译并重新加载插件；[详情请跳转→](#自动热重载)
-- `src/modules/examples.ts` 中有丰富的示例，涵盖了插件中常用的大部分API (使用的插件工具包 zotero-plugin-toolkit，仓库地址 https://github.com/muisedestiny/zotero-plugin-toolkit)；
-- TypeScript 支持:
-  - 为使用 JavaScript 编写的Zotero源码提供全面的类型定义支持 (使用类型定义包 zotero-types，仓库地址 https://github.com/muisedestiny/zotero-types)；
-  - 全局变量和环境设置；
-- 插件开发/构建/发布工作流:
-  - 自动生成/更新插件id和版本、更新配置和设置环境变量 (`development`/`production`)；
-  - 自动在 Zotero 中构建和重新加载代码；
-  - 自动发布到GitHub (使用[release-it](https://github.com/release-it/release-it));
-- 集成Prettier和ES Lint;
+### 重命名、移动或复制现有附件
 
-> [!warning]
-> Zotero本地化已升级(`dtd` 已弃用，我们将不再使用 `.properties`). 主分支将只支持 Zotero 7.0.0-beta.12 或更高版本. 如果需要支持 Zotero 6，你可能需要同时使用`dtd`、`properties` 和`ftl`. 请参考此库的 `zotero6-bootstrap` 分支.
+选择普通条目、子附件或顶级附件后，可以使用：
 
-## Examples 示例
+- **重命名附件**：应用 Zotero 文件名模板。
+- **移动附件**：将文件放入靶路径。
+- **重命名并移动附件**：连续执行两项操作。
+- **撤销移动附件**：调用 Zotero 的“链接附件转存储副本”功能。
 
-此库提供了 [zotero-plugin-toolkit](https://github.com/muisedestiny/zotero-plugin-toolkit) 中API的示例.
+开启**保留原文件**后，菜单中的“移动”会变为“复制”，源文件会被保留。移动操作只在**附加类型：链接**时执行。不同文件发生目标路径冲突时会添加后缀；目标位置已有相同文件时不会再次复制。
 
-在 `src/examples.ts` 中搜索`@example` 查看示例. 这些示例在 `src/hooks.ts` 中调用演示.
+### 在 Better BibTeX 更新后重命名
 
-### 基本示例(Basic Examples)
+文件名模板包含 Better BibTeX 引用键或其他导入后才写入的字段时：
 
-- registerNotifier
-- registerPrefs, unregisterPrefs
+1. 如果新增时重命名发生得太早，关闭**自动重命名添加的附件**。
+2. 开启**条目信息变更时自动重命名已链接附件**。
+3. 保留默认防抖时间 `1000 ms`；若元数据工具会连续更新多次，可增加延迟时间。
 
-### 快捷键示例(Shortcut Keys Examples)
+该流程只处理文件存在且类型受支持的链接附件。重复修改事件会去重，Attanger 自身保存条目也不会形成重命名循环。
 
-- registerShortcuts
-- exampleShortcutLargerCallback
-- exampleShortcutSmallerCallback
-- exampleShortcutConflictionCallback
+## 设置说明
 
-### UI示例(UI Examples)
+| 设置                     | 行为                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| 源路径                   | “附加新文件”和两种匹配功能使用的输入目录。                                            |
+| 附加类型                 | 保存为 Zotero 存储副本，或作为由靶路径管理的链接附件。                                |
+| 靶路径                   | 链接模式下移动/复制操作使用的根目录。                                                 |
+| 子目录                   | 目录元数据模板；`{{collection}}` 使用分类路径。                                       |
+| 将 `/` 解析为子目录      | 保留模板变量产生的斜杠层级。                                                          |
+| 自动重命名添加的附件     | Zotero 全局的新增附件自动重命名设置。                                                 |
+| 条目信息变更时自动重命名 | 可选的编辑后重命名流程，防抖和延迟单位均为毫秒。                                      |
+| 自动移动添加的附件       | 在链接模式下将新导入附件转换为链接附件；已有链接附件不会再次自动移动。                |
+| 自动删除空目录           | 只清理 Zotero 存储目录、源路径或靶路径范围内的空目录。                                |
+| 保留原文件               | 将移动变为复制，并禁止清理源文件。                                                    |
+| 同步附件标题             | 文件重命名后同步修改 Zotero 中的附件标题。                                            |
+| 附件类型                 | 不带点号的英文逗号分隔扩展名。默认：`pdf,doc,docx,txt,rtf,djvu,epub`。                |
+| 文件名规则               | 用英文逗号分隔的正则表达式，可用于保留原文件名前缀、跳过重命名或跳过自动移动/重命名。 |
 
-![image](https://user-images.githubusercontent.com/33902321/211739774-cc5c2df8-5fd9-42f0-9cdf-0f2e5946d427.png)
+无效的正则表达式会被忽略并写入调试日志，不会中断附件处理。
 
-- registerStyleSheet(the official make-it-red example)
-- registerRightClickMenuItem
-- registerRightClickMenuPopup
-- registerWindowMenuWithSeprator
-- registerExtraColumn
-- registerExtraColumnWithCustomCell
-- registerCustomItemBoxRow
-- registerLibraryTabPanel
-- registerReaderTabPanel
+## 快捷键
 
-### 首选项面板示例(Preference Pane Examples)
+快捷键可以在 Attanger 设置中编辑，修改后立即生效。
 
-![image](https://user-images.githubusercontent.com/33902321/211737987-cd7c5c87-9177-4159-b975-dc67690d0490.png)
+| 操作              | 默认值             | 默认启用 |
+| ----------------- | ------------------ | -------- |
+| 附加新文件        | `Ctrl + I`         | 是       |
+| 匹配附件          | `Ctrl + M`         | 是       |
+| 重命名附件        | `Ctrl + R`         | 否       |
+| 重命名并移动/复制 | `Ctrl + Shift + R` | 否       |
+| 移动/复制附件     | `Ctrl + Shift + M` | 否       |
 
-- Preferences bindings
-- UI Events
-- Table
-- Locale
+## 截图与教程
 
-详情参见 [`src/modules/preferenceScript.ts`](./src/modules/preferenceScript.ts)
+<img width="300" alt="Attanger 设置" src="https://github.com/user-attachments/assets/3125e608-7891-4afa-91f5-be8120a98988">
+<img width="300" alt="Attanger 条目菜单" src="https://github.com/user-attachments/assets/9414737c-5d3d-43f3-83be-cf39d8f9c2b7">
+<img width="300" alt="Attanger 工作流" src="https://github.com/user-attachments/assets/9c2ff395-66a1-4f1e-8e6a-7c90c3bc4121">
 
-### 帮助示例(HelperExamples)
+- [中文视频演示](https://www.bilibili.com/video/BV1x64y1J7Rv)
+- [法语社区教程](https://docs.zotero-fr.org/kbfr/kbfr_attanger_zotmoov/)
 
-![image](https://user-images.githubusercontent.com/33902321/215119473-e7d0d0ef-6d96-437e-b989-4805ffcde6cf.png)
+## 欢迎贡献
 
-- dialogExample
-- clipboardExample
-- filePickerExample
-- progressWindowExample
-- vtableExample(See Preference Pane Examples)
+欢迎提交问题修复、新功能、测试、文档和翻译。范围清晰、改动集中的 PR 更容易审查和安全发布。
 
-### 指令行示例(PromptExamples)
+报告 Bug 时，请提供 Zotero 与 Attanger 版本、操作系统、附加类型、相关设置、完整复现步骤和调试输出。发布日志前请删除私人文献数据和本地路径。
 
-Obsidian风格的指令输入模块，它通过接受文本来运行插件，并在弹出窗口中显示可选项.
+本地开发：
 
-使用 `Shift+P` 激活.
-
-![image](https://user-images.githubusercontent.com/33902321/215120009-e7c7ed27-33a0-44fe-b021-06c272481a92.png)
-
-- registerAlertPromptExample
-
-## Quick Start Guide 快速入门指南
-
-### 0 前置要求(Requirement)
-
-1. 安装测试版 Zotero：https://www.zotero.org/support/beta_builds
-2. 安装 Node.js（https://nodejs.org/en/）和 Git（https://git-scm.com/）
-
-> [!note]
-> 本指南假定你已经对 Zotero 插件的基本结构和工作原理有初步的了解. 如果你还不了解，请先参考官方文档（https://www.zotero.org/support/dev/zotero_7_for_developers）和官方插件样例 Make It Red（仓库地址 https://github.com/zotero/make-it-red）.
-
-### 1 创建你的仓库(Create Your Repo)
-
-1. 点击 `Use this template`；
-2. 使用 `git clone` 克隆上一步生成的仓库；
-   <details >
-   <summary>💡 从 GitHub Codespace 开始</summary>
-
-   _GitHub CodeSpace_ 使你可以直接开始开发而无需在本地下载代码/IDE/依赖.
-
-   重复下列步骤，仅需三十秒即可开始构建你的第一个插件！
-
-   - 去 [homepage](https://github.com/muisedestiny/zotero-plugin-template)顶部，点击绿色按钮`Use this template`，点击 `Open in codespace`， 你需要登录你的GitHub账号.
-   - 等待 codespace 加载.
-
-   </details>
-
-3. 进入项目文件夹；
-
-### 2 配置模板和开发环境(Config Template Settings and Enviroment)
-
-1. 修改 `./package.json` 中的设置，包括：
-
-   ```json5
-   {
-     version: "", // to 0.0.0
-     author: "",
-     description: "",
-     homepage: "",
-     config: {
-       addonName: "", // name to be displayed in the plugin manager
-       addonID: "", // ID to avoid conflict. IMPORTANT!
-       addonRef: "", // e.g. Element ID prefix
-       addonInstance: "", // the plugin's root instance: Zotero.${addonInstance}
-       prefsPrefix: "extensions.zotero.${addonRef}", // the prefix of prefs
-       releasePage: "", // URL to releases
-       updateJSON: "", // URL to update.json
-     },
-   }
-   ```
-
-   > [!warning]
-   > 注意设置 addonID 和 addonRef 以避免冲突.
-
-如果你需要在GitHub以外的地方托管你的 XPI 包，请删除 `releasePage` 并添加 `updateLink`，并将值设置为你的 XPI 下载地址.
-
-2. 复制 Zotero 启动配置，填入 Zotero 可执行文件路径和 profile 路径.
-
-   > (可选项) 此操作仅需执行一次: 使用 `/path/to/zotero -p` 启动 Zotero，创建一个新的配置文件并用作开发配置文件.
-   > 将配置文件的路径 `profilePath` 放入 `zotero-cmd.json` 中，以指定要使用的配置文件.
-
-   ```sh
-   cp ./scripts/zotero-cmd-template.json ./scripts/zotero-cmd.json
-   vim ./scripts/zotero-cmd.json
-   ```
-
-3. 运行 `npm install` 以安装相关依赖
-
-   > 如果你使用 `pnpm` 作为包管理器，你需要添加 `public-hoist-pattern[]=*@types/bluebird*` 到`.npmrc`, 详情请查看 zotero-types（https://github.com/muisedestiny/zotero-types?tab=readme-ov-file#usage）的文档.
-
-### 3 开始开发(Coding)
-
-使用 `npm start` 启动开发服务器，它将：
-
-- 在开发模式下预构建插件
-- 启动 Zotero ，并让其从 `build/` 中加载插件
-- 打开开发者工具（devtool）
-- 监听 `src/**` 和 `addon/**`.
-  - 如果 `src/**` 修改了，运行 esbuild 并且重新加载
-  - 如果 `addon/**` 修改了，(在开发模式下)重新构建插件并且重新加载
-
-#### 自动热重载
-
-厌倦了无休止的重启吗？忘掉它，拥抱热加载！
-
-1. 运行 `npm start`.
-2. 编码. (是的，就这么简单)
-
-当检测到 `src` 或 `addon` 中的文件修改时，插件将自动编译并重新加载.
-
-<details style="text-indent: 2em">
-<summary>💡 将此功能添加到现有插件的步骤</summary>
-
-1. 复制 `scripts/**.mjs`
-2. 复制 `server` 、`build` 和 `stop` 命令到 `package.json`
-3. 运行 `npm install --save-dev chokidar`
-4. 结束.
-
-</details>
-
-#### 在 Zotero 中 Debug
-
-你还可以:
-
-- 在 Tools->Developer->Run Javascript 中测试代码片段;
-
-- 使用 `Zotero.debug()` 调试输出. 在 Help->Debug Output Logging->View Output 查看输出;
-
-- 调试 UI. Zotero 建立在 Firefox XUL 框架之上. 使用 [XUL Explorer](https://udn.realityripple.com/docs/Archive/Mozilla/XUL_Explorer) 等软件调试 XUL UI.
-
-  > XUL 文档: <http://www.devdoc.net/web/developer.mozilla.org/en-US/docs/XUL.html>
-
-### 4 构建(Build)
-
-运行 `npm run build` 在生产模式下构建插件，构建的结果位于 `build/` 目录中.
-
-`scripts/build.mjs` 的运行步骤:
-
-- 创建/清空 `build/`
-- 复制 `addon/**` 到 `build/addon/**`
-- 替换占位符：使用 `replace-in-file` 去替换在 `package.json` 中定义的关键字和配置 (`xhtml`、`.flt` 等)
-- 准备本地化文件以避免冲突，查看官方文档了解更多（https://www.zotero.org/support/dev/zotero_7_for_developers#avoiding_localization_conflicts）
-  - 重命名`**/*.flt` 为 `**/${addonRef}-*.flt`
-  - 在每个消息前加上 `addonRef-`
-- 使用 Esbuild 来将 `.ts` 源码构建为 `.js`，从 `src/index.ts` 构建到`./build/addon/chrome/content/scripts`
-- (仅在生产模式下工作) 压缩 `./build/addon` 目录为 `./build/*.xpi`
-- (仅在生产模式下工作) 准备 `update.json` 或 `update-beta.json`
-
-> [!note]
->
-> **Dev & prod 两者有什么区别?**
->
-> - 此环境变量存储在 `Zotero.${addonInstance}.data.env` 中，控制台输出在生产模式下被禁用.
-> - 你可以根据此变量决定用户无法查看/使用的内容.
-> - 在生产模式下，构建脚本将自动打包插件并更新 `update.json`.
-
-### 5 发布(Release)
-
-如果要构建和发布插件，运行如下指令：
-
-```shell
-# A release-it command: version increase, npm run build, git push, and GitHub release
-# release-it: https://github.com/release-it/release-it
-npm run release
+```bash
+git clone https://github.com/MuiseDestiny/zotero-attanger.git
+cd zotero-attanger
+npm install
+cp scripts/zotero-cmd-template.json scripts/zotero-cmd.json
+# 编辑 scripts/zotero-cmd.json，使用专门的 Zotero 测试 Profile
+npm start
 ```
 
-> [!note]
-> 在此模板中，release-it 被配置为在本地升级版本、构建、推送提交和 git 标签，随后GitHub Action 将重新构建插件并将 XPI 发布到 GitHub Release.
->
-> 如果你需要发布一个本地构建的 XPI，将 `package.json` 中的 `release-it.github.release` 设置为 `true`，然后移除 `.github/workflows/release.yml`. 此外，你还需要设置环境变量 `GITHUB_TOKEN`，获取 GitHub Token（https://github.com/settings/tokens）.
+提交 PR 前运行：
 
-#### 关于预发布
-
-该模板将 `prerelease` 定义为插件的测试版，当你在 release-it 中选择 `prerelease` 版本 (版本号中带有 `-` )，构建脚本将创建一个 `update-beta.json` 给预发布版本使用，这将确保常规版本的用户不会自动更新到测试版，只有手动下载并安装了测试版的用户才能自动更新到下一个测试版. 当下一个正式版本更新时，脚本将同步更新 `update.json` 和 `update-beta.json`，这将使正式版和测试版用户都可以更新到最新的正式版.
-
-> [!warning]
-> 严格来说，区分 Zotero 6 和 Zotero 7 兼容的插件版本应该通过 `update.json` 的 `addons.__addonID__.updates[]` 中分别配置 `applications.zotero.strict_min_version`，这样 Zotero 才能正确识别，详情在 Zotero 7 开发文档（https://www.zotero.org/support/dev/zotero_7_for_developers#updaterdf_updatesjson）获取.
-
-## Details 更多细节
-
-### 关于Hooks(About Hooks)
-
-> 可以在 [`src/hooks.ts`](https://github.com/muisedestiny/zotero-plugin-template/blob/main/src/hooks.ts) 中查看更多
-
-1. 当在 Zotero 中触发安装/启用/启动时，`bootstrap.js` > `startup` 被调用
-   - 等待 Zotero 就绪
-   - 加载 `index.js` (插件代码的主入口，从 `index.ts` 中构建)
-   - 如果是 Zotero 7 以上的版本则注册资源
-2. 主入口 `index.js` 中，插件对象被注入到 `Zotero` ，并且 `hooks.ts` > `onStartup` 被调用.
-   - 初始化插件需要的资源，包括通知监听器、首选项面板和UI元素.
-3. 当在 Zotero 中触发卸载/禁用时，`bootstrap.js` > `shutdown` 被调用.
-   - `events.ts` > `onShutdown` 被调用. 移除 UI 元素、首选项面板或插件创建的任何内容.
-   - 移除脚本并释放资源.
-
-### 关于全局变量(About Global Variables)
-
-> 可以在 [`src/index.ts`](https://github.com/muisedestiny/zotero-plugin-template/blob/main/src/index.ts)中查看更多
-
-bootstrap插件在沙盒中运行，但沙盒中没有默认的全局变量，例如 `Zotero` 或 `window` 等我们曾在overlay插件环境中使用的变量.
-
-此模板将以下变量注册到全局范围:
-
-```ts
-Zotero, ZoteroPane, Zotero_Tabs, window, document, rootURI, ztoolkit, addon;
+```bash
+npm run build
+# 对本次修改的 TypeScript 文件运行 ESLint，例如：
+npx eslint src/modules/menu.ts
 ```
 
-### 创建元素 API(Create Elements API)
+生产 XPI 位于 `build/zotero-attanger.xpi`。开发服务器会热重载 `src/` 和 `addon/` 中的修改。
 
-插件模板为 bootstrap 插件提供了一些新的API. 我们有两个原因使用这些 API，而不是使用 `createElement/createElementNS`：
+### 欢迎使用 AI 辅助贡献
 
-- 在 bootstrap 模式下，插件必须在推出（禁用或卸载）时清理所有 UI 元素，这非常麻烦. 使用 `createElement`，插件模板将维护这些元素. 仅仅在退出时 `unregisterAll` .
-- Zotero 7 需要 createElement()/createElementNS() → createXULElement() 来表示其他的 XUL 元素，而 Zotero 6 并不支持 `createXULElement`. 类似于 React.createElement 的API `createElement` 检测 namespace(xul/html/svg) 并且自动创建元素，返回元素为对应的 TypeScript 元素类型.
+可以使用 AI 工具辅助实现、排错、测试、写文档或翻译。使用 AI 本身不会成为拒绝贡献的理由，但提交者仍需对最终结果负责：
 
-```ts
-createElement(document, "div"); // returns HTMLDivElement
-createElement(document, "hbox"); // returns XUL.Box
-createElement(document, "button", { namespace: "xul" }); // manually set namespace. returns XUL.Button
-```
+- 提交前审查并理解生成的修改。
+- 实际测试受影响的工作流，并说明验证过哪些内容。
+- 保持改动范围集中，不要混入无关的大规模生成式重写。
+- 未经允许，不要把私人文献库、日志、凭据或受版权保护的文档发送给 AI 服务。
+- 确认生成代码和资源符合本项目许可证与依赖策略。
+- 当 AI 对实现或验证有实质影响时，在 PR 中简要说明，方便审查者理解修改过程。
 
-### 关于 Zotero API(About Zotero API)
+插件界面翻译位于 `addon/locale/`，用户文档翻译位于 `doc/`。修改时请保持不同语言的键和值含义一致。
 
-Zotero 文档已过时且不完整，克隆 https://github.com/zotero/zotero 并全局搜索关键字.
+## 许可证与致谢
 
-> ⭐[zotero-types](https://github.com/muisedestiny/zotero-types) 提供了最常用的 Zotero API，在默认情况下它被包含在此模板中. 你的 IDE 将为大多数的 API 提供提醒.
-
-猜你需要：查找所需 API的技巧
-
-在 `.xhtml`/`.flt` 文件中搜索 UI 标签，然后在 locale 文件中找到对应的键. ，然后在 `.js`/`.jsx` 文件中搜索此键.
-
-### 目录结构(Directory Structure)
-
-本部分展示了模板的目录结构.
-
-- 所有的 `.js/.ts` 代码都在 `./src`;
-- 插件配置文件：`./addon/manifest.json`;
-- UI 文件: `./addon/chrome/content/*.xhtml`.
-- 区域设置文件: `./addon/locale/**/*.flt`;
-- 首选项文件: `./addon/prefs.js`;
-  > 不要在 `prefs.js` 中换行
-
-```shell
-.
-|-- .eslintrc.json            # eslint conf
-|-- .gitattributes            # git conf
-|-- .github/                  # github conf
-|-- .gitignore                # git conf
-|-- .prettierrc               # prettier conf
-|-- .release-it.json          # release-it conf
-|-- .vscode                   # vs code conf
-|   |-- extensions.json
-|   |-- launch.json
-|   |-- setting.json
-|   `-- toolkit.code-snippets
-|-- package-lock.json         # npm conf
-|-- package.json              # npm conf
-|-- LICENSE
-|-- README.md
-|-- addon
-|   |-- bootstrap.js               # addon load/unload script, like a main.c
-|   |-- chrome
-|   |   `-- content
-|   |       |-- icons/
-|   |       |-- preferences.xhtml  # preference panel
-|   |       `-- zoteroPane.css
-|   |-- locale                     # locale
-|   |   |-- en-US
-|   |   |   |-- addon.ftl
-|   |   |   `-- preferences.ftl
-|   |   `-- zh-CN
-|   |       |-- addon.ftl
-|   |       `-- preferences.ftl
-|   |-- manifest.json              # addon config
-|   `-- prefs.js
-|-- build/                         # build dir
-|-- scripts                        # scripts for dev
-|   |-- build.mjs                      # script to build plugin
-|   |-- scripts.mjs                    # scripts send to Zotero, such as reload, openDevTool, etc
-|   |-- server.mjs                     # script to start a development server
-|   |-- start.mjs                      # script to start Zotero process
-|   |-- stop.mjs                       # script to kill Zotero process
-|   |-- utils.mjs                      # utils functions for dev scripts
-|   |-- update-template.json      # template of `update.json`
-|   `-- zotero-cmd-template.json  # template of local env
-|-- src                           # source code
-|   |-- addon.ts                  # base class
-|   |-- hooks.ts                  # lifecycle hooks
-|   |-- index.ts                  # main entry
-|   |-- modules                   # sub modules
-|   |   |-- examples.ts
-|   |   `-- preferenceScript.ts
-|   `-- utils                     # utilities
-|       |-- locale.ts
-|       |-- prefs.ts
-|       |-- wait.ts
-|       `-- window.ts
-|-- tsconfig.json                 # https://code.visualstudio.com/docs/languages/jsconfig
-|-- typings                       # ts typings
-|   `-- global.d.ts
-`-- update.json
-```
-
-## Disclaimer 免责声明
-
-在 AGPL 下使用此代码. 不提供任何保证. 遵守你所在地区的法律！
-
-如果你想更改许可，请通过 <wyzlshx@foxmail.com> 与我联系.
+Zotero Attanger 使用 [AGPL-3.0-or-later](../LICENSE) 许可证。附件工作流大量参考了 ZotFile，并基于 [Zotero Plugin Template](https://github.com/windingwind/zotero-plugin-template) 和 [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit) 构建。

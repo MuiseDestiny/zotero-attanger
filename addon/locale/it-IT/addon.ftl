@@ -11,3 +11,6 @@ undo-copy-attachment = Annulla la copia allegato
 restore-pdf-annotation = Ripristina annotazione PDF
 open-using = Apri con
 choose-other-app = Scegli altra app
+dir-not-set-destDir = Cartella di destinazione non impostata. Selezionarla nelle preferenze di Attanger.
+dir-not-set-sourceDir = Cartella sorgente non impostata. Selezionarla nelle preferenze di Attanger.
+rename-linked-attachment-error = Impossibile rinominare l'allegato collegato: { $title }

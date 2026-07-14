@@ -13,6 +13,10 @@ export async function registerPrefsScripts(_window: Window) {
   }
   ensureStringPref("filenameSkipRenameRules");
   ensureStringPref("filenameSkipAutoMoveRenameRules");
+  ensureBooleanPref("autoRenameOnModifyDebounceEnabled", true);
+  ensureNumberPref("autoRenameOnModifyDebounceMs", 1000);
+  ensureBooleanPref("autoRenameOnModifyDelayEnabled", false);
+  ensureNumberPref("autoRenameOnModifyDelayMs", 0);
   updatePrefsUI();
   bindPrefEvents(_window);
 }
@@ -24,6 +28,41 @@ async function updatePrefsUI() {
     destSettingBox.style.opacity = ".6";
   } else {
     destSettingBox.style.opacity = "1";
+  }
+  const autoRenameOnModify = Boolean(getPref("autoRenameOnModify"));
+  const autoRenameOptions = doc.querySelector(
+    "#auto-rename-on-modify-options",
+  ) as HTMLElement | null;
+  if (autoRenameOptions) {
+    autoRenameOptions.hidden = !autoRenameOnModify;
+  }
+  const timedSettings = [
+    {
+      id: "auto-rename-on-modify-debounce",
+      enabledKey: "autoRenameOnModifyDebounceEnabled",
+      valueKey: "autoRenameOnModifyDebounceMs",
+      fallback: 1000,
+    },
+    {
+      id: "auto-rename-on-modify-delay",
+      enabledKey: "autoRenameOnModifyDelayEnabled",
+      valueKey: "autoRenameOnModifyDelayMs",
+      fallback: 0,
+    },
+  ];
+  for (const setting of timedSettings) {
+    const checkbox = doc.querySelector(`#${setting.id}`) as XUL.Checkbox;
+    const input = doc.querySelector(`#${setting.id}-ms`) as HTMLInputElement;
+    if (checkbox) {
+      checkbox.checked = Boolean(getPref(setting.enabledKey));
+    }
+    if (input) {
+      input.value = `${getNonNegativeIntegerPref(
+        setting.valueKey,
+        setting.fallback,
+      )}`;
+      input.disabled = !checkbox?.checked;
+    }
   }
   updateShortcutRows();
 }
@@ -55,13 +94,47 @@ function ensureStringPref(key: string) {
   }
 }
 
+function ensureBooleanPref(key: string, fallback: boolean) {
+  if (typeof getPref(key) !== "boolean") {
+    setPref(key, fallback);
+  }
+}
+
+function normalizeNonNegativeInteger(value: unknown, fallback: number) {
+  const parsed =
+    typeof value === "number" ? value : Number.parseInt(`${value ?? ""}`, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
+}
+
+function getNonNegativeIntegerPref(key: string, fallback: number) {
+  return normalizeNonNegativeInteger(getPref(key), fallback);
+}
+
+function ensureNumberPref(key: string, fallback: number) {
+  setPref(key, getNonNegativeIntegerPref(key, fallback));
+}
+
+function bindNumberPrefInput(
+  selector: string,
+  key: string,
+  fallback: number,
+  doc: Document,
+) {
+  const inputNode = doc.querySelector(selector) as HTMLInputElement | null;
+  inputNode?.addEventListener("change", () => {
+    const normalized = normalizeNonNegativeInteger(inputNode.value, fallback);
+    inputNode.value = `${normalized}`;
+    setPref(key, normalized);
+  });
+}
+
 function bindPrefEvents(_window: Window) {
   // 选择源目录
   const doc = addon.data.prefs!.window.document;
   doc
     .querySelector("#file-renaming-button")
     ?.addEventListener("command", () => {
-      // @ts-ignore
+      // @ts-ignore Zotero exposes this preferences controller at runtime.
       _window.Zotero_Preferences.General.openFileRenamingDialog()
     })
   doc
@@ -109,6 +182,39 @@ function bindPrefEvents(_window: Window) {
   doc.querySelector("#attach-type")?.addEventListener("command", async () => {
     await updatePrefsUI();
   });
+  const autoRenameOnModifyCheckbox = doc.querySelector(
+    "#auto-rename-on-modify",
+  ) as XUL.Checkbox | null;
+  autoRenameOnModifyCheckbox?.addEventListener("command", async () => {
+    setPref("autoRenameOnModify", autoRenameOnModifyCheckbox.checked);
+    await updatePrefsUI();
+  });
+  doc
+    .querySelectorAll(
+      "#auto-rename-on-modify-debounce, #auto-rename-on-modify-delay",
+    )
+    // @ts-ignore forEach
+    .forEach((checkbox: XUL.Checkbox) => {
+      checkbox.addEventListener("command", async () => {
+        const enabledKey = checkbox.id.endsWith("-debounce")
+          ? "autoRenameOnModifyDebounceEnabled"
+          : "autoRenameOnModifyDelayEnabled";
+        setPref(enabledKey, checkbox.checked);
+        await updatePrefsUI();
+      });
+    });
+  bindNumberPrefInput(
+    "#auto-rename-on-modify-debounce-ms",
+    "autoRenameOnModifyDebounceMs",
+    1000,
+    doc,
+  );
+  bindNumberPrefInput(
+    "#auto-rename-on-modify-delay-ms",
+    "autoRenameOnModifyDelayMs",
+    0,
+    doc,
+  );
   doc
     .querySelector('[preference$=".moveWithoutDeleting"]')
     ?.addEventListener("command", () => {
