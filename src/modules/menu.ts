@@ -1238,6 +1238,7 @@ async function renameFileInternal(attItem: Zotero.Item, retry = 0) {
   let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, {
     attachmentTitle: attItem.getField("title") as string,
   } as any);
+  newName = removeFilenameDiacritics(newName);
 
   const ext = origFilename.match(filenameExtRE);
   if (ext) {
@@ -1302,6 +1303,17 @@ function shouldSyncAttachmentTitle(
     return true;
   }
   return title === "PDF" && attItem.attachmentContentType === "application/pdf";
+}
+
+function removeFilenameDiacritics(filename: string) {
+  if (!getPref("removeDiacritics")) return filename;
+  const utilities = Zotero.Utilities as {
+    removeDiacritics?: (value: string) => string;
+  };
+  if (typeof utilities.removeDiacritics !== "function") {
+    return filename;
+  }
+  return utilities.removeDiacritics(filename);
 }
 
 /**

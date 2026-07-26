@@ -154,6 +154,31 @@ test("invalid filename rules are logged and do not abort modify renaming", async
   menu.dispose();
 });
 
+test("removeDiacritics converts base names before renaming", async () => {
+  harness = createHarness({
+    baseName: "résumé étude",
+    prefs: {
+      autoRenameOnModify: true,
+      autoRenameOnModifyDebounceMs: 0,
+      removeDiacritics: true,
+    },
+  });
+  const parent = createRegularItem(harness, { id: 32 });
+  const attachment = createAttachment(harness, {
+    id: 33,
+    mode: "linked",
+    parent,
+    path: "/library/old.pdf",
+  });
+  const menu = new harness.module.default();
+
+  await harness.notify("modify", [parent.id]);
+  await harness.clock.runAll();
+
+  assert.deepEqual(attachment.calls.rename, ["resume etude.pdf"]);
+  menu.dispose();
+});
+
 test("add processing deduplicates a parent and its directly-notified attachment", async () => {
   harness = createHarness();
   const parent = createRegularItem(harness, { id: 40 });
