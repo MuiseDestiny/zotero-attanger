@@ -54,3 +54,4 @@ pref("extensions.zotero.__addonRef__.autoRemoveEmptyFolder", false);
 
 pref("extensions.zotero.__addonRef__.moveWithoutDeleting", false);
 pref("extensions.zotero.__addonRef__.syncAttachmentTitle", false);
+pref("extensions.zotero.__addonRef__.removeDiacritics", false);

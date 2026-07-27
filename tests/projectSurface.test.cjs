@@ -21,6 +21,7 @@ test("auto-rename preferences have defaults and checkbox controls", () => {
   assert.match(prefs, /autoRenameOnModifyDebounceMs", 1000/);
   assert.match(prefs, /autoRenameOnModifyDelayEnabled", false/);
   assert.match(prefs, /autoRenameOnModifyDelayMs", 0/);
+  assert.match(prefs, /removeDiacritics", false/);
   assert.match(preferences, /id="auto-rename-on-modify"/);
   assert.match(
     preferences,
@@ -68,6 +69,7 @@ test("new automation locale keys exist in all supported locales", () => {
     "auto-rename-on-modify",
     "auto-rename-on-modify-debounce",
     "auto-rename-on-modify-delay",
+    "remove-diacritics",
   ];
   const helpKeys = [
     "auto-rename-on-modify-help",

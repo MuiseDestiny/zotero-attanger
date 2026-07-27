@@ -82,3 +82,5 @@ move-attachment-shortcut =
     .label = Shortcut for Move/Copy Attachment
 sync-attachment-title = 
     .label = Sincronizza il titolo dell'allegato dopo la rinominazione
+remove-diacritics =
+    .label = Rimuovi i caratteri speciali (diacritici) dal nome file
