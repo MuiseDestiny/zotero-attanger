@@ -154,12 +154,16 @@ test("invalid filename rules are logged and do not abort modify renaming", async
   menu.dispose();
 });
 
-test("removeDiacritics converts base names before renaming", async () => {
+test("removeDiacritics converts the final base name after prefix rules", async () => {
+  const acute = "\u0301";
   harness = createHarness({
-    baseName: "résumé étude",
+    baseName: `re${acute}sume${acute} e${acute}tude`,
+    // Zotero's utility maps precomposed characters but does not normalize NFD.
+    removeDiacritics: (value) => value.replace(/é/g, "e"),
     prefs: {
       autoRenameOnModify: true,
       autoRenameOnModifyDebounceMs: 0,
+      filenameAsPrefixRules: `^pre${acute}print$`,
       removeDiacritics: true,
     },
   });
@@ -168,14 +172,14 @@ test("removeDiacritics converts base names before renaming", async () => {
     id: 33,
     mode: "linked",
     parent,
-    path: "/library/old.pdf",
+    path: `/library/pre${acute}print.pdf`,
   });
   const menu = new harness.module.default();
 
   await harness.notify("modify", [parent.id]);
   await harness.clock.runAll();
 
-  assert.deepEqual(attachment.calls.rename, ["resume etude.pdf"]);
+  assert.deepEqual(attachment.calls.rename, ["preprint_resume etude.pdf"]);
   menu.dispose();
 });
 

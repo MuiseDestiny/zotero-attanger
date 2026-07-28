@@ -84,4 +84,4 @@ move-attachment-shortcut =
 sync-attachment-title = 
     .label = Sync attachment title after renaming
 remove-diacritics =
-    .label = Remove special characters (diacritics) from filename
+    .label = Remove diacritics from filenames

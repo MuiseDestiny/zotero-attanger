@@ -1238,12 +1238,8 @@ async function renameFileInternal(attItem: Zotero.Item, retry = 0) {
   let newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, {
     attachmentTitle: attItem.getField("title") as string,
   } as any);
-  newName = removeFilenameDiacritics(newName);
 
   const ext = origFilename.match(filenameExtRE);
-  if (ext) {
-    newName = newName + ext[0];
-  }
   // fix https://github.com/MuiseDestiny/zotero-attanger/issues/263
   const origFilenameNoExt = origFilename.replace(filenameExtRE, "");
   if (isFilenameMatched("filenameSkipRenameRules", origFilenameNoExt)) {
@@ -1251,6 +1247,10 @@ async function renameFileInternal(attItem: Zotero.Item, retry = 0) {
   }
   if (isFilenameMatched("filenameAsPrefixRules", origFilenameNoExt)) {
     newName = origFilenameNoExt + "_" + newName;
+  }
+  newName = removeFilenameDiacritics(newName);
+  if (ext) {
+    newName += ext[0];
   }
   const origTitle = attItem.getField("title") as string;
   const shouldUpdateTitle =
@@ -1313,7 +1313,7 @@ function removeFilenameDiacritics(filename: string) {
   if (typeof utilities.removeDiacritics !== "function") {
     return filename;
   }
-  return utilities.removeDiacritics(filename);
+  return utilities.removeDiacritics(filename.normalize("NFC"));
 }
 
 /**

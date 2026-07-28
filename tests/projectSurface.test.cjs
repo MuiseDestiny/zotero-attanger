@@ -117,18 +117,19 @@ test("new automation locale keys exist in all supported locales", () => {
   }
 });
 
-test("all README translations link to each other and document BBT and AI contributions", () => {
+test("all README translations link to each other and document current features", () => {
   const docs = [
-    "README.md",
-    "doc/README-zhCN.md",
-    "doc/README-de.md",
-    "doc/README-itIT.md",
+    ["README.md", /diacritics/i],
+    ["doc/README-zhCN.md", /重音符号/],
+    ["doc/README-de.md", /diakritische Zeichen/i],
+    ["doc/README-itIT.md", /segni diacritici/i],
   ];
 
-  for (const relativeFile of docs) {
+  for (const [relativeFile, diacriticsPattern] of docs) {
     const source = fs.readFileSync(path.join(root, relativeFile), "utf8");
     assert.match(source, /Better[ -]BibTeX/i);
     assert.match(source, /(AI|KI|IA)/);
+    assert.match(source, diacriticsPattern);
     assert.match(source, /English/);
     assert.match(source, /简体中文/);
     assert.match(source, /Deutsch/);

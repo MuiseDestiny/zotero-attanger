@@ -435,8 +435,9 @@ function createHarness(options = {}) {
         md5: (file) =>
           options.md5 ? options.md5(file.path) : `md5:${file.path}`,
       },
-      removeDiacritics: (value) =>
-        value.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+      removeDiacritics:
+        options.removeDiacritics ||
+        ((value) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")),
     },
     getMainWindows: () => [],
     getStorageDirectory: () => ({ path: "/storage" }),

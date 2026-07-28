@@ -83,4 +83,4 @@ move-attachment-shortcut =
 sync-attachment-title = 
     .label = 重命名后同步修改附件标题
 remove-diacritics =
-    .label = 从文件名中移除特殊字符（重音符号）
+    .label = 移除文件名中的重音符号

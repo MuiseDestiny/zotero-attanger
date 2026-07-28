@@ -83,4 +83,4 @@ move-attachment-shortcut =
 sync-attachment-title = 
     .label = Anhangtitel nach Umbenennung synchronisieren
 remove-diacritics =
-    .label = Sonderzeichen (Diakritika) aus Dateinamen entfernen
+    .label = Diakritische Zeichen aus Dateinamen entfernen
