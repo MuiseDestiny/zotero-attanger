@@ -93,7 +93,7 @@ the [settings reference](#settings-reference).
 ### Work Mode
 
 <p>
-  <img src="doc/images/settings-work-mode.png" width="560" alt="Work Mode with Zotero Storage Only selected">
+  <img src="doc/images/en/settings-work-mode.png" width="560" alt="Work Mode with Zotero Storage Only selected">
 </p>
 
 | Mode                               | Behavior                                                                                                 | Directory                  |
@@ -111,8 +111,8 @@ directory outside Zotero storage**, or **Directory is not writable; choose
 another**.
 
 <p>
-  <img src="doc/images/settings-external-links.png" width="380" alt="External Links settings">
-  <img src="doc/images/settings-external-copy.png" width="380" alt="Zotero Storage + External Copy settings">
+  <img src="doc/images/en/settings-external-links.png" width="380" alt="External Links settings">
+  <img src="doc/images/en/settings-external-copy.png" width="380" alt="Zotero Storage + External Copy settings">
 </p>
 
 **Link Options** (External Links only):
@@ -149,7 +149,7 @@ removed.
 ### Attachment Names and Folders
 
 <p>
-  <img src="doc/images/settings-names-folders.png" width="560" alt="Attachment Names and Folders with a custom subfolder template">
+  <img src="doc/images/en/settings-names-folders.png" width="560" alt="Attachment Names and Folders with a custom subfolder template">
 </p>
 
 - **Automatically rename added attachments**: the same switch as Zotero's own
@@ -189,7 +189,7 @@ How subfolder templates are rendered:
 ### Download Folder
 
 <p>
-  <img src="doc/images/settings-download-folder.png" width="560" alt="Download Folder section">
+  <img src="doc/images/en/settings-download-folder.png" width="560" alt="Download Folder section">
 </p>
 
 The download folders are used by **Attach New File**, **Match Attachment**,
@@ -210,7 +210,7 @@ and **Match Attanger Attachment**. Ordinary imports work without them.
 ### Automatic Processing
 
 <p>
-  <img src="doc/images/settings-automatic-processing.png" width="560" alt="Automatic Processing section">
+  <img src="doc/images/en/settings-automatic-processing.png" width="560" alt="Automatic Processing section">
 </p>
 
 - **Recognize standalone imported PDFs** (on by default): a PDF imported

@@ -104,7 +104,7 @@ die Standardwerte stehen in der [Einstellungsreferenz](#einstellungsreferenz).
 ### Arbeitsmodus
 
 <p>
-  <img src="images/settings-work-mode.png" width="560" alt="Arbeitsmodus mit Nur Zotero-Speicher">
+  <img src="images/en/settings-work-mode.png" width="560" alt="Arbeitsmodus mit Nur Zotero-Speicher">
 </p>
 
 | Modus                               | Verhalten                                                                                                          | Verzeichnis             |
@@ -123,8 +123,8 @@ auswählen**, **Verzeichnis außerhalb des Zotero-Speichers wählen** oder
 **Verzeichnis ist schreibgeschützt; bitte ein anderes wählen**.
 
 <p>
-  <img src="images/settings-external-links.png" width="380" alt="Einstellungen für Externe Links">
-  <img src="images/settings-external-copy.png" width="380" alt="Einstellungen für Zotero-Speicher + externe Kopie">
+  <img src="images/en/settings-external-links.png" width="380" alt="Einstellungen für Externe Links">
+  <img src="images/en/settings-external-copy.png" width="380" alt="Einstellungen für Zotero-Speicher + externe Kopie">
 </p>
 
 **Link-Optionen** (nur Externe Links):
@@ -166,7 +166,7 @@ entfernt.
 ### Anhangnamen und Ordner
 
 <p>
-  <img src="images/settings-names-folders.png" width="560" alt="Anhangnamen und Ordner mit eigener Unterordner-Vorlage">
+  <img src="images/en/settings-names-folders.png" width="560" alt="Anhangnamen und Ordner mit eigener Unterordner-Vorlage">
 </p>
 
 - **Hinzugefügte Anhänge automatisch umbenennen**: derselbe Schalter wie
@@ -209,7 +209,7 @@ So werden Unterordner-Vorlagen ausgewertet:
 ### Download-Ordner
 
 <p>
-  <img src="images/settings-download-folder.png" width="560" alt="Abschnitt Download-Ordner">
+  <img src="images/en/settings-download-folder.png" width="560" alt="Abschnitt Download-Ordner">
 </p>
 
 Die Download-Ordner werden von **Neue Datei anhängen**, **Anhang zuordnen**
@@ -233,7 +233,7 @@ auch ohne sie.
 ### Automatische Verarbeitung
 
 <p>
-  <img src="images/settings-automatic-processing.png" width="560" alt="Abschnitt Automatische Verarbeitung">
+  <img src="images/en/settings-automatic-processing.png" width="560" alt="Abschnitt Automatische Verarbeitung">
 </p>
 
 - **Eigenständig importierte PDFs erkennen** (standardmäßig an): Ein ohne

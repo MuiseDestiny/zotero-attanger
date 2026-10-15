@@ -101,7 +101,7 @@ valori predefiniti sono elencati nel
 ### Modalità di lavoro
 
 <p>
-  <img src="images/settings-work-mode.png" width="560" alt="Modalità di lavoro con Solo archivio Zotero selezionato">
+  <img src="images/en/settings-work-mode.png" width="560" alt="Modalità di lavoro con Solo archivio Zotero selezionato">
 </p>
 
 | Modalità                            | Comportamento                                                                                                               | Cartella                      |
@@ -120,8 +120,8 @@ cartella esterna all'archivio di Zotero** oppure **Cartella non scrivibile;
 scegline un'altra**.
 
 <p>
-  <img src="images/settings-external-links.png" width="380" alt="Impostazioni di Collegamenti esterni">
-  <img src="images/settings-external-copy.png" width="380" alt="Impostazioni di Archivio Zotero + copia esterna">
+  <img src="images/en/settings-external-links.png" width="380" alt="Impostazioni di Collegamenti esterni">
+  <img src="images/en/settings-external-copy.png" width="380" alt="Impostazioni di Archivio Zotero + copia esterna">
 </p>
 
 **Opzioni collegamento** (solo Collegamenti esterni):
@@ -163,7 +163,7 @@ rimosse.
 ### Nomi allegati e cartelle
 
 <p>
-  <img src="images/settings-names-folders.png" width="560" alt="Nomi allegati e cartelle con un modello di sottocartella personalizzato">
+  <img src="images/en/settings-names-folders.png" width="560" alt="Nomi allegati e cartelle con un modello di sottocartella personalizzato">
 </p>
 
 - **Rinomina automaticamente gli allegati aggiunti**: lo stesso interruttore
@@ -206,7 +206,7 @@ Come vengono applicati i modelli di sottocartella:
 ### Cartella dei download
 
 <p>
-  <img src="images/settings-download-folder.png" width="560" alt="Sezione Cartella dei download">
+  <img src="images/en/settings-download-folder.png" width="560" alt="Sezione Cartella dei download">
 </p>
 
 Le cartelle dei download sono usate da **Allega nuovo file**, **Abbina
@@ -230,7 +230,7 @@ anche senza.
 ### Elaborazione automatica
 
 <p>
-  <img src="images/settings-automatic-processing.png" width="560" alt="Sezione Elaborazione automatica">
+  <img src="images/en/settings-automatic-processing.png" width="560" alt="Sezione Elaborazione automatica">
 </p>
 
 - **Riconosci i PDF importati autonomi** (attiva per impostazione
