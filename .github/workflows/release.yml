@@ -37,9 +37,16 @@ jobs:
       - name: Build XPI
         run: npm run build
 
+      - name: Find release notes
+        id: notes
+        run: |
+          notes=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then echo "path=$notes" >> "$GITHUB_OUTPUT"; fi
+
       - name: Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: build/zotero-attanger.xpi
+          body_path: ${{ steps.notes.outputs.path }}
           generate_release_notes: true
