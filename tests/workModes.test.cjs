@@ -1348,6 +1348,33 @@ test("destination checking accepts new subfolders without probing nonexistent sy
   assert.equal(core.isZoteroStoragePath("/storage/new/paper.pdf"), true);
 });
 
+test("destination checking tolerates nsIFile type checks throwing for missing paths", () => {
+  setupStoredAttachment("linked");
+  const original = Zotero.File.pathToFile;
+  Zotero.File.pathToFile = (filePath) => {
+    const file = original(filePath);
+    const isDirectory = file.isDirectory;
+    const isFile = file.isFile;
+    // Firefox throws NS_ERROR_FILE_NOT_FOUND here instead of returning false.
+    file.isDirectory = () => {
+      if (!file.exists()) throw new Error("NS_ERROR_FILE_NOT_FOUND");
+      return isDirectory();
+    };
+    file.isFile = () => {
+      if (!file.exists()) throw new Error("NS_ERROR_FILE_NOT_FOUND");
+      return isFile();
+    };
+    return file;
+  };
+  const core = loadSourceModule("src/modules/attachmentFiles.ts");
+  assert.equal(core.isZoteroStoragePath("/dest/paper.pdf"), false);
+  assert.equal(
+    core.isZoteroStoragePath("/dest/new/subfolder/paper.pdf"),
+    false,
+  );
+  assert.equal(core.isZoteroStoragePath("/storage/new/paper.pdf"), true);
+});
+
 test("PDF matching respects never and always title extraction settings", async () => {
   for (const readPDFtitle of ["never", "always"]) {
     let queries = 0;

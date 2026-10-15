@@ -56,6 +56,23 @@ function attachmentPathIsInside(path: string, directory: string) {
   return normalized === base || normalized.startsWith(base + separator);
 }
 
+/** nsIFile type checks throw for missing paths instead of returning false. */
+function nsIFileExists(file: nsIFile) {
+  try {
+    if (file.exists()) return true;
+  } catch {
+    // Fall through to type checks for mount points that misreport exists().
+  }
+  for (const check of [() => file.isDirectory(), () => file.isFile()]) {
+    try {
+      if (check()) return true;
+    } catch {
+      // Missing path.
+    }
+  }
+  return false;
+}
+
 /**
  * Resolve symbolic links (for example ~/Dropbox on macOS) so that a target
  * reached through an alias is still compared with its real location.
@@ -67,7 +84,7 @@ function canonicalAttachmentPath(path: string) {
   let inspectedRoot = false;
   for (let depth = 0; depth < 256; depth++) {
     const file = Zotero.File.pathToFile(current);
-    const exists = file.exists() || file.isDirectory() || file.isFile();
+    const exists = nsIFileExists(file);
     if (exists && canonical === undefined) {
       let symlink = false;
       try {
@@ -150,7 +167,7 @@ export async function attachmentPathExists(
     const file = Zotero.File.pathToFile(path);
     if (kind === "directory") return file.isDirectory();
     if (kind === "file") return file.isFile();
-    return file.exists() || file.isDirectory() || file.isFile();
+    return nsIFileExists(file);
   } catch {
     return false;
   }
