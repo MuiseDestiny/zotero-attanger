@@ -20,15 +20,16 @@ in eine nachvollziehbare Ordnerstruktur verschieben oder kopieren.
 
 - Die zuletzt geänderte Datei aus einem konfigurierten Quellordner an einen
   Zotero-Eintrag oder direkt an eine Sammlung anhängen.
-- Anhänge als Zotero-Kopie speichern oder importierte Dateien in verknüpfte
-  Dateien in einem externen Zielordner umwandeln.
+- Einen Arbeitsmodus wählen: nur Zotero-Speicher, externe Links oder
+  Zotero-Speicher mit einer organisierten externen Kopie (Zotero-Dateisync
+  bleibt erhalten).
 - Einen oder mehrere Anhänge mit Zotero-Vorlagen umbenennen und optional den
   Anhangstitel synchronisieren.
 - Diakritische Zeichen und Ligaturen in erzeugten Dateinamen optional in
   ASCII-Entsprechungen umwandeln, um die Kompatibilität zu verbessern.
 - Unterordner aus Metadaten oder `{{collection}}` erzeugen; `/` kann als
   Trennzeichen für verschachtelte Ordner verwendet werden.
-- Neu importierte Anhänge automatisch umbenennen und organisieren.
+- Neu importierte Anhänge automatisch umbenennen und nach dem Arbeitsmodus verarbeiten.
 - Verknüpfte Anhänge nach Metadatenänderungen umbenennen. Entprellzeit und
   Verzögerung unterstützen Better-BibTeX-Zitierschlüssel und andere Felder,
   die erst nach dem Import feststehen.
@@ -36,8 +37,11 @@ in eine nachvollziehbare Ordnerstruktur verschieben oder kopieren.
   Metadaten oder Text zur Titelerkennung verwendet werden.
 - Dateien, die bereits Attangers Ordner- und Dateinamenschema entsprechen,
   präzise wieder verknüpfen.
-- Anhänge verschieben oder kopieren und beim Umwandeln Anmerkungen,
-  Beziehungen, Volltextindex, Tags und Notizen übertragen.
+- Vorhandene Anhänge verschieben oder kopieren und beim Umwandeln in
+  Verknüpfungen Anmerkungen, Beziehungen, Volltextindex, Tags und Notizen
+  übertragen.
+- Externe Kopien einseitig von Zotero aus aktualisieren; extern bearbeitete
+  Kopien werden nie überschrieben.
 - Anhänge mit Zotero, dem Systemstandard oder gespeicherten eigenen
   Anwendungen öffnen.
 - Tastenkürzel, Dateitypen, Ordnerbereinigung und reguläre Ausdrücke für
@@ -58,27 +62,47 @@ Das aktuelle Manifest unterstützt Zotero 7 bis Zotero 10.
 
 ## Ersteinrichtung
 
-Unter **Zotero-Einstellungen > Attanger**:
+Unter **Zotero-Einstellungen > Attanger** einen **Arbeitsmodus** wählen:
 
-1. **Quellpfad** festlegen: Hier legen Browser, Scanner oder andere Programme
-   neue Dateien ab.
-2. **Anhangstyp** wählen:
-   - **Gespeicherte Kopie** für Zotero Storage oder WebDAV.
-   - **Verknüpfung** für OneDrive, Dropbox, Nutstore oder andere externe
-     Synchronisation.
-3. Im Modus **Verknüpfung** einen **Zielpfad** festlegen. **Hinzugefügte
-   Anhänge automatisch verschieben** muss aktiviert bleiben, wenn importierte
-   Dateien automatisch umgewandelt werden sollen.
-4. Optional eine **Unterordner**-Vorlage angeben. Standardmäßig folgt
-   `{{collection}}` der Sammlungshierarchie des Eintrags.
-5. Über **Dateinamensformat anpassen** die native Zotero-Vorlage bearbeiten.
-   Syntax und Variablen erklärt die
-   [Zotero-Dokumentation](https://www.zotero.org/support/file_renaming).
-6. Vor größeren Stapeloperationen Automatik, Dateitypen, Tastenkürzel und die
-   Option zum Beibehalten der Quelldateien prüfen.
+| Modus                           | Zotero öffnet      | Dateisynchronisation    | Externes Verzeichnis              |
+| ------------------------------- | ------------------ | ----------------------- | --------------------------------- |
+| Nur Zotero-Speicher             | Gespeicherte Datei | Zotero Storage / WebDAV | Nicht erforderlich                |
+| Externe Links                   | Verknüpfte Datei   | Cloud-Speicher o. Ä.    | Dateien werden dorthin verschoben |
+| Zotero-Speicher + externe Kopie | Gespeicherte Datei | Zotero Storage / WebDAV | Organisierte, aktuelle Kopie      |
 
-Verknüpfte Dateien werden nicht über Zoteros Dateisynchronisation hochgeladen.
-Der Zielordner muss separat synchronisiert oder gesichert werden.
+1. Für **Externe Links** oder **Zotero-Speicher + externe Kopie** das externe
+   Verzeichnis wählen. Es muss außerhalb des Zotero-Speichers liegen, auch
+   wenn es über einen symbolischen Link erreicht wird.
+2. Optional **Anhangnamen und Ordner** anpassen. Standardmäßig folgt der
+   Unterordner `{{collection}}` der Sammlungshierarchie; **Dateinamenformat
+   anpassen** öffnet den nativen Zotero-Editor. Syntax und Variablen erklärt
+   die [Zotero-Dokumentation](https://www.zotero.org/support/file_renaming).
+3. Für **Neue Datei anhängen** oder die Zuordnung den **Download-Ordner**
+   festlegen. Mit **Ordner hinzufügen** lassen sich weitere Ordner ergänzen:
+   Neue Datei anhängen nimmt die neueste Datei aus allen Ordnern, die Zuordnung
+   durchsucht sie der Reihe nach.
+4. Vor größeren Stapeloperationen automatische Verarbeitung, Dateitypen und
+   Tastenkürzel prüfen.
+
+### Aktualisierung von älteren Versionen
+
+Der Arbeitsmodus wird einmalig aus den bisherigen Einstellungen abgeleitet,
+sodass sich nach dem Update nichts ändert:
+
+- **Anhangstyp: Link** mit Zielpfad wird zu **Externe Links**. **Neue
+  Anhänge automatisch verschieben** und **Originaldateien behalten** behalten
+  in diesem Modus ihre Bedeutung.
+- Alle anderen Konfigurationen werden zu **Nur Zotero-Speicher**.
+- **Originaldateien behalten** wird zusätzlich (invertiert) zur neuen Option
+  **Datei aus dem Download-Ordner löschen**, sodass Importe aus dem
+  Quellordner wie bisher funktionieren.
+
+Menüeinträge und Tastenkürzel behalten ihre IDs. Ein Moduswechsel wandelt
+vorhandene Anhänge nie automatisch um.
+
+Verknüpfte Dateien werden nicht über Zoteros Dateisynchronisation hochgeladen;
+im Modus Externe Links muss das Verzeichnis separat synchronisiert oder
+gesichert werden. Gruppenanhänge werden nie in Verknüpfungen umgewandelt.
 
 ## Typische Arbeitsabläufe
 
@@ -90,8 +114,8 @@ Der Zielordner muss separat synchronisiert oder gesichert werden.
 
 Attanger verwendet die zuletzt geänderte, nicht versteckte Datei. Der Befehl
 kann auch im Kontextmenü einer Sammlung verwendet werden; dort entsteht ein
-übergeordneter Anhang. Ohne **Originaldateien behalten** wird die Quelldatei
-nach erfolgreichem Import entfernt.
+übergeordneter Anhang. Nach erfolgreichem Import wird die Eingabedatei
+gelöscht, sofern **Datei aus dem Download-Ordner löschen** aktiviert ist.
 
 ### Dateien mehreren Einträgen zuordnen
 
@@ -102,7 +126,7 @@ nach erfolgreichem Import entfernt.
 Jede Quelldatei wird höchstens einmal verwendet. Attanger vergleicht
 Eintragstitel und Dateinamen und kann entsprechend **Titel aus PDF-Datei lesen**
 auch PDF-Metadaten oder Text auswerten. Danach gelten die konfigurierten
-Automatiken zum Umbenennen und Verschieben.
+Regeln zum Umbenennen und der Arbeitsmodus.
 
 ### Eine bestehende Attanger-Bibliothek wieder verknüpfen
 
@@ -112,25 +136,44 @@ Automatiken zum Umbenennen und Verschieben.
 Quellpfad / erzeugter Unterordner / von Zotero erzeugter Dateiname.Endung
 ```
 
-Für jeden ausgewählten Eintrag prüft Attanger die konfigurierten Endungen und
-legt passende Dateien ohne Kopie als verknüpfte Anhänge an.
+Für jeden ausgewählten Eintrag prüft Attanger die konfigurierten Endungen.
+Im Modus Externe Links werden passende Dateien ohne Kopie verknüpft; in den
+Speichermodi werden sie in Zotero importiert, damit die Dateisynchronisation
+weiter funktioniert.
 
-### Bestehende Anhänge umbenennen, verschieben oder kopieren
+### Bestehende Anhänge umbenennen, verschieben oder synchronisieren
 
 Reguläre Einträge, untergeordnete Anhänge oder übergeordnete Anhänge auswählen
 und einen Befehl verwenden:
 
-- **Anhang umbenennen** wendet die Zotero-Dateinamensvorlage an.
-- **Anhang verschieben** legt Dateien unter dem Zielpfad ab.
-- **Anhang umbenennen und verschieben** führt beides aus.
-- **Verschieben rückgängig machen** verwendet Zoteros Umwandlung einer
-  verknüpften Datei in eine gespeicherte Datei.
+- **Anhang umbenennen** wendet die Zotero-Dateinamensvorlage an (alle Modi).
+- **Anhang verschieben** (Externe Links) legt Dateien im externen Verzeichnis
+  ab. Mit **Originaldateien behalten** heißen die Befehle „Kopieren“.
+- **Externe Kopie synchronisieren** (Zotero-Speicher + externe Kopie) erstellt
+  oder aktualisiert die Kopie, ohne den gespeicherten Anhang zu ändern.
+- **Umbenennen und verschieben/synchronisieren** führt beides aus. Im Modus
+  Nur Zotero-Speicher wird nur umbenannt, und der Verschieben-Befehl ist
+  ausgeblendet.
+- **Verschieben des Anhangs rückgängig machen** nutzt Zoteros Umwandlung von
+  verknüpften in gespeicherte Dateien.
 
-Mit **Originaldateien behalten** werden Verschieben-Befehle als Kopieren
-angezeigt und Quelldateien bleiben erhalten. Verschieben ist nur mit
-**Anhangstyp: Verknüpfung** aktiv. Bei unterschiedlichen Dateien mit gleichem
-Zielnamen wird ein Suffix ergänzt; identische Zieldateien werden nicht erneut
-kopiert.
+Unterschiedliche Dateien mit gleichem Ziel erhalten einen Suffix; identische
+Zieldateien werden nicht erneut kopiert.
+
+### Externe Kopien aktualisieren
+
+Im Modus Zotero-Speicher + externe Kopie erhalten neue gespeicherte Anhänge
+automatisch eine Kopie. Vorhandene Kopien folgen späteren Umbenennungen,
+Sammlungsänderungen und Dateiänderungen einseitig, etwa eine Sekunde nach der
+Änderung. Verknüpfte Anhänge erhalten keine Kopie.
+
+- Eine außerhalb von Zotero bearbeitete Kopie bleibt erhalten und wird nie
+  überschrieben; Attanger meldet einen Konflikt.
+- Ändert sich der Zielpfad, wird die alte Kopie nur entfernt, wenn sie
+  unverändert ist und von keinem anderen Anhang verwendet wird.
+- Das Löschen eines Zotero-Anhangs löscht die externe Kopie nicht.
+- PDF-Kopien enthalten nur die Dateibytes; Anmerkungen aus Zoteros Datenbank
+  werden nicht eingebettet.
 
 ### Nach Better-BibTeX-Aktualisierungen umbenennen
 
@@ -150,23 +193,24 @@ keine Umbenennungsschleife.
 
 ## Einstellungen
 
-| Einstellung                            | Verhalten                                                                                                                              |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Quellpfad                              | Eingabeordner für Neue Datei anhängen und beide Zuordnungsbefehle.                                                                     |
-| Anhangstyp                             | Gespeicherte Zotero-Kopie oder verknüpfte Datei unter dem Zielpfad.                                                                    |
-| Zielpfad                               | Stammordner für Verschieben/Kopieren im Verknüpfungsmodus.                                                                             |
-| Unterordner                            | Metadatenvorlage; `{{collection}}` verwendet den Sammlungspfad.                                                                        |
-| `/` als Unterordner                    | Behält durch Vorlagenvariablen erzeugte Ebenen bei.                                                                                    |
-| Automatisch beim Hinzufügen umbenennen | Globale Zotero-Einstellung zur Umbenennung neuer Anhänge.                                                                              |
-| Importierte PDF-Metadaten abrufen      | Erkennt eigenständige importierte PDFs automatisch; Umbenennen/Verschieben beginnt erst nach Erstellung des übergeordneten Eintrags. |
-| Bei Eintragsänderung umbenennen        | Optionale nachträgliche Umbenennung mit Zeiten in Millisekunden.                                                                       |
-| Automatisch verschieben                | Wandelt neue importierte Anhänge in verknüpfte Dateien um; bestehende Verknüpfungen werden nicht erneut automatisch verschoben.        |
-| Leere Ordner löschen                   | Bereinigt nur innerhalb des Zotero-Speichers, Quell- oder Zielpfads.                                                                   |
-| Originaldateien behalten               | Macht aus Verschieben ein Kopieren und verhindert Quellbereinigung.                                                                    |
-| Anhangstitel synchronisieren           | Aktualisiert nach dem Umbenennen den Titel in Zotero.                                                                                  |
-| Diakritische Zeichen entfernen         | Wandelt Diakritika und Ligaturen im endgültigen Basisnamen einschließlich eines beibehaltenen Präfixes um; die Endung bleibt.          |
-| Dateitypen                             | Kommagetrennte Endungen ohne Punkt. Standard: `pdf,doc,docx,txt,rtf,djvu,epub`.                                                        |
-| Dateinamensregeln                      | Kommagetrennte reguläre Ausdrücke für Präfixe und Ausnahmen.                                                                           |
+| Einstellung                            | Verhalten                                                                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Download-Ordner                        | Eingabeordner für Neue Datei anhängen und beide Zuordnungsbefehle.                                                                    |
+| Datei aus dem Download-Ordner löschen  | Entfernt die Eingabedatei nach erfolgreichem Anhängen oder Zuordnen (standardmäßig aktiv).                                            |
+| Arbeitsmodus                           | Nur Zotero-Speicher, Externe Links oder Zotero-Speicher + externe Kopie; gilt für neue unterstützte Importe.                          |
+| Externes Verzeichnis                   | Stammordner für Verknüpfungen oder externe Kopien; im Modus Nur Zotero-Speicher ausgeblendet.                                         |
+| Unterordner                            | Metadatenvorlage; `{{collection}}` verwendet den Sammlungspfad.                                                                       |
+| `/` als Unterordner                    | Behält durch Vorlagenvariablen erzeugte Ebenen bei.                                                                                   |
+| Automatisch beim Hinzufügen umbenennen | Globale Zotero-Einstellung zur Umbenennung neuer Anhänge.                                                                             |
+| Importierte PDF-Metadaten abrufen      | Erkennt eigenständige importierte PDFs automatisch; Umbenennen/Organisieren beginnt erst nach Erstellung des übergeordneten Eintrags. |
+| Bei Eintragsänderung umbenennen        | Optionale nachträgliche Umbenennung mit Zeiten in Millisekunden.                                                                      |
+| Neue Anhänge automatisch verschieben   | Nur Externe Links: wandelt neu importierte Anhänge in Verknüpfungen um; vorhandene Verknüpfungen werden nicht erneut verschoben.      |
+| Originaldateien behalten               | Nur Externe Links: Verschieben wird zu Kopieren, der gespeicherte Anhang bleibt erhalten.                                             |
+| Leere Ordner löschen                   | Entfernt leere Ordner im externen Verzeichnis, nachdem Dateien verschoben wurden.                                                     |
+| Anhangstitel synchronisieren           | Aktualisiert nach dem Umbenennen den Titel in Zotero.                                                                                 |
+| Diakritische Zeichen entfernen         | Wandelt Diakritika und Ligaturen im endgültigen Basisnamen einschließlich eines beibehaltenen Präfixes um; die Endung bleibt.         |
+| Dateitypen                             | Kommagetrennte Endungen ohne Punkt. Standard: `pdf,doc,docx,txt,rtf,djvu,epub`.                                                       |
+| Dateinamensregeln                      | Kommagetrennte reguläre Ausdrücke für Präfixe und Ausnahmen.                                                                          |
 
 Ungültige reguläre Ausdrücke werden ignoriert und protokolliert, ohne die
 Verarbeitung abzubrechen.
@@ -176,13 +220,13 @@ Verarbeitung abzubrechen.
 Tastenkürzel lassen sich in den Attanger-Einstellungen ändern und gelten
 sofort.
 
-| Aktion                              | Standard           | Standardmäßig aktiv |
-| ----------------------------------- | ------------------ | ------------------- |
-| Neue Datei anhängen                 | `Ctrl + I`         | Ja                  |
-| Anhang zuordnen                     | `Ctrl + M`         | Ja                  |
-| Anhang umbenennen                   | `Ctrl + R`         | Nein                |
-| Umbenennen und Verschieben/Kopieren | `Ctrl + Shift + R` | Nein                |
-| Anhang verschieben/kopieren         | `Ctrl + Shift + M` | Nein                |
+| Aktion                          | Standard           | Standardmäßig aktiv |
+| ------------------------------- | ------------------ | ------------------- |
+| Neue Datei anhängen             | `Ctrl + I`         | Ja                  |
+| Anhang zuordnen                 | `Ctrl + M`         | Ja                  |
+| Anhang umbenennen               | `Ctrl + R`         | Nein                |
+| Umbenennen und Verschieben/Sync | `Ctrl + Shift + R` | Nein                |
+| Verschieben/Sync                | `Ctrl + Shift + M` | Nein                |
 
 ## Screenshots und Anleitungen
 
@@ -200,7 +244,7 @@ sind willkommen. Kleine, klar abgegrenzte Pull Requests lassen sich besser
 prüfen und sicherer veröffentlichen.
 
 Fehlerberichte sollten Zotero- und Attanger-Version, Betriebssystem,
-Anhangstyp, relevante Einstellungen, genaue Schritte und Debug-Ausgaben
+Arbeitsmodus, relevante Einstellungen, genaue Schritte und Debug-Ausgaben
 enthalten. Private Literaturdaten und lokale Pfade vorher entfernen.
 
 Lokale Entwicklung:

@@ -2,13 +2,38 @@
 import { getString } from "../utils/locale";
 import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
-import { waitUntil, waitUtilAsync } from "../utils/wait";
+import { waitUntil } from "../utils/wait";
 import comparison from "string-comparison";
 import {
   registerShortcut,
   isShortcutEnabled,
   getShortcutText,
 } from "../utils/shortcut";
+import {
+  getWorkMode,
+  shouldMirrorAttachments,
+  shouldMoveNewAttachments,
+} from "../utils/workMode";
+import {
+  AttachmentOperationCancelled,
+  copyAttachmentFile,
+  fingerprintMatches,
+  hasAttachmentFileReferences,
+  isZoteroStoragePath,
+  normalizeAttachmentPath,
+  removeVerifiedAttachmentFile,
+  runAttachmentOperation,
+  sameFiles,
+} from "./attachmentFiles";
+import { getExternalCopy, syncExternalCopy } from "./externalCopies";
+import { getConfiguredSourceDirs } from "../utils/sourceDirs";
+import { convertStoredAttachmentToLinked } from "./attachmentConversions";
+import {
+  registerContextMenu,
+  usesOfficialContextMenus,
+  type ContextMenuHandle,
+} from "../utils/contextMenu";
+import type { MenuitemOptions } from "zotero-plugin-toolkit";
 
 const filenameExtRE = /\.[^.]+$/;
 const ATTANGER_MENU_ID = "attanger-menu";
@@ -19,6 +44,7 @@ const RENAME_MOVE_MENU_ID = "attanger-rename-move-attachment";
 const MOVE_MENU_ID = "attanger-move-attachment";
 const UNDO_MOVE_MENU_ID = "attanger-undo-move-attachment";
 const PDF_RECOGNIZER_TIMEOUT_MS = 30_000;
+const EXTERNAL_COPY_DEBOUNCE_MS = 1000;
 
 /**
  * 菜单项后缀显示的快捷键提示，如 " (Ctrl + I)"；快捷键未启用或未设置时为空
@@ -59,13 +85,21 @@ export default class Menu {
   private autoProcessRunning = false;
   private autoRenameOnModifyTimers = new Map<number, number>();
   private autoRenameOnModifyTokens = new Map<number, number>();
+  private externalCopyTimer?: number;
+  private pendingCopyItemIDs = new Set<number>();
+  private reportedCopyProblems = new Map<number, string>();
   private disposed = false;
+  // Context-menu registrations; on Zotero 11 these live in Zotero.MenuManager
+  // and are not removed by ztoolkit.Menu.unregisterAll().
+  private contextMenus: ContextMenuHandle[] = [];
+  private itemMenu?: ContextMenuHandle;
+  private buildItemMenu?: () => MenuitemOptions;
 
   constructor() {
     addon.data.menu?.dispose();
     addon.data.menu = this;
     this.notifierID = registerNotify(
-      ["item"],
+      ["item", "file", "collection-item"],
       async (
         event: _ZoteroTypes.Notifier.Event,
         type: _ZoteroTypes.Notifier.Type,
@@ -80,6 +114,16 @@ export default class Menu {
         }
         if (type == "item" && event == "modify") {
           await this.queueLinkedAttachmentRenameOnModify(ids);
+          this.queueExternalCopyUpdates(ids);
+        }
+        if (type == "file" && ["modify", "close"].includes(event)) {
+          this.queueExternalCopyUpdates(ids);
+        }
+        if (type == "collection-item") {
+          // IDs are "collectionID-itemID"; the item part decides the copy path.
+          this.queueExternalCopyUpdates(
+            ids.map((id) => String(id).split("-").pop() as string),
+          );
         }
       },
     );
@@ -91,6 +135,9 @@ export default class Menu {
   public dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    for (const menu of this.contextMenus.splice(0)) menu.dispose();
+    this.itemMenu = undefined;
+    this.buildItemMenu = undefined;
     if (this.autoProcessTimer !== undefined) {
       window.clearTimeout(this.autoProcessTimer);
       this.autoProcessTimer = undefined;
@@ -102,6 +149,12 @@ export default class Menu {
     }
     this.autoRenameOnModifyTimers.clear();
     this.autoRenameOnModifyTokens.clear();
+    if (this.externalCopyTimer !== undefined) {
+      window.clearTimeout(this.externalCopyTimer);
+      this.externalCopyTimer = undefined;
+    }
+    this.pendingCopyItemIDs.clear();
+    this.reportedCopyProblems.clear();
     if (this.notifierID) {
       unregisterNotify(this.notifierID);
       if (addon.data.notifierID === this.notifierID) {
@@ -141,7 +194,7 @@ export default class Menu {
       ids.map((id) => Number(id)).filter((id) => Number.isInteger(id)),
     );
     for (const itemID of [...itemIDs]) {
-      if (event == "delete" && attachmentMutationInFlight.has(itemID)) {
+      if (attachmentMutationInFlight.has(itemID)) {
         itemIDs.delete(itemID);
         continue;
       }
@@ -155,6 +208,7 @@ export default class Menu {
     for (const itemID of itemIDs) {
       this.pendingAddedItemIDs.delete(itemID);
       this.cancelLinkedAttachmentRenameOnModify(itemID);
+      this.pendingCopyItemIDs.delete(itemID);
       if (this.autoProcessRunning) {
         this.cancelledAutomaticItemIDs.add(itemID);
       }
@@ -269,12 +323,13 @@ export default class Menu {
         return;
       }
       const shouldRename =
-        canProcess && Boolean(Zotero.Prefs.get("autoRenameFiles"));
-      const shouldMoveImportedAttachment =
         canProcess &&
-        att.isImportedAttachment() &&
-        getPref("autoMove") &&
-        getPref("attachType") == "linking";
+        canEditAttachment(att) &&
+        Boolean(Zotero.Prefs.get("autoRenameFiles"));
+      const shouldMoveImportedAttachment =
+        canProcess && att.isImportedAttachment() && shouldMoveNewAttachments();
+      const shouldMirrorImportedAttachment =
+        canProcess && att.isImportedAttachment() && shouldMirrorAttachments();
       if (shouldRename && shouldMoveImportedAttachment) {
         // Imported files are Zotero-managed copies. Rename them before they
         // enter the shared destination so moveFile can resolve collisions.
@@ -295,6 +350,15 @@ export default class Menu {
       if (shouldRename && !shouldMoveImportedAttachment) {
         this.cancelLinkedAttachmentRenameOnModify(att.id);
         await renameFile(att);
+      }
+      if (shouldMirrorImportedAttachment) {
+        // Mirror after renaming so the copy starts with its final filename.
+        const sourceAttachment = att;
+        await mirrorAttachment(att, {
+          silent: true,
+          shouldCancel: () =>
+            this.isAutomaticProcessingCancelled(sourceAttachment),
+        });
       }
     } catch (e) {
       ztoolkit.log(e);
@@ -411,17 +475,94 @@ export default class Menu {
     }
   }
 
+  private queueExternalCopyUpdates(ids: string[] | number[]) {
+    if (this.disposed || !shouldMirrorAttachments()) return;
+    for (const id of ids) {
+      const item = Zotero.Items.get(Number(id));
+      if (!item || attachmentMutationInFlight.has(item.id)) continue;
+      const attachmentIDs = item.isAttachment()
+        ? [item.id]
+        : item.isRegularItem()
+          ? item.getAttachments()
+          : [];
+      for (const attachmentID of attachmentIDs) {
+        if (!attachmentMutationInFlight.has(attachmentID)) {
+          this.pendingCopyItemIDs.add(attachmentID);
+        }
+      }
+    }
+    if (!this.pendingCopyItemIDs.size) return;
+    if (this.externalCopyTimer !== undefined) {
+      window.clearTimeout(this.externalCopyTimer);
+    }
+    this.externalCopyTimer = window.setTimeout(async () => {
+      this.externalCopyTimer = undefined;
+      const itemIDs = [...this.pendingCopyItemIDs];
+      this.pendingCopyItemIDs.clear();
+      for (const itemID of itemIDs) {
+        if (this.disposed || !shouldMirrorAttachments()) break;
+        const attachment = Zotero.Items.get(itemID);
+        // Only refresh attachments that already have a mirror; new ones are
+        // exported by add-time processing or the manual menu command.
+        if (attachment && (await getExternalCopy(attachment).catch(() => 0))) {
+          await this.updateExternalCopy(attachment);
+        }
+      }
+    }, EXTERNAL_COPY_DEBOUNCE_MS);
+  }
+
+  private async updateExternalCopy(attachment: Zotero.Item) {
+    const shouldCancel = () =>
+      this.disposed ||
+      attachment.deleted ||
+      Boolean(attachment.parentItem?.deleted);
+    if (shouldCancel()) return;
+    try {
+      const result = await mirrorAttachment(attachment, {
+        silent: true,
+        fastCheck: true,
+        shouldCancel,
+      });
+      if (result?.status === "conflict") {
+        this.reportExternalCopyProblem(attachment, "copy-conflict");
+      } else if (result && result.status !== "cancelled") {
+        this.reportedCopyProblems.delete(attachment.id);
+      }
+    } catch (error) {
+      ztoolkit.log("External copy update failed", attachment.id, error);
+      this.reportExternalCopyProblem(attachment, "copy-error");
+    }
+  }
+
+  private reportExternalCopyProblem(attachment: Zotero.Item, message: string) {
+    if (
+      this.disposed ||
+      this.reportedCopyProblems.get(attachment.id) === message
+    ) {
+      return;
+    }
+    this.reportedCopyProblems.set(attachment.id, message);
+    showMoveMessage(
+      getString(message, {
+        args: { title: attachment.getDisplayTitle() },
+      }),
+    );
+  }
+
   private init() {
     for (const name in addon.data.icons) {
       ztoolkit.ProgressWindow.setIconURI(name, addon.data.icons[name]);
     }
   }
 
-  private getMoveMenuStringKey(moveKey: string, copyKey: string) {
-    return getPref("moveWithoutDeleting") ? copyKey : moveKey;
-  }
-
+  /** Menu IDs and shortcuts stay the same; only the label follows the mode. */
   public refreshItemMenu() {
+    // MenuManager elements may not exist yet; rebuild the menu data instead.
+    if (usesOfficialContextMenus() && this.itemMenu && this.buildItemMenu) {
+      this.itemMenu.update(this.buildItemMenu());
+      return;
+    }
+    const labels = getModeMenuLabels();
     for (const win of Zotero.getMainWindows()) {
       const setLabel = (
         id: string,
@@ -453,24 +594,11 @@ export default class Menu {
       );
       setLabel(
         RENAME_MOVE_MENU_ID,
-        this.getMoveMenuStringKey(
-          "rename-move-attachment",
-          "rename-copy-attachment",
-        ),
+        labels.renameMove,
         "renameMoveAttachment.shortcut",
       );
-      setLabel(
-        MOVE_MENU_ID,
-        this.getMoveMenuStringKey("move-attachment", "copy-attachment"),
-        "moveAttachment.shortcut",
-      );
-      setLabel(
-        UNDO_MOVE_MENU_ID,
-        this.getMoveMenuStringKey(
-          "undo-move-attachment",
-          "undo-copy-attachment",
-        ),
-      );
+      setLabel(MOVE_MENU_ID, labels.move, "moveAttachment.shortcut");
+      setLabel(UNDO_MOVE_MENU_ID, labels.undo);
     }
   }
 
@@ -498,17 +626,26 @@ export default class Menu {
         showMoveMessage("No attachment selected.");
         return;
       }
+      const mode = getWorkMode();
       for (const item of attachmentItems) {
         try {
-          const movedItem = (await moveFile(item)) as Zotero.Item;
-          if (!movedItem) {
-            showMoveMessage(
-              `Move skipped or failed: ${item.getDisplayTitle()}`,
-            );
+          if (mode === "linked") {
+            const movedItem = await moveFile(item);
+            if (!movedItem) {
+              showMoveMessage(
+                `Move skipped or failed: ${item.getDisplayTitle()}`,
+              );
+              continue;
+            }
+            const renamedItem = await renameFile(movedItem);
+            showAttachmentItem(renamedItem || movedItem);
             continue;
           }
-          const renamedItem = await renameFile(movedItem);
-          showAttachmentItem(renamedItem || movedItem);
+          const renamedItem = (await renameFile(item)) || item;
+          if (mode === "copy") {
+            await mirrorAttachmentWithFeedback(renamedItem);
+          }
+          showAttachmentItem(renamedItem);
         } catch (e) {
           ztoolkit.log(e);
           showMoveMessage(`Move error: ${(e as Error).message || e}`);
@@ -543,8 +680,17 @@ export default class Menu {
 
     const moveAttachmentCallback = async () => {
       selectedCollection = getSelectedCollectionCompat();
+      const mode = getWorkMode();
+      if (mode === "stored") {
+        showMoveMessage(getString("mode-stored-message"));
+        return;
+      }
       for (const item of getAttachmentItems(false)) {
         try {
+          if (mode === "copy") {
+            await mirrorAttachmentWithFeedback(item);
+            continue;
+          }
           const attItem = await moveFile(item);
           attItem && showAttachmentItem(attItem);
         } catch (e) {
@@ -553,7 +699,8 @@ export default class Menu {
       }
     };
 
-    ztoolkit.Menu.register("item", {
+    // Zotero 11+ registers via Zotero.MenuManager; Zotero 10 keeps ztoolkit.
+    this.buildItemMenu = () => ({
       tag: "menu",
       id: ATTANGER_MENU_ID,
       label: "Attanger",
@@ -585,12 +732,8 @@ export default class Menu {
           tag: "menuitem",
           id: RENAME_MOVE_MENU_ID,
           label:
-            getString(
-              this.getMoveMenuStringKey(
-                "rename-move-attachment",
-                "rename-copy-attachment",
-              ),
-            ) + getShortcutHint("renameMoveAttachment.shortcut"),
+            getString(getModeMenuLabels().renameMove) +
+            getShortcutHint("renameMoveAttachment.shortcut"),
           icon: addon.data.icons.renameMoveAttachment,
           commandListener: async (_ev) => {
             await renameMoveAttachmentCallback();
@@ -642,10 +785,10 @@ export default class Menu {
           tag: "menuitem",
           id: MOVE_MENU_ID,
           label:
-            getString(
-              this.getMoveMenuStringKey("move-attachment", "copy-attachment"),
-            ) + getShortcutHint("moveAttachment.shortcut"),
+            getString(getModeMenuLabels().move) +
+            getShortcutHint("moveAttachment.shortcut"),
           icon: addon.data.icons.moveFile,
+          isHidden: () => getWorkMode() === "stored",
           commandListener: async (_ev) => {
             await moveAttachmentCallback();
           },
@@ -653,12 +796,7 @@ export default class Menu {
         {
           tag: "menuitem",
           id: UNDO_MOVE_MENU_ID,
-          label: getString(
-            this.getMoveMenuStringKey(
-              "undo-move-attachment",
-              "undo-copy-attachment",
-            ),
-          ),
+          label: getString(getModeMenuLabels().undo),
           icon: addon.data.icons.undoMoveFile,
           commandListener: async () => {
             await ZoteroPane.convertLinkedFilesToStoredFiles();
@@ -666,6 +804,8 @@ export default class Menu {
         },
       ],
     });
+    this.itemMenu = registerContextMenu("item", this.buildItemMenu());
+    this.contextMenus.push(this.itemMenu);
     // 分隔符
     // ztoolkit.Menu.register("item", {
     //   tag: "menuseparator",
@@ -736,8 +876,9 @@ export default class Menu {
       await moveAttachmentCallback();
     });
     // 分类
-    ztoolkit.Menu.register("collection", {
+    const collectionMenu = registerContextMenu("collection", {
       tag: "menuitem",
+      id: `${config.addonRef}-collection-attach-new-file`,
       label: getString("attach-new-file"),
       icon: addon.data.icons.attachNewFile,
       getVisibility: () => {
@@ -753,6 +894,7 @@ export default class Menu {
         });
       },
     });
+    this.contextMenus.push(collectionMenu);
     this.refreshItemMenu();
     // 附件管理
     // ztoolkit.Menu.register("item", {
@@ -835,8 +977,9 @@ export default class Menu {
         new Menu();
       });
     };
-    ztoolkit.Menu.register("item", {
+    const openUsingMenu = registerContextMenu("item", {
       tag: "menu",
+      id: `${config.addonRef}-open-using`,
       getVisibility: () => getAttachmentItems(false).length > 0,
       label: getString("open-using"),
       icon: addon.data.icons.openUsing,
@@ -924,6 +1067,7 @@ export default class Menu {
         },
       ],
     });
+    this.contextMenus.push(openUsingMenu);
   }
 }
 
@@ -955,23 +1099,27 @@ async function matchAttachment() {
     "item titles: ",
     items.map((i) => i.getDisplayTitle()),
   );
-  const sourceDir = await checkDir("sourceDir", "source path");
-  if (!sourceDir) return;
+  const sourceDirs = await getSourceDirs();
+  if (!sourceDirs.length) return;
   let files: OS.File.Entry[] = [];
   /* TODO: migrate to IOUtils */
-  await Zotero.File.iterateDirectory(
-    sourceDir,
-    async function (child: OS.File.Entry) {
-      if (!child.isDir && /\.(caj|pdf)$/i.test(child.name)) {
-        files.push(child);
-      }
-    },
-  );
+  for (const sourceDir of sourceDirs) {
+    await Zotero.File.iterateDirectory(
+      sourceDir,
+      async function (child: OS.File.Entry) {
+        if (!child.isDir && /\.(caj|pdf)$/i.test(child.name)) {
+          files.push(child);
+        }
+      },
+    );
+  }
   ztoolkit.log(
     "found pdf files:",
     files.map((f) => f.path),
   );
-  const readPDFTitle = getPref("readPDFtitle") as string;
+  const readPDFTitle = String(
+    getPref("readPDFtitle") || "nonCJK",
+  ).toLowerCase();
   ztoolkit.log("read PDF title: ", readPDFTitle);
   for (const item of items) {
     const itemtitle = getPlainTitle(item);
@@ -983,13 +1131,16 @@ async function matchAttachment() {
 
       /* 尝试从PDF元数据或文本中读取标题 */
       try {
+        if (readPDFTitle === "never") {
+          throw new Error("PDF title extraction is disabled");
+        }
         if (!/pdf/i.test(Zotero.File.getExtension(file.path))) {
           throw new Error("This is not a PDF file.");
         }
         ztoolkit.log("check file:", file.name + ": ");
         const data: any = await getPDFData(file.path);
         const lines: Array<any> = [];
-        data.pages.forEach((page: Array<any>) => {
+        (data.pages || []).forEach((page: Array<any>) => {
           page[page.length - 1][0][0][0][4].forEach(
             (line: Array<Array<Array<any>>>) => {
               const lineObj = { fontSize: 0, text: "" };
@@ -1022,9 +1173,8 @@ async function matchAttachment() {
             .text.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1");
         ztoolkit.log("optical title: ", optTitle);
         if (
-          readPDFTitle != "Never" &&
           optTitle &&
-          (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle == "Always")
+          (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle === "always")
         ) {
           filename = cleanLigature(optTitle);
         }
@@ -1044,24 +1194,26 @@ async function matchAttachment() {
     }
     if (matchedFile) {
       ztoolkit.log("==>", itemtitle, matchedFile.path, iniDistance);
-      const attItem = await Zotero.Attachments.importFromFile({
-        file: matchedFile.path,
-        libraryID: item.libraryID,
-        parentItemID: item.id,
-      });
+      const attItem = await runAttachmentOperation(() =>
+        Zotero.Attachments.importFromFile({
+          file: matchedFile.path,
+          libraryID: item.libraryID,
+          parentItemID: item.id,
+        }),
+      );
       showAttachmentItem(attItem);
       if (!attItem.parentItemID) {
         Zotero.RecognizeDocument.recognizeItems([attItem]);
       }
-      removeFile(matchedFile.path);
+      await removeSourceFile(matchedFile.path);
       files = files.filter((file) => file !== matchedFile);
     }
   }
 }
 
 async function matchAttangerAttachment() {
-  const sourceDir = await checkDir("sourceDir", "source path");
-  if (!sourceDir) {
+  const sourceDirs = await getSourceDirs();
+  if (!sourceDirs.length) {
     ztoolkit.log("source dir is empty, exit");
     return;
   }
@@ -1086,37 +1238,50 @@ async function matchAttangerAttachment() {
 
     const subfolder = getSubfolderPath(item);
 
-    const realRoot = PathUtils.joinRelative(sourceDir, subfolder); // 拼接出实际文件目录路径
+    // 拼接出实际文件目录路径；多个下载文件夹按设置顺序查找
+    const realRoots = sourceDirs.map((sourceDir) =>
+      PathUtils.joinRelative(sourceDir, subfolder),
+    );
     const attachmentBaseName = Zotero.Attachments.getFileBaseNameFromItem(item);
 
     ztoolkit.log("item: ", item.getDisplayTitle());
-    ztoolkit.log("|  realRoot:", realRoot);
+    ztoolkit.log("|  realRoots:", realRoots);
     ztoolkit.log("|  exist attachments:", existAttachments);
 
     for (const ext of fileTypeList) {
-      const fullpath = PathUtils.joinRelative(
-        realRoot,
-        `${attachmentBaseName}.${ext}`,
-      );
-      const file = Zotero.File.pathToFile(fullpath);
+      const file = realRoots
+        .map((realRoot) =>
+          Zotero.File.pathToFile(
+            PathUtils.joinRelative(realRoot, `${attachmentBaseName}.${ext}`),
+          ),
+        )
+        .find((candidate) => candidate.exists());
+      if (!file) continue;
+      const fullpath = file.path;
       const basename = file.leafName;
-      // Check if the file exists before attempting to import
-      if (file.exists()) {
-        if (!existAttachments.includes(basename)) {
-          try {
-            const attItem = await Zotero.Attachments.linkFromFile({
-              file: fullpath,
-              parentItemID: item.id,
-            });
+      if (!existAttachments.includes(basename)) {
+        try {
+          const attachOptions = {
+            file: fullpath,
+            libraryID: item.libraryID,
+            parentItemID: item.id,
+          };
+          // Existing Attanger libraries are linked files, as in earlier
+          // versions. Only the copy mode imports them so the attachment is
+          // stored in Zotero and the external file becomes its copy source.
+          const attItem = await runAttachmentOperation(() =>
+            getWorkMode() === "copy"
+              ? Zotero.Attachments.importFromFile(attachOptions)
+              : Zotero.Attachments.linkFromFile(attachOptions),
+          );
 
-            showAttachmentItem(attItem);
-            ztoolkit.log("|  Imported attachment:", attItem.getDisplayTitle());
-          } catch (error) {
-            ztoolkit.log("|  Error importing attachment:", error);
-          }
-        } else {
-          ztoolkit.log("|  skip exists:", basename);
+          showAttachmentItem(attItem);
+          ztoolkit.log("|  Imported attachment:", attItem.getDisplayTitle());
+        } catch (error) {
+          ztoolkit.log("|  Error importing attachment:", error);
         }
+      } else {
+        ztoolkit.log("|  skip exists:", basename);
       }
     }
   }
@@ -1151,23 +1316,28 @@ async function openUsing(fileHandler: string, fileType = "pdf") {
  * @param  {string} path Path to directory
  * @return {string}      Path to last modified file in folder or undefined.
  */
-function getLastFileInFolder(path: string) {
-  const dir = Zotero.File.pathToFile(path);
-  const files = dir.directoryEntries;
-  let lastmod = { lastModifiedTime: 0, path: undefined };
-  while (files.hasMoreElements()) {
-    // get next file
-    const file = files.getNext().QueryInterface(Components.interfaces.nsIFile);
-    // skip if directory, hidden file or certain file types
-    if (file.isDirectory() || file.isHidden()) {
-      continue;
-    }
-    // check modification time
-    if (file.isFile() && file.lastModifiedTime > lastmod.lastModifiedTime) {
-      lastmod = file;
+function getLastFileInFolder(paths: string | string[]) {
+  let lastmod: { lastModifiedTime: number; path?: string } = {
+    lastModifiedTime: 0,
+  };
+  for (const path of typeof paths === "string" ? [paths] : paths) {
+    const dir = Zotero.File.pathToFile(path);
+    const files = dir.directoryEntries;
+    while (files.hasMoreElements()) {
+      // get next file
+      const file = files
+        .getNext()
+        .QueryInterface(Components.interfaces.nsIFile);
+      // skip if directory, hidden file or certain file types
+      if (file.isDirectory() || file.isHidden()) {
+        continue;
+      }
+      // check modification time
+      if (file.isFile() && file.lastModifiedTime > lastmod.lastModifiedTime) {
+        lastmod = file;
+      }
     }
   }
-  // return sorted directory entries
   return lastmod.path;
 }
 
@@ -1175,7 +1345,10 @@ function getRuleList(prefName: string) {
   return ((getPref(prefName) as string) || "").split(/,\s*/).filter(Boolean);
 }
 
-function isFilenameMatched(prefName: string, filenameNoExt: string | null) {
+export function isFilenameMatched(
+  prefName: string,
+  filenameNoExt: string | null,
+) {
   if (!filenameNoExt) return false;
   const rules = getRuleList(prefName);
   if (rules.length === 0) return false;
@@ -1214,7 +1387,10 @@ function isAutoRenameLinkedAttachmentCandidate(attItem: Zotero.Item) {
 }
 
 async function canAutoRenameLinkedAttachment(attItem: Zotero.Item) {
-  if (!isAutoRenameLinkedAttachmentCandidate(attItem)) {
+  if (
+    !isAutoRenameLinkedAttachmentCandidate(attItem) ||
+    !canEditAttachment(attItem)
+  ) {
     return false;
   }
   try {
@@ -1258,6 +1434,19 @@ async function renameAttachmentFile(attItem: Zotero.Item, newName: string) {
  * @returns
  */
 async function renameFile(attItem: Zotero.Item, retry = 0) {
+  return runAttachmentOperation(() =>
+    renameFileWithMutationLock(attItem, retry),
+  );
+}
+
+async function renameFileWithMutationLock(attItem: Zotero.Item, retry = 0) {
+  if (
+    attItem.deleted ||
+    attItem.parentItem?.deleted ||
+    !canEditAttachment(attItem)
+  ) {
+    return attItem;
+  }
   const ownsMutationLock = !attachmentMutationInFlight.has(attItem.id);
   if (ownsMutationLock) {
     attachmentMutationInFlight.add(attItem.id);
@@ -1324,7 +1513,25 @@ async function renameFileInternal(attItem: Zotero.Item, retry = 0) {
     return attItem;
   }
   ztoolkit.log({ newName });
-  const renamed = await renameAttachmentFile(attItem, newName);
+  const sharedLinkedFile =
+    attItem.isLinkedFileAttachment() &&
+    (await hasAttachmentFileReferences(file, attItem, {
+      ignoreItemID: attItem.id,
+    }));
+  let renamed: unknown;
+  if (sharedLinkedFile) {
+    const copied = await copyAttachmentFile(
+      file,
+      PathUtils.joinRelative(PathUtils.parent(file) as string, newName),
+      {
+        shouldCancel: () =>
+          attItem.deleted || Boolean(attItem.parentItem?.deleted),
+      },
+    );
+    renamed = await attItem.relinkAttachmentFile(copied.path);
+  } else {
+    renamed = await renameAttachmentFile(attItem, newName);
+  }
   if (renamed !== true) {
     ztoolkit.log("renamed = " + renamed, "newName", newName);
     await Zotero.Promise.delay(3e3);
@@ -1367,7 +1574,7 @@ function isPDFAttachment(attItem: Zotero.Item) {
   );
 }
 
-function removeFilenameDiacritics(filename: string) {
+export function removeFilenameDiacritics(filename: string) {
   if (!getPref("removeDiacritics")) return filename;
   const utilities = Zotero.Utilities as {
     removeDiacritics?: (value: string) => string;
@@ -1382,10 +1589,13 @@ function removeFilenameDiacritics(filename: string) {
  * 得到附件的中间路径(对于subfolderFormat进行格式化)
  * @param item Item
  */
-export function getSubfolderPath(item: Zotero.Item) {
+export function getSubfolderPath(
+  item: Zotero.Item,
+  getCollectionPath: (item: Zotero.Item) => string = getCollectionPathsOfItem,
+) {
   let subfolder = "";
   const subfolderFormat = getPref("subfolderFormat") as string;
-  if (subfolderFormat.length > 0) {
+  if (subfolderFormat?.length > 0) {
     // Zotero.Attachments.getFileBaseNameFromItem 补充不支持的变量
     // 3. 得到最终路径
     // @ts-ignore 未添加属性
@@ -1394,28 +1604,29 @@ export function getSubfolderPath(item: Zotero.Item) {
     Zotero.File.getValidFileName = (fileName) =>
       fileName.replace(/[?*:|"<>]/g, "");
 
-    subfolder = subfolderFormat
-      .split(/(?<=\}\})\/(?=\{\{)/)
-      .map((formatString: string) => {
-        // ztoolkit.log(formatString);
-        if (formatString == "{{collection}}") {
-          return getCollectionPathsOfItem(item);
-        } else {
+    try {
+      subfolder = subfolderFormat
+        .split(/(?<=\}\})\/(?=\{\{)/)
+        .map((formatString: string) => {
+          if (formatString == "{{collection}}") {
+            return getCollectionPath(item);
+          }
           return getValidFolderName(
             Zotero.Attachments.getFileBaseNameFromItem(item, {
               formatString,
             } as any),
           );
-        }
-      })
-      .join(addon.data.folderSep);
-    if (Zotero.isWin) {
-      subfolder = subfolder.replace(/[/]/g, "\\");
-    } else {
-      subfolder = subfolder.replace(/[\\]/g, "/");
+        })
+        .join(addon.data.folderSep);
+      if (Zotero.isWin) {
+        subfolder = subfolder.replace(/[/]/g, "\\");
+      } else {
+        subfolder = subfolder.replace(/[\\]/g, "/");
+      }
+    } finally {
+      // @ts-ignore Restore Zotero's global filename helper even on bad templates.
+      Zotero.File.getValidFileName = _getValidFileName;
     }
-    // @ts-ignore 未添加属性
-    Zotero.File.getValidFileName = _getValidFileName;
   }
   return subfolder;
 }
@@ -1429,159 +1640,290 @@ type MoveFileOptions = {
   shouldCancel?: () => boolean;
 };
 
+/**
+ * Linked mode: move an attachment file into the destination directory.
+ * Stored attachments become linked attachments; linked attachments are
+ * relinked in place, so their item key, annotations and notes stay intact.
+ * Other modes leave the attachment untouched, as earlier versions did when the
+ * attach type was not "linking".
+ */
 export async function moveFile(
-  attItem: any,
+  attItem: Zotero.Item,
   { silent = false, shouldCancel = () => false }: MoveFileOptions = {},
 ) {
-  const isCancelled = () => attItem.deleted || shouldCancel();
-  if (isCancelled()) return;
-  const attachType = getPref("attachType");
-  if (attachType != "linking") {
-    ztoolkit.log("moveFile skipped: attach type is not linking", attachType);
-    return;
-  }
-  let destDir = await checkDir("destDir", "destination directory", silent);
-  if (isCancelled()) return;
-  // 1. 目标根路径
-  if (!destDir) return;
-  // 2. 中间路径 (计算过程放入函数getSubfolderPath，其被多次复用)
-  const subfolder = getSubfolderPath(attItem.topLevelItem);
-  ztoolkit.log(destDir, subfolder);
-  if (subfolder.length > 0) {
-    destDir = PathUtils.joinRelative(destDir, subfolder);
-  }
+  const isCancelled = () =>
+    attItem.deleted || Boolean(attItem.parentItem?.deleted) || shouldCancel();
+  if (isCancelled() || getWorkMode() !== "linked") return;
   const sourcePath = (await attItem.getFilePathAsync()) as string;
   if (!sourcePath || isCancelled()) return;
-  // 防止两个并发 handler 对同一个源文件重复执行 moveFile
-  if (movingPaths.has(sourcePath)) {
+  const pathKey = normalizeAttachmentPath(sourcePath);
+  if (movingPaths.has(pathKey)) {
     ztoolkit.log("moveFile skipped: concurrent call for same path", sourcePath);
     return;
   }
-  movingPaths.add(sourcePath);
+  movingPaths.add(pathKey);
   try {
-    return await _moveFile(attItem, sourcePath, destDir, isCancelled, silent);
+    return await runAttachmentOperation(async () => {
+      if (isCancelled() || getWorkMode() !== "linked") return;
+      const currentPath = (await attItem.getFilePathAsync()) as string;
+      if (
+        !currentPath ||
+        !checkFileType(attItem, PathUtils.filename(currentPath))
+      ) {
+        return;
+      }
+      if (!canUseLinkedAttachment(attItem)) {
+        ztoolkit.log(
+          "Linked attachments require an editable personal library",
+          attItem.id,
+        );
+        if (!silent) showMoveMessage(getString("linked-library-unavailable"));
+        return;
+      }
+      const targetPath = await getAttachmentTargetPath(
+        attItem,
+        currentPath,
+        silent,
+      );
+      if (!targetPath || isCancelled()) return;
+      if (isZoteroStoragePath(targetPath)) {
+        if (!silent) showMoveMessage(getString("target-inside-storage"));
+        return;
+      }
+      return moveLinkedAttachment(
+        attItem,
+        currentPath,
+        targetPath,
+        isCancelled,
+      );
+    });
+  } catch (error) {
+    if (!(error instanceof AttachmentOperationCancelled)) {
+      ztoolkit.log("Attachment move failed", attItem.id, error);
+      showMoveMessage(
+        getString("move-error", {
+          args: { title: attItem.getDisplayTitle() },
+        }),
+      );
+    }
+    return;
   } finally {
-    movingPaths.delete(sourcePath);
+    movingPaths.delete(pathKey);
   }
 }
 
-async function _moveFile(
-  attItem: any,
-  sourcePath: string,
-  destDir: string,
-  shouldCancel: () => boolean,
-  silent: boolean,
-) {
-  if (shouldCancel()) return;
-  const filename = PathUtils.filename(sourcePath);
-  if (!checkFileType(attItem, filename)) {
-    ztoolkit.log("moveFile skipped: unsupported file type", filename);
-    return;
-  }
-  let destPath = PathUtils.joinRelative(destDir, filename);
-  if (sourcePath == destPath) {
-    ztoolkit.log("moveFile skipped: source already at destination", sourcePath);
-    return attItem;
-  }
-  if (await pathExists(destPath)) {
-    if (shouldCancel()) return;
-    ztoolkit.log("Target file already exists", destPath);
-    if (!silent) {
-      const popupWin = new ztoolkit.ProgressWindow("Attanger", {
-        closeTime: -1,
-        closeOtherProgressWindows: true,
-      })
-        .createLine({
-          text: "The target file already exists; a numeric suffix will be automatically added to the filename.",
-          icon: addon.data.icons.moveFile,
-        })
-        .show();
-      popupWin.addDescription(
-        `<a href="https://zotero.org">Click to enter a specified suffix.</a>`,
-      );
-      await waitUtilAsync(() =>
-        // @ts-ignore oriate
-        Boolean(popupWin.lines && popupWin.lines[0]._itemText),
-      );
-      const lock = Zotero.Promise.defer();
-      const timer = window.setTimeout(() => {
-        popupWin.close();
-        lock.resolve();
-      }, 3e3);
-      // @ts-ignore private
-      popupWin.lines[0]._hbox.ownerDocument
-        .querySelector("label[href]")
-        .addEventListener("click", async (ev: MouseEvent) => {
-          ev.stopPropagation();
-          ev.preventDefault();
-          window.clearTimeout(timer);
-          popupWin.close();
-          const suffix = window.prompt("Suffix") as string;
-          destPath = await addSuffixToFilename(destPath, suffix);
-          lock.resolve();
-        });
+type MirrorOptions = MoveFileOptions & { fastCheck?: boolean };
 
-      await lock.promise;
-      if (shouldCancel()) return;
+/**
+ * External copy mode: keep the stored attachment and mirror its file to the
+ * destination path computed from the current folder and filename rules.
+ */
+export async function mirrorAttachment(
+  attItem: Zotero.Item,
+  { silent = false, shouldCancel = () => false, fastCheck }: MirrorOptions = {},
+) {
+  const isCancelled = () =>
+    attItem.deleted || Boolean(attItem.parentItem?.deleted) || shouldCancel();
+  return runAttachmentOperation(async () => {
+    if (isCancelled() || getWorkMode() !== "copy") return;
+    if (!attItem.isImportedAttachment()) {
+      return { status: "skipped-linked" as const };
     }
-    // Attachment identity must be preserved even when file contents happen to
-    // be identical. Sharing an existing path lets a later rename overwrite all
-    // attachments that point to it.
-    destPath = await addSuffixToFilename(destPath);
-  }
-  // 创建中间路径
-  if (!(await createDirectoryPath(destDir))) {
-    return;
-  }
-  if (shouldCancel()) return;
-  // 移动文件到目标文件夹
-  try {
-    if (!(await movePath(sourcePath, destPath, shouldCancel))) {
+    const sourcePath = (await attItem.getFilePathAsync()) as string;
+    if (
+      !sourcePath ||
+      !checkFileType(attItem, PathUtils.filename(sourcePath))
+    ) {
       return;
     }
-  } catch (e) {
-    ztoolkit.log(e);
-    return;
-  }
-  if (shouldCancel()) {
-    await rollbackCancelledMove(sourcePath, destPath);
-    return;
-  }
-  return await replaceWithLinkedAttachment(attItem, destPath, sourcePath);
+    const targetPath = await getAttachmentTargetPath(
+      attItem,
+      sourcePath,
+      silent,
+    );
+    if (!targetPath || isCancelled()) return;
+    if (isZoteroStoragePath(targetPath)) {
+      if (!silent) showMoveMessage(getString("target-inside-storage"));
+      return;
+    }
+    const result = await syncExternalCopy(attItem, targetPath, {
+      shouldCancel: isCancelled,
+      fastCheck,
+    });
+    if (result.removedPath) {
+      await removeEmptyFolder(PathUtils.parent(result.removedPath) as string);
+    }
+    return result;
+  });
 }
 
-async function replaceWithLinkedAttachment(
+async function mirrorAttachmentWithFeedback(attItem: Zotero.Item) {
+  try {
+    const result = await mirrorAttachment(attItem);
+    if (!result) return;
+    if (result.status === "skipped-linked") {
+      showMoveMessage(
+        getString("copy-linked-skipped", {
+          args: { title: attItem.getDisplayTitle() },
+        }),
+      );
+    } else if (result.status === "conflict") {
+      showMoveMessage(
+        getString("copy-conflict", {
+          args: { title: attItem.getDisplayTitle() },
+        }),
+      );
+    } else if (result.status !== "cancelled") {
+      showAttachmentItem(attItem);
+    }
+  } catch (error) {
+    ztoolkit.log("External copy failed", attItem.id, error);
+    showMoveMessage(
+      getString("copy-error", {
+        args: { title: attItem.getDisplayTitle() },
+      }),
+    );
+  }
+}
+
+function getModeMenuLabels() {
+  const mode = getWorkMode();
+  if (mode === "copy") {
+    return {
+      move: "sync-copy-attachment",
+      renameMove: "rename-sync-copy-attachment",
+      undo: "undo-move-attachment",
+    };
+  }
+  if (mode === "stored") {
+    return {
+      move: "move-attachment",
+      renameMove: "rename-attachment",
+      undo: "undo-move-attachment",
+    };
+  }
+  const keepOriginal = getPref("moveWithoutDeleting") === true;
+  return {
+    move: keepOriginal ? "copy-attachment" : "move-attachment",
+    renameMove: keepOriginal
+      ? "rename-copy-attachment"
+      : "rename-move-attachment",
+    undo: keepOriginal ? "undo-copy-attachment" : "undo-move-attachment",
+  };
+}
+
+async function getAttachmentTargetPath(
   attItem: Zotero.Item,
-  destPath: string,
   sourcePath: string,
+  silent: boolean,
 ) {
-  let newAttItem: Zotero.Item | undefined;
+  const destDir = await checkDir("destDir", "destination directory", silent);
+  if (!destDir) return;
+  const parent = attItem.topLevelItem || attItem.parentItem || attItem;
+  const subfolder = getSubfolderPath(parent);
+  return PathUtils.joinRelative(
+    subfolder ? PathUtils.joinRelative(destDir, subfolder) : destDir,
+    PathUtils.filename(sourcePath),
+  );
+}
+
+function canEditAttachment(attItem: Zotero.Item) {
+  const library = Zotero.Libraries.get(attItem.libraryID);
+  return Boolean(
+    library &&
+      library.editable &&
+      library.filesEditable &&
+      attItem.isEditable(),
+  );
+}
+
+function canUseLinkedAttachment(attItem: Zotero.Item) {
+  return (
+    attItem.libraryID === Zotero.Libraries.userLibraryID &&
+    canEditAttachment(attItem)
+  );
+}
+
+function markCreatedAttachment(attItem: Zotero.Item) {
+  automaticallyCreatedLinkedAttachmentIDs.add(attItem.id);
+  attachmentMutationInFlight.add(attItem.id);
+  window.setTimeout(
+    () => automaticallyCreatedLinkedAttachmentIDs.delete(attItem.id),
+    AUTOMATIC_LINKED_ATTACHMENT_IGNORE_MS,
+  );
+}
+
+async function moveLinkedAttachment(
+  attItem: Zotero.Item,
+  sourcePath: string,
+  targetPath: string,
+  shouldCancel: () => boolean,
+) {
+  if (await sameFiles(sourcePath, targetPath)) return attItem;
+  // Copy and verify first; the source is only removed after Zotero points at
+  // the verified destination.
+  const copied = await copyAttachmentFile(sourcePath, targetPath, {
+    shouldCancel,
+  });
+  let created: Zotero.Item | undefined;
   attachmentMutationInFlight.add(attItem.id);
   try {
-    const json = attItem.toJSON() as any;
-    json.linkMode = "linked_file";
-    json.path = destPath;
-    delete json.filename;
-    newAttItem = new Zotero.Item("attachment" as any);
-    newAttItem.libraryID = attItem.libraryID;
-    newAttItem.fromJSON(json);
-    await newAttItem.saveTx();
-    const newAttachmentID = newAttItem.id;
-    automaticallyCreatedLinkedAttachmentIDs.add(newAttachmentID);
-    window.setTimeout(
-      () => automaticallyCreatedLinkedAttachmentIDs.delete(newAttachmentID),
-      AUTOMATIC_LINKED_ATTACHMENT_IGNORE_MS,
-    );
-    attachmentMutationInFlight.add(newAttItem.id);
-    await transferItem(attItem, newAttItem);
-    await attItem.eraseTx();
-    await removeEmptyFolder(PathUtils.parent(sourcePath) as string);
-    return newAttItem;
+    if (attItem.isLinkedFileAttachment()) {
+      const relinked = await attItem.relinkAttachmentFile(copied.path);
+      if (
+        !relinked ||
+        !(await sameFiles(
+          (await attItem.getFilePathAsync()) as string,
+          copied.path,
+        ))
+      ) {
+        await removeVerifiedAttachmentFile(copied.path, copied.fingerprint);
+        throw new Error("Linked attachment did not accept the destination");
+      }
+      if (
+        getPref("moveWithoutDeleting") !== true &&
+        (await removeMovedSource(sourcePath, copied.sourceFingerprint, attItem))
+      ) {
+        await removeEmptyFolder(PathUtils.parent(sourcePath) as string);
+      }
+      return attItem;
+    }
+    try {
+      // Zotero erases the stored file together with the old stored item.
+      return await convertStoredAttachmentToLinked(attItem, copied.path, {
+        shouldCancel,
+        onCreated: (item) => {
+          created = item;
+          markCreatedAttachment(item);
+        },
+      });
+    } catch (error) {
+      await removeVerifiedAttachmentFile(copied.path, copied.fingerprint);
+      throw error;
+    }
   } finally {
     attachmentMutationInFlight.delete(attItem.id);
-    if (newAttItem?.id) {
-      attachmentMutationInFlight.delete(newAttItem.id);
+    if (created) attachmentMutationInFlight.delete(created.id);
+  }
+}
+
+/** Keep the old file if it changed during the move or another item uses it. */
+async function removeMovedSource(
+  sourcePath: string,
+  fingerprint: Parameters<typeof fingerprintMatches>[1],
+  attItem: Zotero.Item,
+) {
+  try {
+    if (
+      isZoteroStoragePath(sourcePath) ||
+      (await hasAttachmentFileReferences(sourcePath, attItem))
+    ) {
+      return false;
     }
+    return await removeVerifiedAttachmentFile(sourcePath, fingerprint);
+  } catch (error) {
+    ztoolkit.log("Moved source was kept", sourcePath, error);
+    return false;
   }
 }
 
@@ -1590,54 +1932,39 @@ async function attachNewFile(options: {
   parentItemID: number | undefined;
   collections: number[] | undefined;
 }) {
-  const sourceDir = await checkDir("sourceDir", "source path");
-  if (!sourceDir) return;
-  const path = getLastFileInFolder(sourceDir);
+  const sourceDirs = await getSourceDirs();
+  if (!sourceDirs.length) return;
+  const path = getLastFileInFolder(sourceDirs);
   if (!path) {
     new ztoolkit.ProgressWindow(config.addonName)
       .createLine({ text: "No File Found", type: "default" })
       .show();
   } else {
-    const attItem = await Zotero.Attachments.importFromFile({
-      file: path,
-      ...options,
-    });
+    const attItem = await runAttachmentOperation(() =>
+      Zotero.Attachments.importFromFile({ file: path, ...options }),
+    );
     showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
       Zotero.RecognizeDocument.recognizeItems([attItem]);
     }
-    removeFile(path);
+    await removeSourceFile(path);
   }
 }
 
-function removeFile(file: any) {
-  // 勾选“移动但不删除原文件”时，保留源文件，不做任何删除
-  if (getPref("moveWithoutDeleting")) {
+/**
+ * Source-folder inputs are deleted after a successful import, as in earlier
+ * versions, so "Attach New File" does not keep picking the same newest file.
+ */
+async function removeSourceFile(path: string) {
+  if (!getPref("deleteSourceAfterImport")) return;
+  if (ZoteroPane.getSelectedLibraryID() != Zotero.Libraries.userLibraryID) {
     return;
   }
-  if (ZoteroPane.getSelectedLibraryID() != 1) {
-    return;
-  }
-  file = Zotero.File.pathToFile(file);
-  if (!file.exists()) return;
   try {
-    ztoolkit.log("remove file", file.path);
-    // remove file
-    if (!file.isDirectory()) {
-      ztoolkit.log("removeFile", file.path);
-      file.remove(false);
-    }
-    // ... for directories, remove them if no non-hidden files are inside
-    else {
-      const files = file.directoryEntries;
-      while (files.hasMoreElements()) {
-        const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
-        if (!f.isHidden()) return;
-      }
-      file.remove(true);
-    }
-  } catch (err) {
-    ztoolkit.log(err);
+    const file = Zotero.File.pathToFile(path);
+    if (file.exists() && file.isFile()) file.remove(false);
+  } catch (error) {
+    ztoolkit.log("Cannot remove imported source file", path, error);
   }
 }
 
@@ -1727,12 +2054,14 @@ function checkFileType(attItem: Zotero.Item, filename?: string) {
   const fileTypes = getPref("fileTypes") as string;
   if (!fileTypes) return true;
   const attachmentFilename = filename || attItem.attachmentFilename || "";
-  const pos = attachmentFilename.lastIndexOf("."),
-    fileType =
-      pos == -1 ? "" : attachmentFilename.substring(pos + 1).toLowerCase(),
-    regex = fileTypes.toLowerCase().replace(/,/gi, "|");
-  // return value
-  return fileType.search(new RegExp(regex)) >= 0 ? true : false;
+  const pos = attachmentFilename.lastIndexOf(".");
+  const fileType =
+    pos === -1 ? "" : attachmentFilename.slice(pos + 1).toLowerCase();
+  return fileTypes
+    .toLowerCase()
+    .split(",")
+    .map((type) => type.trim().replace(/^\./, ""))
+    .includes(fileType);
 }
 
 function showRenameMessage(text: string) {
@@ -1818,107 +2147,58 @@ function showAttachmentItem(attItem: Zotero.Item) {
  * @return {void}
  */
 async function removeEmptyFolder(path: string | nsIFile) {
-  if (!getPref("autoRemoveEmptyFolder") as boolean) {
-    return false;
-  }
-  if (!path as boolean) {
-    return false;
-  }
-  const folder = Zotero.File.pathToFile(path);
-  let rootFolders = [Zotero.getStorageDirectory().path];
-  const source_dir = getPref("sourceDir") as string;
-  const dest_dir = getPref("destDir") as string;
-  if (source_dir != "") {
-    rootFolders.push(source_dir);
-  }
-  if (dest_dir != "") {
-    rootFolders.push(dest_dir);
-  }
-  rootFolders = rootFolders.map((path) => PathUtils.normalize(path));
-  // 不属于插件相关根目录，不处理
-  if (!rootFolders.find((dir) => folder.path.startsWith(dir))) {
-    return false;
-  }
-  const files = folder.directoryEntries;
-  let fileCount = 0;
-  while (files.hasMoreElements()) {
-    const f = files.getNext().QueryInterface(Components.interfaces.nsIFile);
-    fileCount++;
-    if (f.leafName !== ".DS_Store" && f.leafName !== "Thumbs.db") {
-      return true;
-    } else if (fileCount > 1) {
-      break;
+  if (!getPref("autoRemoveEmptyFolder")) return;
+  // Earlier versions cleaned below both plugin roots; the roots themselves
+  // are never removed.
+  const roots = [getPref("destDir"), ...getConfiguredSourceDirs()]
+    .filter((root): root is string => typeof root === "string" && !!root)
+    .map((root) => normalizeAttachmentPath(root).replace(/[\\/]+$/, ""))
+    .filter(Boolean);
+  if (!roots.length) return;
+  const separator = Zotero.isWin ? "\\" : "/";
+  let current = typeof path === "string" ? path : path.path;
+  while (current) {
+    const normalized = normalizeAttachmentPath(current);
+    if (!roots.some((root) => normalized.startsWith(root + separator))) return;
+    const directory = Zotero.File.pathToFile(current);
+    if (!directory.isDirectory()) return;
+    // Finder/Explorer metadata files do not keep a folder alive.
+    const entries = directory.directoryEntries;
+    const junk: nsIFile[] = [];
+    while (entries.hasMoreElements()) {
+      const entry = entries
+        .getNext()
+        .QueryInterface(Components.interfaces.nsIFile);
+      if (entry.leafName !== ".DS_Store" && entry.leafName !== "Thumbs.db") {
+        return;
+      }
+      junk.push(entry);
     }
+    try {
+      for (const entry of junk) entry.remove(false);
+      directory.remove(false);
+    } catch (error) {
+      ztoolkit.log("Cannot remove empty folder", current, error);
+      return;
+    }
+    const parent = PathUtils.parent(current) as string;
+    if (parent === current) return;
+    current = parent;
   }
-  ztoolkit.log("Remove empty folder: ", folder.path);
-  removeFile(folder);
-  return await removeEmptyFolder(PathUtils.parent(folder.path) as string);
 }
 
 /**
- * 迁移数据
+ * Existing download folders in their configured order. When none exists,
+ * fall back to the old picker prompt for the primary folder.
  */
-async function transferItem(
-  originalItem: Zotero.Item,
-  targetItem: Zotero.Item,
-) {
-  ztoolkit.log("迁移标注");
-  await Zotero.DB.executeTransaction(async function () {
-    await Zotero.Items.moveChildItems(originalItem, targetItem);
-  });
-  // 迁移相关
-  ztoolkit.log("迁移相关");
-  await Zotero.Relations.copyObjectSubjectRelations(originalItem, targetItem);
-  // 迁移索引
-  ztoolkit.log("迁移索引");
-  await Zotero.DB.executeTransaction(async function () {
-    await Zotero.Fulltext.transferItemIndex(originalItem, targetItem);
-  });
-  // 迁移标签
-  ztoolkit.log("迁移标签");
-  targetItem.setTags(originalItem.getTags());
-  // 迁移PDF笔记
-  ztoolkit.log("迁移PDF笔记");
-  targetItem.setNote(originalItem.getNote());
-  await targetItem.saveTx();
-}
-
-/**
- * 为文件添加后缀，如果存在
- * @param filename
- * @returns
- */
-async function addSuffixToFilename(filename: string, suffix?: string) {
-  let incr = 0;
-  let destPath, destName;
-
-  // 提取文件名（不含扩展名）和扩展名
-  const [root, ext] = (() => {
-    const parts = filename.split(".");
-    const ext = parts.length > 1 ? parts.pop() : "";
-    return [parts.join("."), ext];
-  })();
-  if (suffix) {
-    // 直接返回不在考虑是否存在
-    return ext ? `${root}_${suffix}.${ext}` : `${root}_${suffix}`;
+async function getSourceDirs() {
+  const dirs: string[] = [];
+  for (const dir of getConfiguredSourceDirs()) {
+    if (await pathExists(dir, "directory")) dirs.push(dir);
   }
-  while (true) {
-    // 如果存在数字后缀，则添加它
-    if (incr) {
-      destName = ext ? `${root}_${incr}.${ext}` : `${root}_${incr}`;
-    } else {
-      destName = filename;
-    }
-
-    destPath = destName; // 假设 destPath 是目标文件路径
-
-    // 检查文件是否存在
-    if (await pathExists(destPath)) {
-      incr++;
-    } else {
-      return destPath;
-    }
-  }
+  if (dirs.length) return dirs;
+  const dir = await checkDir("sourceDir", "source path");
+  return typeof dir === "string" ? [dir] : [];
 }
 
 async function checkDir(prefName: string, prefDisplay: string, silent = false) {
@@ -1997,112 +2277,12 @@ function pathMatchesKind(path: string, kind: PathKind) {
   }
 }
 
-async function movePath(
-  sourcePath: string,
-  destPath: string,
-  shouldCancel: () => boolean = () => false,
-) {
-  const moveWithoutDeleting = getPref("moveWithoutDeleting") as boolean;
-  // 先复制：跨盘 / 跨文件系统安全，同时保留 Windows 兼容性修复
-  try {
-    await IOUtils.copy(sourcePath, destPath);
-  } catch (e) {
-    ztoolkit.log("IOUtils.copy failed; retrying with nsIFile.copyTo", e);
-    const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
-    const destFile = Zotero.File.pathToFile(destPath) as any;
-    sourceFile.copyTo(destFile.parent, destFile.leafName);
-  }
-  if (shouldCancel()) {
-    await removeCopiedDestination(destPath);
-    return false;
-  }
-  // 默认语义是“移动”：复制成功后删除原文件；勾选“移动但不删除”时则保留（即复制）
-  if (moveWithoutDeleting) {
-    return true;
-  }
-  // 删源前确认目标已写入，避免误删
-  if (!(await pathExists(destPath, "file"))) {
-    ztoolkit.log("movePath: dest missing after copy, keep source", destPath);
-    return false;
-  }
-  try {
-    await IOUtils.remove(sourcePath);
-  } catch (e) {
-    ztoolkit.log("IOUtils.remove failed; retrying with nsIFile.remove", e);
-    const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
-    sourceFile.remove(false);
-  }
-  return true;
-}
-
-async function removeCopiedDestination(destPath: string) {
-  if (!(await pathExists(destPath, "file"))) return;
-  try {
-    await IOUtils.remove(destPath);
-  } catch (e) {
-    ztoolkit.log("Failed to remove cancelled move destination", destPath, e);
-    const destFile = Zotero.File.pathToFile(destPath) as any;
-    destFile.remove(false);
-  }
-}
-
-async function rollbackCancelledMove(sourcePath: string, destPath: string) {
-  if (!(await pathExists(destPath, "file"))) return;
-  if (!(await pathExists(sourcePath, "file"))) {
-    try {
-      await IOUtils.copy(destPath, sourcePath);
-    } catch (e) {
-      ztoolkit.log("Failed to restore cancelled move source", sourcePath, e);
-      const destFile = Zotero.File.pathToFile(destPath) as any;
-      const sourceFile = Zotero.File.pathToFile(sourcePath) as any;
-      destFile.copyTo(sourceFile.parent, sourceFile.leafName);
-    }
-  }
-  if (await pathExists(sourcePath, "file")) {
-    await removeCopiedDestination(destPath);
-  }
-}
-
 function getNsIFileKind(file: any, kind: PathKind) {
   try {
     return kind === "directory" ? file.isDirectory() : file.isFile();
   } catch {
     return false;
   }
-}
-
-async function createDirectoryPath(destDir: string) {
-  if (await pathExists(destDir, "directory")) {
-    return true;
-  }
-
-  const create: string[] = [];
-  let current: string | null = destDir;
-  while (current && !(await pathExists(current, "directory"))) {
-    if (await pathExists(current, "file")) {
-      showPathConflict(current);
-      return false;
-    }
-    create.push(current);
-    current = PathUtils.parent(current) as string | null;
-  }
-
-  await Promise.all(
-    create
-      .reverse()
-      .map(async (f) => await Zotero.File.createDirectoryIfMissingAsync(f)),
-  );
-  return true;
-}
-
-function showPathConflict(path: string) {
-  ztoolkit.log("Cannot create directory because a file already exists", path);
-  new ztoolkit.ProgressWindow(config.addonName)
-    .createLine({
-      text: `Cannot create directory because a file already exists: ${path}`,
-      type: "default",
-    })
-    .show();
 }
 
 /**

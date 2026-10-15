@@ -35,37 +35,50 @@ export function registerShortcut(prefKey: string, callback: Function) {
 }
 
 
-export function listenShortcut(inputNode: HTMLInputElement, callback: (shortcut: string) => void) {
-  inputNode.addEventListener("keydown", (e: KeyboardEvent) => {
+export function listenShortcut(
+  inputNode: HTMLInputElement,
+  callback: (shortcut: string) => void,
+) {
+  const ownerWindow = inputNode.ownerDocument?.defaultView || window;
+  const timers = new Set<number>();
+  const onKeyDown = (e: KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const shortcut: any = {}
+    const shortcut: any = {};
     shortcut.control = e.ctrlKey;
     shortcut.meta = e.metaKey;
     shortcut.shift = e.shiftKey;
     shortcut.alt = e.altKey;
-    if (
-      !["Shift", "Meta", "Ctrl", "Alt", "Control"].includes(e.key)
-    ) {
+    if (!["Shift", "Meta", "Ctrl", "Alt", "Control"].includes(e.key)) {
       shortcut.key = e.key.toUpperCase();
     }
-    let keys: string[] = []
+    const keys: string[] = [];
     if (shortcut.control) {
-      keys.push("Ctrl")
+      keys.push("Ctrl");
     }
     if (shortcut.meta) {
-      keys.push("Meta")
+      keys.push("Meta");
     }
     if (shortcut.shift) {
-      keys.push("Shift")
+      keys.push("Shift");
     }
     if (shortcut.alt) {
-      keys.push("Alt")
+      keys.push("Alt");
     }
-    window.setTimeout(() => {
-      inputNode.value = [...keys, ...[shortcut.key]].filter(Boolean).join(" + ")
-      ztoolkit.log(keys, shortcut, inputNode.value)
-      callback(inputNode.value)
-    })
-  })
+    const timer = ownerWindow.setTimeout(() => {
+      timers.delete(timer);
+      inputNode.value = [...keys, ...[shortcut.key]]
+        .filter(Boolean)
+        .join(" + ");
+      ztoolkit.log(keys, shortcut, inputNode.value);
+      callback(inputNode.value);
+    });
+    timers.add(timer);
+  };
+  inputNode.addEventListener("keydown", onKeyDown);
+  return () => {
+    inputNode.removeEventListener("keydown", onKeyDown);
+    timers.forEach((timer) => ownerWindow.clearTimeout(timer));
+    timers.clear();
+  };
 }

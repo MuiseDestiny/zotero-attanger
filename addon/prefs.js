@@ -1,9 +1,14 @@
 /* eslint-disable no-undef */
 pref("extensions.zotero.__addonRef__.enable", true);
+// Empty until startup migrates the legacy attachType/destDir preferences:
+// "stored", "linked" or "copy".
+pref("extensions.zotero.__addonRef__.workMode", "");
 pref("extensions.zotero.__addonRef__.attachType", "linking");
 pref("extensions.zotero.__addonRef__.subfolderFormat", `{{collection}}`);
 pref("extensions.zotero.__addonRef__.slashAsSubfolderDelimiter", true);
 pref("extensions.zotero.__addonRef__.sourceDir", "");
+// Additional download folders as a JSON string array; sourceDir stays primary.
+pref("extensions.zotero.__addonRef__.extraSourceDirs", "[]");
 pref("extensions.zotero.__addonRef__.readPDFtitle", "nonCJK");
 pref("extensions.zotero.__addonRef__.destDir", "");
 pref("extensions.zotero.__addonRef__.autoMove", true);
@@ -54,5 +59,6 @@ pref(
 pref("extensions.zotero.__addonRef__.autoRemoveEmptyFolder", false);
 
 pref("extensions.zotero.__addonRef__.moveWithoutDeleting", false);
+pref("extensions.zotero.__addonRef__.deleteSourceAfterImport", true);
 pref("extensions.zotero.__addonRef__.syncAttachmentTitle", false);
 pref("extensions.zotero.__addonRef__.removeDiacritics", false);

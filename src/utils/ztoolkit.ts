@@ -1,5 +1,6 @@
-import {ZoteroToolkit} from "zotero-plugin-toolkit";
+import { ZoteroToolkit } from "zotero-plugin-toolkit";
 import { config } from "../../package.json";
+import { installToolkitMenuCompatibility } from "./toolkitMenu";
 
 export { createZToolkit };
 
@@ -23,6 +24,7 @@ function initZToolkit(_ztoolkit: ReturnType<typeof createZToolkit>) {
   _ztoolkit.basicOptions.debug.disableDebugBridgePassword =
     __env__ === "development";
   _ztoolkit.basicOptions.api.pluginID = config.addonID;
+  installToolkitMenuCompatibility(_ztoolkit);
   _ztoolkit.ProgressWindow.setIconURI(
     "default",
     `chrome://${config.addonRef}/content/icons/favicon.png`,

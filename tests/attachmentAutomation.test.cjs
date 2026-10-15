@@ -355,16 +355,12 @@ test("only imported attachments enter automatic move while linked files retain a
   await menu.processAddedAttachment(imported);
   await menu.processAddedAttachment(linked);
 
-  assert.equal(
-    imported.calls.pathReads,
-    2,
-    "imported file should enter moveFile",
-  );
-  assert.equal(
-    linked.calls.pathReads,
-    1,
-    "linked file should only be inspected",
-  );
+  assert.deepEqual(harness.calls.copy, []);
+  assert.deepEqual(harness.calls.newItems, []);
+  assert.equal(imported.isImportedAttachment(), true);
+  assert.equal(linked.isLinkedFileAttachment(), true);
+  assert.equal(await imported.getFilePathAsync(), "/dest/imported.pdf");
+  assert.equal(await linked.getFilePathAsync(), "/dest/linked.pdf");
   menu.dispose();
 });
 
@@ -426,9 +422,11 @@ test("enabled automatic recognition creates the parent before rename and move", 
 
   assert.deepEqual(harness.calls.recognize, [[attachment.id]]);
   assert.deepEqual(attachment.calls.rename, ["Recognized-Key.pdf"]);
-  assert.deepEqual(harness.calls.copy, [
-    ["/source/Recognized-Key.pdf", "/dest/Recognized-Key.pdf"],
-  ]);
+  assert.equal(harness.calls.copy.length, 1);
+  assert.equal(harness.calls.copy[0][0], "/source/Recognized-Key.pdf");
+  assert.equal(harness.calls.move[0][1], "/dest/Recognized-Key.pdf");
+  assert.deepEqual(harness.calls.copyOptions, [{ noOverwrite: true }]);
+  assert.deepEqual(harness.calls.moveOptions, [{ noOverwrite: true }]);
   menu.dispose();
 });
 
@@ -496,9 +494,11 @@ test("automatic processing renames imported files before moving them into the sh
   await menu.processAddedAttachment(attachment);
 
   assert.deepEqual(attachment.calls.rename, ["Parent-Key.pdf"]);
-  assert.deepEqual(harness.calls.copy, [
-    ["/source/Parent-Key.pdf", "/dest/Parent-Key.pdf"],
-  ]);
+  assert.equal(harness.calls.copy.length, 1);
+  assert.equal(harness.calls.copy[0][0], "/source/Parent-Key.pdf");
+  assert.equal(harness.calls.move[0][1], "/dest/Parent-Key.pdf");
+  assert.deepEqual(harness.calls.copyOptions, [{ noOverwrite: true }]);
+  assert.deepEqual(harness.calls.moveOptions, [{ noOverwrite: true }]);
   assert.equal(harness.calls.newItems[0].currentPath, "/dest/Parent-Key.pdf");
   menu.dispose();
 });
@@ -738,9 +738,11 @@ test("an identical existing destination still receives a unique attachment path"
   const result = await harness.module.moveFile(source, { silent: true });
 
   assert.notEqual(result, linked);
-  assert.deepEqual(harness.calls.copy, [
-    ["/source/paper.pdf", "/dest/paper_1.pdf"],
-  ]);
+  assert.equal(harness.calls.copy.length, 1);
+  assert.equal(harness.calls.copy[0][0], "/source/paper.pdf");
+  assert.equal(harness.calls.move[0][1], "/dest/paper_1.pdf");
+  assert.deepEqual(harness.calls.copyOptions, [{ noOverwrite: true }]);
+  assert.deepEqual(harness.calls.moveOptions, [{ noOverwrite: true }]);
   assert.equal(harness.calls.newItems.length, 1);
   assert.equal(result.currentPath, "/dest/paper_1.pdf");
 });

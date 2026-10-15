@@ -18,172 +18,546 @@ English | [简体中文](doc/README-zhCN.md) | [Deutsch](doc/README-de.md) | [It
 
 ## Features
 
-- Attach the most recently modified file from a configured source directory to
-  one Zotero item or directly to a collection.
-- Store attachments in Zotero or convert imported files to linked files in an
-  external destination directory.
-- Rename one or many attachments with Zotero's file-renaming template and,
-  optionally, keep the attachment title in sync.
-- Optionally convert diacritics and ligatures in generated filenames to ASCII
-  equivalents for broader filesystem and tool compatibility.
-- Build destination subfolders from item metadata or `{{collection}}`, with
-  optional `/`-delimited nested folders.
-- Automatically rename and organize newly imported attachments.
-- Optionally rename linked attachments after item metadata changes. Debounce
-  and delay controls make this useful with Better BibTeX citation keys and
-  other metadata that settles after import.
-- Match PDF/CAJ files to selected items by title similarity, optionally using
-  a title extracted from the PDF.
-- Precisely reconnect files that already follow Attanger's expected folder and
-  filename pattern.
-- Move or copy existing attachments while preserving annotations, relations,
-  full-text indexes, tags, and attachment notes during linked-file conversion.
-- Open selected attachments with Zotero, the system default, or remembered
-  custom applications.
-- Customize shortcuts, supported extensions, cleanup behavior, and regular
-  expression rules for rename/move exceptions.
+- **Three work modes**: keep attachments in Zotero storage, move them to your
+  own folder as linked files, or keep them in Zotero and maintain an organized
+  copy in an external folder.
+- **Native renaming**: rename attachments with Zotero's filename format, with
+  optional title sync, diacritics removal, and regex-based exceptions.
+- **Folder layouts**: build subfolders from collections, years, or any Zotero
+  template variable; a `/` in a value can create nested folders.
+- **Download folders**: attach the newest download to an item or collection,
+  or match a batch of PDFs to the selected items by title.
+- **Automatic processing**: attachments added through Attanger, drag and drop,
+  or the Zotero Connector are renamed and organized for the current mode.
+- **Rename after edits**: keep linked filenames in sync when the title,
+  authors, year, or Better BibTeX citation key changes.
+- **Safe file handling**: moving a stored attachment keeps its annotations,
+  notes, tags, relations, and full-text index, and existing files are never
+  overwritten.
+- **Extras**: open attachments with another app, and run the main commands
+  with configurable shortcuts.
 
 ## Install
 
 1. Download the latest `.xpi` from the
    [Releases page](https://github.com/MuiseDestiny/zotero-attanger/releases).
-2. In Zotero, open **Tools > Plugins** (or **Tools > Add-ons** on older
-   versions).
-3. Open the gear menu, choose **Install Plugin From File**, and select the
+2. In Zotero, open **Tools > Plugins** (**Tools > Add-ons** in older versions).
+3. Click the gear icon, choose **Install Plugin From File...**, and select the
    downloaded `.xpi`.
 4. Restart Zotero if prompted.
 
-The current manifest supports Zotero 7 through Zotero 10.
+Attanger supports Zotero 7 through 10.
 
-## Initial Setup
+## Quick Start
 
-Open **Zotero Settings > Attanger** and configure:
+### Choose a Work Mode
 
-1. **Source path**: the folder where browsers, scanners, or other tools place
-   newly downloaded files.
-2. **Attach type**:
-   - Choose **Stored Copy** when using Zotero Storage or WebDAV.
-   - Choose **Link** when files are synchronized by another service such as
-     OneDrive, Dropbox, or Nutstore.
-3. When using **Link**, set a **Destination path** and keep **Automatically move
-   added attachments** enabled if imported files should be converted
-   automatically.
-4. Set the optional **Subfolder** template. The default `{{collection}}` follows
-   the selected item's collection hierarchy.
-5. Use **Customize Filename Format** to edit Zotero's native file-renaming
-   template. See the
-   [Zotero file-renaming documentation](https://www.zotero.org/support/file_renaming).
-6. Review the automation, file type, shortcut, and safety settings before a
-   large batch operation.
+|                    | Zotero Storage Only     | External Links                   | Zotero Storage + External Copy |
+| ------------------ | ----------------------- | -------------------------------- | ------------------------------ |
+| Zotero opens       | the stored file         | the linked file                  | the stored file                |
+| File sync          | Zotero Storage / WebDAV | your cloud drive or another tool | Zotero Storage / WebDAV        |
+| External directory | not needed              | required; files live there       | required; holds one-way copies |
+| Libraries          | all                     | editable personal library only   | all                            |
 
-Linked files are not uploaded by Zotero file sync. The destination directory
-must be backed up or synchronized separately.
+- **Zotero Storage Only**: you sync files with Zotero Storage or WebDAV and
+  just want consistent filenames.
+- **External Links**: you want the files in your own folder, synced by
+  OneDrive, Dropbox, Nutstore, or a similar tool.
+- **Zotero Storage + External Copy**: you want to keep Zotero file sync and
+  also browse an organized folder outside Zotero.
+
+### First Steps
+
+1. Open Zotero **Settings** (**Edit > Settings** on Windows and Linux,
+   **Zotero > Settings** on macOS) and select **Attanger**.
+2. Under **Work Mode**, choose a mode. For the external modes, click
+   **Choose...**, select a folder, and wait for **Setup complete**.
+3. In **Attachment Names and Folders**, check the filename rules, the
+   subfolder layout, and the path preview.
+4. To use **Attach New File** or **Match Attachment**, add your download
+   folder under **Download Folder**.
+5. Try a few items before processing a large selection.
+6. Switching modes does not change existing attachments. To organize them,
+   select the items, right-click, and choose **Attanger > Move Attachment** or
+   **Attanger > Sync External Copy**.
+
+## Settings
+
+The settings are grouped into collapsible sections, and each header shows a
+short summary. Only **Work Mode** is open at first; searching Zotero's
+settings opens all sections temporarily.
+
+Screenshots show the Chinese UI with example settings; defaults are listed in
+the [settings reference](#settings-reference).
+
+### Work Mode
+
+<p>
+  <img src="doc/images/settings-work-mode.png" width="560" alt="Work Mode with Zotero Storage Only selected">
+</p>
+
+| Mode                               | Behavior                                                                                                 | Directory                  |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------- |
+| **Zotero Storage Only**            | Attachments stay in Zotero and use Zotero file sync. Renaming rules still apply.                         | none                       |
+| **External Links**                 | Attachments move to an external directory and open through links. This is the former "Link" attach type. | **File Storage Directory** |
+| **Zotero Storage + External Copy** | Attachments stay in Zotero, and an organized copy is kept in an external directory.                      | **Copy Directory**         |
+
+The directory must exist, be writable, and lie outside Zotero's storage
+folder, also when reached through a symbolic link. The status below the field
+reads **Setup complete** when everything is ready. Otherwise it tells you what
+to fix: **Choose an external directory to finish setup** (nothing is moved or
+copied until then), **Directory unavailable; choose it again**, **Choose a
+directory outside Zotero storage**, or **Directory is not writable; choose
+another**.
+
+<p>
+  <img src="doc/images/settings-external-links.png" width="380" alt="External Links settings">
+  <img src="doc/images/settings-external-copy.png" width="380" alt="Zotero Storage + External Copy settings">
+</p>
+
+**Link Options** (External Links only):
+
+- **Automatically move new attachments to the storage directory** (on by
+  default): new stored attachments are renamed (if automatic renaming is on),
+  moved into the directory, and converted to linked attachments.
+- **Keep original files (move becomes copy)** (off by default): when a linked
+  attachment is moved, its old file stays in place, and the menu commands say
+  **Copy** instead of **Move**. Stored attachments are converted either way;
+  their stored file is removed together with the old item.
+- Zotero does not sync linked files. Sync the directory with a cloud drive or
+  another tool. Attachments in group libraries are never converted.
+
+**About Copies** (External Copy only):
+
+- Copies follow the subfolder and filename rules. When you rename an
+  attachment or change its collections, the copy moves and the old one is
+  cleaned up.
+- Copies update one way, from Zotero. A copy edited outside Zotero is never
+  overwritten, and deleting the attachment in Zotero keeps its copy.
+- PDF copies do not contain annotations made in Zotero, because Zotero keeps
+  them in its database.
+- Zotero file sync (Zotero Storage or WebDAV) is configured as usual in
+  Zotero's sync settings.
+
+**Automatically delete empty folders after moving** (external modes, off by
+default): after a file moves away, folders left empty are removed, ignoring
+`.DS_Store` and `Thumbs.db`. This only happens below the external directory or
+a download folder; those folders themselves and Zotero storage are never
+removed.
+
+### Attachment Names and Folders
+
+<p>
+  <img src="doc/images/settings-names-folders.png" width="560" alt="Attachment Names and Folders with a custom subfolder template">
+</p>
+
+- **Automatically rename added attachments**: the same switch as Zotero's own
+  automatic renaming (`extensions.zotero.autoRenameFiles`), so it affects
+  Zotero too.
+- **Filename Rules > Customize Filename Format...**: opens Zotero's native
+  editor. Attanger uses this format for every rename; see
+  [Zotero's file renaming guide](https://www.zotero.org/support/file_renaming).
+- **Sync attachment title after renaming** (off by default): sets the
+  attachment title to the new filename, including the extension. Even when it
+  is off, a title equal to the old filename, or the generic title "PDF", is
+  updated.
+- **Subfolder** (external modes): **By Zotero collection** (`{{collection}}`,
+  the default), **By year** (`{{year}}`), **No subfolders**, or **Custom
+  template...**, which shows **Subfolder Template** and **Parse forward slashes
+  (/) in variables as subfolder delimiters** (on by default).
+- **Output path example** (**Filename example** in Zotero Storage Only): a
+  live preview for a sample item by Wang, 2026, "Learning representations", in
+  the collection "Machine Learning". It never changes real attachments, and it
+  tells you when the sample `paper-2026.pdf` would be excluded by your file
+  types or naming exceptions.
+
+How subfolder templates are rendered:
+
+- Separate folder levels with a `/` between `}}` and `{{`, for example
+  `{{collection}}/{{year}}`.
+- `{{collection}}` must be a level of its own. It becomes the collection
+  path, such as `Machine Learning/Transformers`. Manual commands prefer the
+  collection selected in the left pane if the item belongs to it; otherwise
+  the item's first collection is used. Items outside any collection get no
+  collection folder.
+- Every other level uses Zotero's filename template syntax for the parent
+  item, for example `{{ year }}` or `{{ creators max="1" }}`. Characters that
+  are not allowed in folder names are removed. A `/` inside a value creates a
+  nested folder when the slash option is on and is removed otherwise.
+
+### Download Folder
+
+<p>
+  <img src="doc/images/settings-download-folder.png" width="560" alt="Download Folder section">
+</p>
+
+The download folders are used by **Attach New File**, **Match Attachment**,
+and **Match Attanger Attachment**. Ordinary imports work without them.
+
+- **Download folder paths**: **Choose...** sets the main folder, **Add
+  Folder...** adds more, and **Remove** takes an extra folder off the list.
+  Attach New File takes the newest file across all folders; the match commands
+  search them in order.
+- **Read title from PDF**: **Never**, **Except for CJK** (default), or
+  **Always**. Decides whether Match Attachment compares item titles with the
+  title read from each PDF or with its filename.
+- **Delete the file from the download folder after attaching or matching it**
+  (on by default): removes the source file after Attach New File or Match
+  Attachment. Files are deleted only while **My Library** or one of its
+  collections is selected. Match Attanger Attachment never deletes files.
+
+### Automatic Processing
+
+<p>
+  <img src="doc/images/settings-automatic-processing.png" width="560" alt="Automatic Processing section">
+</p>
+
+- **Recognize standalone imported PDFs** (on by default): a PDF imported
+  without a parent item goes through Zotero's metadata recognition and is
+  processed once a parent item exists. If the option is off or recognition
+  fails, the PDF is left as is. This is separate from Zotero's own
+  **Automatically retrieve metadata for PDFs and ebooks** setting.
+- **Automatically rename linked attachments when items change** (off by
+  default): Zotero renames files when they are added, so existing linked files
+  can keep old names after the title, authors, year, or Better BibTeX
+  citation key changes. This option renames them again. It covers existing,
+  editable linked files of the configured types and respects the "not
+  automatically moved, copied, or renamed" rule.
+- **Adjust waiting time after edits** (shown while the option above is on):
+  - **Rename-after-edit debounce (ms)** (on, 1000): one edit can trigger
+    several notifications, so Attanger waits until edits stop. Use 1000 ms
+    normally, 1500-3000 ms if renames repeat, or 300-500 ms for a faster
+    response.
+  - **Rename-after-edit delay (ms)** (off, 0): extra time after the debounce
+    for values that update asynchronously, such as Better BibTeX keys. Start
+    with 300-1000 ms, and use 1500-3000 ms if old values still appear.
+- **Which imports are processed automatically?** New attachments from
+  Attanger, drag and drop, or the Zotero Connector follow the current mode.
+  Linked files you add directly are not converted. Standalone PDFs are
+  processed only after recognition creates a parent item.
+
+**File Types and Naming Exceptions**:
+
+- **Types of Attachments for Renaming/Moving** (default
+  `pdf,doc,docx,txt,rtf,djvu,epub`): comma-separated extensions,
+  case-insensitive, with or without a leading dot. Leave it empty to include
+  all types. Other files are not renamed, moved, or copied.
+- **Remove diacritics from filenames** (off by default): converts accented
+  letters and ligatures in the final filename to plain letters, for example
+  `Müller` to `Muller`. The extension is kept.
+- Three lists of regular expressions, separated by commas, for example
+  `SI\d+, .+_si`. They are tested against the current filename without its
+  extension and are not anchored, so `SI\d+` also matches `CASI2`.
+
+| When the filename matches...                             | Result                                                                                             |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| "...retained as a prefix during renaming"                | The old name is kept in front: `SI1.pdf` becomes `SI1_Wang - 2026 - Learning representations.pdf`. |
+| "...attachments will not be renamed"                     | No renaming, manual or automatic.                                                                  |
+| "...will not be automatically moved, copied, or renamed" | Skipped by automatic processing and rename-after-edit; manual commands still work.                 |
+
+Because commas separate the rules, a rule cannot contain a comma, so a
+quantifier such as `{2,3}` is not possible. Invalid expressions are ignored
+and written to the debug log.
+
+### Keyboard Shortcuts
+
+| Command                         | Default            | Enabled by default |
+| ------------------------------- | ------------------ | ------------------ |
+| Attach New File                 | `Ctrl + I`         | yes                |
+| Match Attachment                | `Ctrl + M`         | yes                |
+| Rename Attachment               | `Ctrl + R`         | no                 |
+| Rename and Move/Sync Attachment | `Ctrl + Shift + R` | no                 |
+| Move/Sync Attachment            | `Ctrl + Shift + M` | no                 |
+
+Check a command to enable its shortcut, click the field, and press the key
+combination. Changes apply immediately, and enabled shortcuts are shown next
+to the menu commands. `Ctrl` means the Control key on every platform,
+including macOS; a combination recorded with Cmd is saved as `Meta`. The
+Move/Sync shortcuts follow the work mode; in Zotero Storage Only, **Move/Sync
+Attachment** only shows a notice.
+
+The **About** section links to the project on GitHub, the author's Bilibili
+channel, and more plugins.
+
+### Settings Reference
+
+Preferences are stored under `extensions.zotero.zoteroattanger.` and can also
+be inspected in **Settings > Advanced > Config Editor**.
+
+| Setting                                     | Preference                                                                            | Default                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Work Mode                                   | `workMode`                                                                            | `stored` on a new install (`stored`, `linked`, or `copy`) |
+| File Storage / Copy Directory               | `destDir`                                                                             | empty                                                     |
+| Automatically move new attachments          | `autoMove`                                                                            | `true`                                                    |
+| Keep original files                         | `moveWithoutDeleting`                                                                 | `false`                                                   |
+| Automatically delete empty folders          | `autoRemoveEmptyFolder`                                                               | `false`                                                   |
+| Automatically rename added attachments      | `extensions.zotero.autoRenameFiles` (Zotero)                                          | `true`                                                    |
+| Sync attachment title after renaming        | `syncAttachmentTitle`                                                                 | `false`                                                   |
+| Subfolder template                          | `subfolderFormat`                                                                     | `{{collection}}`                                          |
+| Parse forward slashes as delimiters         | `slashAsSubfolderDelimiter`                                                           | `true`                                                    |
+| Download folder                             | `sourceDir`                                                                           | empty                                                     |
+| Additional download folders                 | `extraSourceDirs`                                                                     | `[]` (JSON array)                                         |
+| Read title from PDF                         | `readPDFtitle`                                                                        | `nonCJK` (`never`, `nonCJK`, or `always`)                 |
+| Delete the file from the download folder    | `deleteSourceAfterImport`                                                             | `true`                                                    |
+| Recognize standalone imported PDFs          | `autoRecognizeImportedPDF`                                                            | `true`                                                    |
+| Rename linked attachments when items change | `autoRenameOnModify`                                                                  | `false`                                                   |
+| Rename-after-edit debounce                  | `autoRenameOnModifyDebounceEnabled`, `autoRenameOnModifyDebounceMs`                   | `true`, `1000`                                            |
+| Rename-after-edit delay                     | `autoRenameOnModifyDelayEnabled`, `autoRenameOnModifyDelayMs`                         | `false`, `0`                                              |
+| Types of attachments                        | `fileTypes`                                                                           | `pdf,doc,docx,txt,rtf,djvu,epub`                          |
+| Remove diacritics                           | `removeDiacritics`                                                                    | `false`                                                   |
+| Naming exceptions                           | `filenameAsPrefixRules`, `filenameSkipRenameRules`, `filenameSkipAutoMoveRenameRules` | empty                                                     |
+| Shortcuts                                   | `<command>.shortcut`, `<command>.shortcut.enable`                                     | see [Keyboard Shortcuts](#keyboard-shortcuts)             |
+| Open Using apps                             | `openUsing`                                                                           | empty list                                                |
+
+`<command>` is `attachNewFile`, `matchAttachment`, `renameAttachment`,
+`renameMoveAttachment`, or `moveAttachment`. The legacy `attachType`
+preference follows the work mode (`linking` for External Links, `importing`
+otherwise) so that older Attanger versions still work after a downgrade.
+
+## Menu Commands
+
+Right-click the selected items and open **Attanger**. Three entries depend on
+the work mode:
+
+| Entry                | Zotero Storage Only      | External Links                 | Zotero Storage + External Copy    |
+| -------------------- | ------------------------ | ------------------------------ | --------------------------------- |
+| Rename and Move/Sync | **Rename Attachment**    | **Rename and Move Attachment** | **Rename and Sync External Copy** |
+| Move/Sync            | hidden                   | **Move Attachment**            | **Sync External Copy**            |
+| Undo                 | **Undo Move Attachment** | **Undo Move Attachment**       | **Undo Move Attachment**          |
+
+With **Keep original files** on, External Links shows **Rename and Copy
+Attachment**, **Copy Attachment**, and **Undo Copy Attachment** instead.
+
+- **Attach New File** (exactly one regular item selected): attaches the newest
+  file from the download folders. Any file type is accepted; hidden files and
+  subfolders are ignored. If no download folder exists, Attanger asks you to
+  choose one.
+- **Rename and Move Attachment**: moves each attachment, then renames it; if
+  the move is skipped, nothing is renamed. **Rename and Sync External Copy**
+  renames, then syncs the copy.
+- **Match Attachment**: assigns PDF and CAJ files from the download folders to
+  the selected items by title similarity. See
+  [Match downloaded files](#match-downloaded-files).
+- **Match Attanger Attachment**: finds files that already have the expected
+  Attanger path and name. See
+  [Reconnect an existing library](#reconnect-an-existing-library).
+- **Rename Attachment**: renames the child attachments in the selection with
+  Zotero's filename format. Standalone attachments are skipped.
+- **Move Attachment** / **Sync External Copy**: moves files into the File
+  Storage Directory, or creates and updates their external copies. Standalone
+  attachments are included.
+- **Undo Move Attachment**: runs Zotero's **Convert to Stored Files** on the
+  selected linked attachments and on the linked attachments of selected items.
+  Zotero asks whether to **Delete original files after storing**.
+
+Two more commands are outside the Attanger submenu:
+
+- **Open Using** (item menu, when the selection has attachments): opens the
+  file with **Zotero**, **System** (the default app), a remembered app, or
+  **Choose Other App**. Right-click a remembered app to remove it. For a
+  regular item, the best attachment is opened. This works by switching
+  Zotero's PDF handler, so it is meant for PDFs.
+- **Attach New File** (collection menu): adds the newest download to that
+  collection as a standalone attachment and starts metadata recognition.
 
 ## Common Workflows
 
-### Attach the Latest Download
+### Attach the latest download
 
-1. Save or download a file into the configured source directory.
-2. Select exactly one regular Zotero item.
-3. Right-click and choose **Attanger > Attach New File**, or press `Ctrl + I`.
+1. Save the PDF into a download folder.
+2. Select its item and press `Ctrl + I` (or choose **Attanger > Attach New
+   File**).
+3. The file is attached, then renamed and moved or copied for the current
+   mode. The downloaded file is deleted if that option is on.
 
-Attanger selects the most recently modified non-hidden file. You can also
-right-click a collection and choose **Attach New File** to create a top-level
-attachment in that collection. Unless **Keep original files** is enabled, the
-source file is removed after a successful import.
+To start a new item from the PDF instead, right-click a collection and choose
+**Attach New File**.
 
-### Match Files to Multiple Items
+### Match downloaded files
 
-1. Put PDF or CAJ files directly in the source directory.
-2. Select one or more regular Zotero items.
-3. Choose **Attanger > Match Attachment**.
+1. Put the PDFs in a download folder.
+2. Select only the items whose files are there, and press `Ctrl + M`.
+3. Each item receives the remaining file with the most similar title; every
+   file is used once.
 
-Each source file is used at most once. Matching compares item titles with file
-names and can also inspect PDF metadata/text according to **Read title from PDF
-file**. Matched files are imported and then follow the configured automatic
-rename/move behavior.
+> **Caution:** there is no similarity threshold. While files remain, every
+> selected item gets the closest one, even if it is a poor match.
 
-### Reconnect an Existing Attanger Library
+Only `.pdf` and `.caj` files directly inside the download folders are
+considered, and items with shorter titles are matched first. **Read title
+from PDF** decides what is compared with each item title: the filename
+(**Never**), the PDF title (**Always**), or the PDF title except for items
+whose titles contain CJK ideographs (**Except for CJK**). The PDF title comes
+from its metadata or, if that is missing, the largest text; reading gives up
+after 30 seconds and falls back to the filename.
 
-Use **Attanger > Match Attanger Attachment** when files already follow this
-layout:
+### Reconnect an existing library
 
-```text
-Source path / rendered subfolder / Zotero-generated filename.extension
-```
+Use this when your files are already organized in Attanger's layout, for
+example after reinstalling Zotero or moving to a new computer.
 
-For each selected item, Attanger checks the configured extension list and adds
-matching files as linked attachments without copying them.
+1. Make sure the subfolder template and Zotero's filename format still
+   produce the existing paths.
+2. Add the root of that folder as a download folder.
+3. Select the items and choose **Attanger > Match Attanger Attachment**.
 
-### Rename, Move, or Copy Existing Attachments
+For each extension in **Types of Attachments for Renaming/Moving**, Attanger
+looks for `<download folder>/<subfolder>/<filename>.<ext>`, trying the
+folders in order. A file is skipped if the item already has an attachment
+titled with that filename. Source files are never deleted.
 
-Select regular items, child attachments, or top-level attachments, then use:
+- In **Zotero Storage Only** and **External Links**, files are added as linked
+  attachments where they are. This works only in My Library.
+- In **Zotero Storage + External Copy**, files are imported into Zotero
+  storage. If the download folder is the copy directory itself, the new
+  external copy is written next to the original as `name_1.ext`.
 
-- **Rename Attachment** to apply Zotero's filename template.
-- **Move Attachment** to place files under the destination path.
-- **Rename and Move Attachment** to perform both operations.
-- **Undo Move Attachment** to use Zotero's linked-file-to-stored-file
-  conversion.
+### Organize existing attachments after switching modes
 
-When **Keep original files** is enabled, menu labels change from Move to Copy
-and source files are retained. Moving requires **Attach type: Link**. Different
-files that target the same path receive a suffix; identical destination files
-are not copied again.
+- **To External Links**: select the items and run **Move Attachment**. Stored
+  attachments become linked files in the File Storage Directory and keep
+  their annotations, notes, tags, relations, and full-text index.
+- **To External Copy**: select the items and run **Sync External Copy** once.
+  After that, their copies are refreshed automatically.
+- **Back to Zotero storage**: switch to **Zotero Storage Only** first, or turn
+  off automatic moving, then select the items and run **Undo Move
+  Attachment**. Otherwise the restored attachments count as new attachments
+  and are moved out again.
 
-### Rename After Better BibTeX Updates
+### Rename files after Better BibTeX updates
 
-When a filename template contains a Better BibTeX citation key or another
-field that is populated after import:
+If your filename format uses the Better BibTeX citation key, the key may not
+be ready yet when a file is added.
 
-1. Disable **Automatically rename added attachments** if add-time renaming runs
-   too early.
-2. Enable **Automatically rename linked attachments when items change**.
-3. Keep the default debounce (`1000 ms`) or increase the optional delay if the
-   metadata provider performs several updates.
+1. Turn on **Automatically rename linked attachments when items change**.
+2. Keep the debounce at 1000 ms. If files still get the old key, enable the
+   delay and start with 300-1000 ms.
 
-This workflow only processes existing, supported linked files. Repeated item
-events are deduplicated, and Attanger's own saves do not trigger a rename loop.
+This only renames linked files. For stored attachments, run **Rename
+Attachment** after the key changes.
 
-## Settings Reference
+## How Automatic Processing Works
 
-| Setting                                      | Behavior                                                                                                                            |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Source path                                  | Input directory for Attach New File and both matching commands.                                                                     |
-| Attach type                                  | Stored Zotero copy, or linked file managed under the destination path.                                                              |
-| Destination path                             | Root directory used by move/copy operations in Link mode.                                                                           |
-| Subfolder                                    | Metadata template for directories; `{{collection}}` uses the collection path.                                                       |
-| Parse `/` as subfolders                      | Preserves slash-separated levels generated by template variables.                                                                   |
-| Automatically rename added attachments       | Uses Zotero's global add-time file-renaming preference.                                                                             |
-| Automatically retrieve imported PDF metadata | Recognizes standalone imported PDFs automatically; rename/move runs only after Zotero creates a parent item.                       |
-| Rename linked attachments when items change  | Opt-in post-edit rename flow, with debounce and delay in milliseconds.                                                              |
-| Automatically move added attachments         | Converts newly imported attachments to linked files in Link mode. Existing linked attachments are never moved again automatically.  |
-| Automatically delete empty folders           | Removes empty directories only inside Zotero storage, the source root, or the destination root.                                     |
-| Keep original files                          | Changes move operations to copy behavior and prevents source cleanup.                                                               |
-| Sync attachment title                        | Updates the Zotero attachment title after a filename change.                                                                        |
-| Remove filename diacritics                   | Converts diacritics and ligatures in the final generated base name, including a retained original-name prefix; keeps the extension. |
-| File types                                   | Comma-separated extensions, without leading dots. Default: `pdf,doc,docx,txt,rtf,djvu,epub`.                                        |
-| Filename rules                               | Comma-separated regular expressions for prefix preservation, rename skipping, or automatic move/rename skipping.                    |
+New attachments are collected for about a second and then processed one by
+one:
 
-Invalid regular expressions are ignored and written to the debug log rather
-than interrupting attachment processing.
+1. Linked attachments that Attanger has just created itself are skipped.
+2. A standalone imported PDF is recognized first if **Recognize standalone
+   imported PDFs** is on. Without a parent item, processing stops.
+3. Unsupported file types and files matching the "not automatically moved,
+   copied, or renamed" rule are left alone.
+4. If **Automatically rename added attachments** is on, the file is renamed.
+   This includes linked files you add directly, which are renamed in place.
+5. In **External Links** with automatic moving, stored attachments are
+   renamed first, then moved and converted to linked attachments.
+6. In **Zotero Storage + External Copy**, stored attachments are renamed and
+   then copied to the copy directory.
 
-## Shortcuts
+Trashing or deleting an item cancels its pending processing. All file
+operations run through a single queue.
 
-Shortcuts are editable in Attanger settings and take effect immediately.
+**Moving (External Links)**
 
-| Action               | Default            | Enabled by default |
-| -------------------- | ------------------ | ------------------ |
-| Attach New File      | `Ctrl + I`         | Yes                |
-| Match Attachment     | `Ctrl + M`         | Yes                |
-| Rename Attachment    | `Ctrl + R`         | No                 |
-| Rename and Move/Copy | `Ctrl + Shift + R` | No                 |
-| Move/Copy Attachment | `Ctrl + Shift + M` | No                 |
+- Requires an editable personal library; otherwise Attanger reports "External
+  links work only in an editable personal library."
+- The target is `<File Storage Directory>/<subfolder>/<filename>`. The file
+  is copied to a temporary file, verified by MD5, and published without
+  overwriting anything: taken names get `_1`, `_2`, and so on. A file that is
+  already at its target stays put.
+- A linked attachment is relinked. Its old file is deleted unless **Keep
+  original files** is on, another attachment uses it, it changed during the
+  move, or it lies inside Zotero storage.
+- A stored attachment is replaced by a new linked attachment. Annotations
+  (including trashed ones), child notes, tags, relations, the attachment note,
+  and the full-text index are transferred; then the stored item and its file
+  are erased.
+
+**Renaming**
+
+- Requires a parent item. The new name is Zotero's filename format plus the
+  original extension.
+- The rules apply in this order: skip rule, prefix rule, diacritics removal.
+- If the name is taken, Zotero's numbering is used (`name 2.pdf`).
+- A linked file shared by several attachments is copied to the new name and
+  relinked, so the other attachments keep their file.
+- Failed renames, for example of a locked file, are retried up to five times,
+  three seconds apart.
+
+**External copies**
+
+- Only stored attachments get copies; linked attachments are skipped with a
+  notice.
+- A copy is refreshed about a second after its attachment, file, or
+  collections change. This only applies to attachments that already have a
+  copy, so run **Sync External Copy** once for existing attachments.
+- A missing copy is recreated. A copy that was edited outside Zotero, or that
+  another attachment links to, is reported as a conflict and left untouched.
+  Otherwise the copy is replaced atomically, with a backup and rollback.
+- When the target path changes, a new copy is written (`name_1.ext` if the
+  path is taken), and the old copy is removed only if it is unchanged and
+  unused.
+- Copy records are kept in `attanger-external-copies.json` in the Zotero data
+  directory.
+
+## Upgrading From Earlier Versions
+
+On first start, Attanger converts the old settings once:
+
+- The old **Attach Type: Link** with a destination path becomes **External
+  Links**; everything else becomes **Zotero Storage Only**. **Zotero Storage +
+  External Copy** is new, so choose it yourself if you want it.
+- **Delete the file from the download folder after attaching or matching it**
+  is set to the opposite of the old **Keep original files** option, so
+  download folders behave as before.
+- In External Links, automatic moving and **Keep original files** keep their
+  old meaning.
+- Shortcuts and existing attachments are not changed.
+
+| Earlier setting                                                                     | Now                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Attach Type: Stored Copy / Link                                                     | **Work Mode**                                                                                                                                                            |
+| Source Path                                                                         | **Download Folder > Download folder paths**                                                                                                                              |
+| Destination Path                                                                    | **File Storage Directory** (External Links) or **Copy Directory** (External Copy)                                                                                        |
+| Subfolder                                                                           | **Attachment Names and Folders > Subfolder**                                                                                                                             |
+| Automatically move added attachments                                                | **Link Options > Automatically move new attachments to the storage directory**                                                                                           |
+| Keep original files (never delete source files); move operations become copy        | **Keep original files (move becomes copy)** for moves, and the inverted **Delete the file from the download folder after attaching or matching it** for download folders |
+| Automatically retrieve metadata for standalone imported PDFs before renaming/moving | **Recognize standalone imported PDFs**                                                                                                                                   |
+| read title from PDF file                                                            | **Download Folder > Read title from PDF**                                                                                                                                |
+| Other Settings                                                                      | **Attachment Names and Folders**, **Automatic Processing**, and **Keyboard Shortcuts**                                                                                   |
+| Shortcut for Rename and Move/Copy Attachment, Shortcut for Move/Copy Attachment     | **Rename and Move/Sync Attachment**, **Move/Sync Attachment**                                                                                                            |
+
+## Notes and Limitations
+
+- Zotero does not sync linked files. Sync the File Storage Directory yourself,
+  and consider setting **Settings > Advanced > Files and Folders > Linked
+  Attachment Base Directory** to it so links also resolve on other computers.
+- External Links works only in your editable personal library; attachments in
+  group libraries are never moved. Outside External Copy mode, **Match
+  Attanger Attachment** creates linked attachments, so it also needs My
+  Library.
+- Existing files are never overwritten: moves and copies add `_1`, `_2`, and
+  so on, while renames use Zotero's numbering (`name 2.pdf`).
+- Download-folder files are deleted only while **My Library** or one of its
+  collections is selected.
+- External PDF copies do not contain Zotero annotations; use Zotero's PDF
+  export if you need them in the file.
+- A naming-exception rule cannot contain a comma.
+- `Ctrl` in shortcuts means the Control key on macOS too.
+- **Match Attachment** assigns a file to every selected item while files
+  remain, so select only items whose files are present.
+- Linked files you add directly can be renamed in place but are never moved.
+- Recent Zotero versions can rename files themselves when item metadata
+  changes, including linked files if **Rename linked files** is enabled in
+  Zotero's renaming settings. Use either that or Attanger's **Automatically
+  rename linked attachments when items change**, not both.
 
 ## Screenshots and Guides
 
-<img width="300" alt="Attanger settings" src="https://github.com/user-attachments/assets/3125e608-7891-4afa-91f5-be8120a98988">
-<img width="300" alt="Attanger item menu" src="https://github.com/user-attachments/assets/9414737c-5d3d-43f3-83be-cf39d8f9c2b7">
-<img width="300" alt="Attanger workflow" src="https://github.com/user-attachments/assets/9c2ff395-66a1-4f1e-8e6a-7c90c3bc4121">
+<p>
+  <img src="https://github.com/user-attachments/assets/3125e608-7891-4afa-91f5-be8120a98988" width="300" alt="Attanger item menu">
+</p>
+
+The item menu in External Links mode (Chinese UI).
 
 - [Video demonstration (Chinese)](https://www.bilibili.com/video/BV1x64y1J7Rv)
 - [Community guide (French)](https://docs.zotero-fr.org/kbfr/kbfr_attanger_zotmoov/)
@@ -193,9 +567,10 @@ Shortcuts are editable in Attanger settings and take effect immediately.
 Issues, fixes, new features, tests, documentation, and translations are all
 welcome. Small, focused pull requests are easier to review and safer to ship.
 
-When reporting a bug, include the Zotero and Attanger versions, operating
-system, attach type, relevant settings, exact reproduction steps, and debug
-output. Remove private bibliographic data and local paths before posting logs.
+When reporting a bug, include the Zotero and Attanger versions, your operating
+system, the work mode, relevant settings, exact steps to reproduce, and debug
+output (**Help > Debug Output Logging**). Remove private bibliographic data and
+local paths before posting logs.
 
 To work on the plugin:
 
@@ -204,20 +579,23 @@ git clone https://github.com/MuiseDestiny/zotero-attanger.git
 cd zotero-attanger
 npm install
 cp scripts/zotero-cmd-template.json scripts/zotero-cmd.json
-# Edit scripts/zotero-cmd.json to use a dedicated Zotero test profile
+# Set zoteroBinPath and profilePath; use a dedicated Zotero test profile
 npm start
 ```
+
+`npm start` launches Zotero with the plugin and reloads it when files under
+`src/` or `addon/` change.
 
 Before opening a pull request:
 
 ```bash
-npm run build
-# Run ESLint on the TypeScript files you changed, for example:
-npx eslint src/modules/menu.ts
+npm run build                    # type check, then build/zotero-attanger.xpi
+npm test
+npx eslint src/modules/menu.ts   # lint the files you changed
 ```
 
-The production XPI is written to `build/zotero-attanger.xpi`. Development uses
-hot reload for changes under `src/` and `addon/`.
+`npm run lint` formats and fixes the whole repository, so prefer running
+ESLint on the files you changed to keep the diff focused.
 
 ### AI-Assisted Contributions Are Welcome
 

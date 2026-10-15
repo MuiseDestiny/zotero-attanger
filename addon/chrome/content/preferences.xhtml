@@ -1,24 +1,793 @@
 <linkset>
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
-<vbox id="zotero-prefpane-__addonRef__" onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', {window})">
-  <groupbox>
-    <label>
-      <html:h2 data-l10n-id="source-title"></html:h2>
-    </label>
-    <vbox align="start">
-      <label data-l10n-id="source-intro"></label>
-      <separator class="thin" />
-      <hbox align="center">
-        <label data-l10n-id="directory"></label>
-        <html:input id="source-dir" type="text" readonly="true" flex="1"
-          preference="extensions.zotero.__addonRef__.sourceDir" style="background: none; border: none">
-        </html:input>
-        <button id="choose-source-dir" data-l10n-id="choose-dir"></button>
+<vbox
+  id="zotero-prefpane-__addonRef__"
+  onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', {window})"
+>
+  <!-- Colors come from Zotero Reader's semantic theme variables so light and dark themes switch automatically. -->
+  <!-- prettier-ignore -->
+  <html:style>
+    /*
+     * Sections are outlined panels with a faint tint over the pane background,
+     * so they stay distinct without turning into bright white cards.
+     */
+    #zotero-prefpane-__addonRef__ {
+      --attanger-radius: 6px;
+      --attanger-panel-radius: 8px;
+      --attanger-panel: var(--fill-senary);
+      --attanger-line: var(--color-border50, var(--color-border));
+      --attanger-accent: var(--accent-blue);
+      --attanger-accent-soft: var(--accent-blue10);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-block-end: 16px;
+    }
+    #zotero-prefpane-__addonRef__ :is(description, label, checkbox) {
+      max-width: none;
+    }
+    #zotero-prefpane-__addonRef__ :is(.checkbox-label, .radio-label) {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-note {
+      color: var(--fill-secondary);
+      line-height: 1.45;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    /* Icons: Lucide SVGs used as masks so they follow the theme text color. */
+    #zotero-prefpane-__addonRef__ .attanger-icon {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      background: currentColor;
+      mask: var(--attanger-icon) center / contain no-repeat;
+      pointer-events: none;
+    }
+    #zotero-prefpane-__addonRef__ [data-icon="database"] { --attanger-icon: url("chrome://__addonRef__/content/icons/database.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="link"] { --attanger-icon: url("chrome://__addonRef__/content/icons/link.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="copy"] { --attanger-icon: url("chrome://__addonRef__/content/icons/copy.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="file-cog"] { --attanger-icon: url("chrome://__addonRef__/content/icons/file-cog.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="folder-tree"] { --attanger-icon: url("chrome://__addonRef__/content/icons/folder-tree.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="folder-input"] { --attanger-icon: url("chrome://__addonRef__/content/icons/folder-input.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="wand-sparkles"] { --attanger-icon: url("chrome://__addonRef__/content/icons/wand-sparkles.svg"); }
+    #zotero-prefpane-__addonRef__ [data-icon="keyboard"] { --attanger-icon: url("chrome://__addonRef__/content/icons/keyboard.svg"); }
+
+    /* Sections */
+    #zotero-prefpane-__addonRef__ .attanger-pref-details {
+      align-self: stretch;
+      border: 1px solid var(--color-border);
+      border-radius: var(--attanger-panel-radius);
+      background: var(--attanger-panel);
+      overflow: clip;
+      animation: attanger-fade 220ms ease-out both;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details:nth-of-type(2) { animation-delay: 30ms; }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details:nth-of-type(3) { animation-delay: 60ms; }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details:nth-of-type(4) { animation-delay: 90ms; }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details:nth-of-type(5) { animation-delay: 120ms; }
+    @keyframes attanger-fade {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: none; }
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details > summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      cursor: pointer;
+      list-style: none;
+      transition: background-color 120ms ease;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details > summary:hover {
+      background: var(--fill-senary);
+    }
+    #zotero-prefpane-__addonRef__ summary::-webkit-details-marker {
+      display: none;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details > summary::after {
+      content: "";
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      margin-inline-start: auto;
+      background: var(--fill-tertiary, var(--fill-secondary));
+      mask: url("chrome://__addonRef__/content/icons/chevron-right.svg") center / contain no-repeat;
+      transition: transform 160ms ease;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details > summary:hover::after {
+      background: var(--fill-primary);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details[open] > summary::after {
+      transform: rotate(90deg);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details[open] > summary {
+      border-bottom: 1px solid var(--attanger-line);
+    }
+    #zotero-prefpane-__addonRef__ summary:focus-visible {
+      outline: 2px solid var(--color-focus-border, var(--attanger-accent));
+      outline-offset: -2px;
+      border-radius: var(--attanger-panel-radius);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-section-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      flex: 0 0 16px;
+      color: var(--fill-secondary);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-summary-copy {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      flex: 1;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-summary-title {
+      flex: 0 0 auto;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    /* One-line status beside the title; full details stay inside the section. */
+    #zotero-prefpane-__addonRef__ .attanger-summary-note {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 0.88em;
+      color: var(--fill-secondary);
+      text-align: end;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-pref-details > vbox {
+      padding: 14px 14px 16px;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    /* Zotero's default control margins would add to the section spacing. */
+    #zotero-prefpane-__addonRef__ .attanger-pref-details vbox > :is(checkbox, description, label, hbox, button, menulist, input),
+    #zotero-prefpane-__addonRef__ .attanger-pref-details hbox > :is(button, menulist, input, checkbox, label) {
+      margin-block: 0;
+    }
+
+    /* Work mode options */
+    #work-mode {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      min-width: 0;
+    }
+    #work-mode .attanger-mode-card {
+      gap: 6px;
+      padding: 10px 12px 11px;
+      min-width: 0;
+      border: 1px solid var(--color-border);
+      border-radius: var(--attanger-radius);
+      cursor: pointer;
+      transition: border-color 120ms ease, background-color 120ms ease;
+    }
+    #work-mode .attanger-mode-card:hover {
+      background: var(--fill-senary);
+    }
+    #work-mode .attanger-mode-card[data-selected="true"] {
+      border-color: var(--attanger-accent);
+      background: var(--attanger-accent-soft);
+    }
+    #work-mode .attanger-mode-head {
+      align-items: flex-start;
+      gap: 8px;
+      min-width: 0;
+    }
+    /* The radio carries the selection; the icon only hints at the mode. */
+    #work-mode .attanger-mode-tile {
+      order: 2;
+      display: flex;
+      margin-inline-start: auto;
+      padding-block-start: 1px;
+      color: var(--fill-tertiary, var(--fill-secondary));
+      transition: color 120ms ease;
+    }
+    #work-mode .attanger-mode-card[data-selected="true"] .attanger-mode-tile {
+      color: var(--attanger-accent);
+    }
+    #work-mode radio {
+      margin: 0;
+      font-weight: 600;
+      min-width: 0;
+      flex: 1;
+    }
+    #work-mode .attanger-mode-card > .attanger-pref-note {
+      font-size: 0.92em;
+    }
+    #work-mode .attanger-mode-footnote {
+      margin: auto 0 0;
+      padding-block-start: 6px;
+      border-top: 1px solid var(--attanger-line);
+      color: var(--fill-secondary);
+      font-size: 0.85em;
+      line-height: 1.4;
+    }
+
+    /* Fields */
+    #zotero-prefpane-__addonRef__ .attanger-field {
+      gap: 6px;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-field-heading {
+      align-items: baseline;
+      gap: 6px;
+      font-weight: 600;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-chip {
+      color: var(--fill-secondary);
+      font-size: 0.85em;
+      font-weight: 400;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-chip::before {
+      content: "· ";
+    }
+    #zotero-prefpane-__addonRef__ .attanger-path-row {
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-path-row input {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+    }
+    /* Keep "Choose" and "Remove" aligned so the folder inputs line up. */
+    #zotero-prefpane-__addonRef__ .attanger-path-row > button {
+      min-width: 6em;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-path-list {
+      gap: 6px;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-path-actions {
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-path-actions > .attanger-pref-note {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.88em;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-setting-row,
+    #zotero-prefpane-__addonRef__ .auto-rename-on-modify-setting {
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-setting-row > label {
+      min-width: 110px;
+      color: var(--fill-secondary);
+    }
+    /* Option groups read as labelled lists, not nested boxes. */
+    #zotero-prefpane-__addonRef__ .attanger-group {
+      gap: 8px;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-group-title {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--fill-secondary);
+      margin: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-divider {
+      border-top: 1px solid var(--attanger-line);
+      padding-block-start: 12px;
+    }
+    #zotero-prefpane-__addonRef__ #target-layout-settings,
+    #zotero-prefpane-__addonRef__ #subfolder-custom-settings,
+    #zotero-prefpane-__addonRef__ #auto-rename-on-modify-options {
+      gap: 8px;
+      min-width: 0;
+    }
+
+    /* Status: a single line under the path, like a field hint. */
+    #zotero-prefpane-__addonRef__ .attanger-status {
+      align-items: flex-start;
+      gap: 6px;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ #dest-setting:not([hidden]) + .attanger-status {
+      margin-block-start: -6px;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-status > vbox {
+      gap: 1px;
+      flex: 1;
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-status-title {
+      font-weight: 500;
+      margin: 0;
+      overflow-wrap: anywhere;
+      color: var(--accent-orange, var(--accent-gold));
+    }
+    #zotero-prefpane-__addonRef__ .attanger-status[data-ready="true"] .attanger-status-title {
+      color: var(--fill-primary);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-status .attanger-pref-note {
+      font-size: 0.92em;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-status-icon {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      margin-block-start: 2px;
+      background: var(--accent-orange, var(--accent-gold));
+      mask: url("chrome://__addonRef__/content/icons/circle-alert.svg") center / contain no-repeat;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-status[data-ready="true"] .attanger-status-icon {
+      background: var(--accent-green);
+      mask-image: url("chrome://__addonRef__/content/icons/circle-check.svg");
+    }
+
+    /* Inline disclosures */
+    #zotero-prefpane-__addonRef__ .attanger-inline-details > summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 0;
+      list-style: none;
+      color: var(--fill-secondary);
+      cursor: pointer;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-inline-details > summary:hover {
+      color: var(--fill-primary);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-inline-details > summary::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+      background: currentColor;
+      mask: url("chrome://__addonRef__/content/icons/chevron-right.svg") center / contain no-repeat;
+      transition: transform 160ms ease;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-inline-details[open] > summary::before {
+      transform: rotate(90deg);
+    }
+    #zotero-prefpane-__addonRef__ .attanger-inline-details > vbox {
+      padding: 8px 0 0 18px;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    /* Preview */
+    #zotero-prefpane-__addonRef__ .attanger-rule-preview {
+      gap: 3px;
+      padding-block-start: 12px;
+      border-top: 1px solid var(--attanger-line);
+      min-width: 0;
+    }
+    #zotero-prefpane-__addonRef__ #rule-preview-title {
+      font-size: 0.85em;
+      margin: 0;
+    }
+    #zotero-prefpane-__addonRef__ #rule-preview-value {
+      margin: 0;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      color: var(--fill-primary);
+      overflow-wrap: anywhere;
+      user-select: text;
+    }
+    #zotero-prefpane-__addonRef__ #rule-preview-note {
+      font-size: 0.85em;
+    }
+
+    /* Rule inputs and shortcuts */
+    #zotero-prefpane-__addonRef__ .attanger-text-input {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-shortcut-list {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px 12px;
+      align-items: center;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-shortcut-row {
+      display: contents;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-shortcut-row input,
+    #zotero-prefpane-__addonRef__ .auto-rename-on-modify-setting input {
+      width: 10em;
+      max-width: 100%;
+      min-width: 0;
+      text-align: center;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-shortcut-row input.shortcut {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    /* About */
+    #zotero-prefpane-__addonRef__ .attanger-about {
+      gap: 6px;
+      padding: 4px 4px 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-about h2 {
+      font-size: 1em;
+      margin: 0;
+    }
+    #zotero-prefpane-__addonRef__ .attanger-about-links {
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      #work-mode {
+        grid-template-columns: 1fr;
+      }
+      #zotero-prefpane-__addonRef__ :is(.attanger-setting-row, .attanger-path-row, .attanger-path-actions, .auto-rename-on-modify-setting) {
+        flex-wrap: wrap;
+      }
+      #zotero-prefpane-__addonRef__ .attanger-path-row input {
+        flex-basis: 100%;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #zotero-prefpane-__addonRef__ * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </html:style>
+  <html:details
+    id="attachment-storage-settings"
+    class="attanger-pref-details"
+    open="true"
+  >
+    <html:summary>
+      <html:span class="attanger-section-badge" aria-hidden="true">
+        <html:span class="attanger-icon" data-icon="database"></html:span>
+      </html:span>
+      <html:span class="attanger-summary-copy">
+        <html:span
+          class="attanger-summary-title"
+          data-l10n-id="work-mode-title"
+        ></html:span>
+        <html:span
+          id="work-mode-summary"
+          class="attanger-summary-note"
+        ></html:span>
+      </html:span>
+    </html:summary>
+    <vbox class="attanger-mode-settings">
+      <radiogroup
+        id="work-mode"
+        preference="extensions.zotero.__addonRef__.workMode"
+      >
+        <vbox class="attanger-mode-card" data-mode-card="stored">
+          <hbox class="attanger-mode-head">
+            <html:span class="attanger-mode-tile" aria-hidden="true">
+              <html:span class="attanger-icon" data-icon="database"></html:span>
+            </html:span>
+            <radio
+              native="true"
+              value="stored"
+              data-l10n-id="work-mode-stored-label"
+            />
+          </hbox>
+          <description
+            class="attanger-pref-note"
+            data-l10n-id="work-mode-stored-description"
+          ></description>
+          <description
+            class="attanger-mode-footnote"
+            data-l10n-id="work-mode-stored-footnote"
+          ></description>
+        </vbox>
+        <vbox class="attanger-mode-card" data-mode-card="linked">
+          <hbox class="attanger-mode-head">
+            <html:span class="attanger-mode-tile" aria-hidden="true">
+              <html:span class="attanger-icon" data-icon="link"></html:span>
+            </html:span>
+            <radio
+              native="true"
+              value="linked"
+              data-l10n-id="work-mode-linked-label"
+            />
+          </hbox>
+          <description
+            class="attanger-pref-note"
+            data-l10n-id="work-mode-linked-description"
+          ></description>
+          <description
+            class="attanger-mode-footnote"
+            data-l10n-id="work-mode-linked-footnote"
+          ></description>
+        </vbox>
+        <vbox class="attanger-mode-card" data-mode-card="copy">
+          <hbox class="attanger-mode-head">
+            <html:span class="attanger-mode-tile" aria-hidden="true">
+              <html:span class="attanger-icon" data-icon="copy"></html:span>
+            </html:span>
+            <radio
+              native="true"
+              value="copy"
+              data-l10n-id="work-mode-copy-label"
+            />
+          </hbox>
+          <description
+            class="attanger-pref-note"
+            data-l10n-id="work-mode-copy-description"
+          ></description>
+          <description
+            class="attanger-mode-footnote"
+            data-l10n-id="work-mode-copy-footnote"
+          ></description>
+        </vbox>
+      </radiogroup>
+      <vbox id="dest-setting" class="attanger-field" hidden="true">
+        <hbox class="attanger-field-heading">
+          <label
+            id="dest-dir-label"
+            control="dest-dir"
+            data-l10n-id="work-mode-linked-directory"
+          ></label>
+          <label
+            class="attanger-chip"
+            data-l10n-id="settings-required"
+          ></label>
+        </hbox>
+        <hbox align="center" class="attanger-path-row">
+          <html:input
+            id="dest-dir"
+            type="text"
+            readonly="true"
+            flex="1"
+            aria-labelledby="dest-dir-label"
+            aria-describedby="work-mode-status-detail"
+            data-l10n-id="work-mode-directory-placeholder"
+            preference="extensions.zotero.__addonRef__.destDir"
+          ></html:input>
+          <button id="choose-dest-dir" data-l10n-id="choose-dir"></button>
+        </hbox>
+      </vbox>
+      <hbox
+        id="work-mode-status"
+        class="attanger-status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-ready="false"
+      >
+        <html:span class="attanger-status-icon" aria-hidden="true"></html:span>
+        <vbox>
+          <description
+            id="work-mode-status-title"
+            class="attanger-status-title"
+            data-l10n-id="work-mode-status-checking"
+          ></description>
+          <description
+            id="work-mode-status-detail"
+            class="attanger-pref-note"
+          ></description>
+        </vbox>
       </hbox>
-      <hbox align="center">
+      <vbox
+        id="linked-mode-options"
+        class="attanger-group"
+        data-work-mode="linked"
+        hidden="true"
+      >
+        <description
+          class="attanger-group-title"
+          data-l10n-id="linked-options-title"
+        ></description>
+        <checkbox
+          id="auto-move"
+          native="true"
+          data-l10n-id="auto-move"
+          preference="extensions.zotero.__addonRef__.autoMove"
+        />
+        <checkbox
+          id="move-without-deleting"
+          native="true"
+          data-l10n-id="move-without-deleting"
+          preference="extensions.zotero.__addonRef__.moveWithoutDeleting"
+        />
+        <description
+          class="attanger-pref-note"
+          data-l10n-id="work-mode-linked-sync-note"
+        ></description>
+      </vbox>
+      <vbox
+        id="copy-mode-options"
+        class="attanger-group"
+        data-work-mode="copy"
+        hidden="true"
+      >
+        <description
+          class="attanger-group-title"
+          data-l10n-id="work-mode-copy-sync-title"
+        ></description>
+        <description
+          class="attanger-pref-note"
+          data-l10n-id="work-mode-copy-update"
+        ></description>
+        <description
+          class="attanger-pref-note"
+          data-l10n-id="work-mode-official-sync-note"
+        ></description>
+      </vbox>
+      <checkbox
+        id="auto-remove-empty-folder"
+        native="true"
+        data-l10n-id="auto-remove-empty-folder"
+        preference="extensions.zotero.__addonRef__.autoRemoveEmptyFolder"
+      />
+      <description
+        class="attanger-pref-note attanger-divider"
+        data-l10n-id="work-mode-existing"
+      ></description>
+    </vbox>
+  </html:details>
+
+  <html:details id="attachment-rule-settings" class="attanger-pref-details">
+    <html:summary>
+      <html:span class="attanger-section-badge" aria-hidden="true">
+        <html:span class="attanger-icon" data-icon="folder-tree"></html:span>
+      </html:span>
+      <html:span class="attanger-summary-copy">
+        <html:span
+          class="attanger-summary-title"
+          data-l10n-id="directory-naming-title"
+        ></html:span>
+        <html:span
+          id="organizing-rules-summary"
+          class="attanger-summary-note"
+        ></html:span>
+      </html:span>
+    </html:summary>
+    <vbox>
+      <vbox class="attanger-group">
+        <checkbox
+          id="auto-rename"
+          native="true"
+          data-l10n-id="auto-rename"
+          preference="extensions.zotero.autoRenameFiles"
+        />
+        <hbox align="center" class="attanger-setting-row">
+          <label data-l10n-id="filename-rule-title"></label>
+          <button
+            id="attanger-file-renaming-button"
+            data-l10n-id="preferences-file-renaming-customize-button"
+            data-search-strings="preferences-file-renaming-format-title, preferences-file-renaming-format-template"
+          ></button>
+        </hbox>
+        <description
+          class="attanger-pref-note"
+          data-l10n-id="filename-zotero-rule-note"
+        ></description>
+        <checkbox
+          native="true"
+          data-l10n-id="sync-attachment-title"
+          preference="extensions.zotero.__addonRef__.syncAttachmentTitle"
+        />
+      </vbox>
+      <vbox id="target-layout-settings" class="attanger-group" hidden="true">
+        <hbox align="center" class="attanger-setting-row">
+          <label control="subfolder-layout" data-l10n-id="subfolder"></label>
+          <menulist id="subfolder-layout" native="true">
+            <menupopup>
+              <menuitem
+                value="collection"
+                data-l10n-id="subfolder-layout-collection"
+              />
+              <menuitem value="year" data-l10n-id="subfolder-layout-year" />
+              <menuitem value="flat" data-l10n-id="subfolder-layout-flat" />
+              <menuitem value="custom" data-l10n-id="subfolder-layout-custom" />
+            </menupopup>
+          </menulist>
+        </hbox>
+        <vbox id="subfolder-custom-settings" hidden="true">
+          <label
+            id="subfolder-template-label"
+            control="subfolder-format"
+            data-l10n-id="subfolder-template-title"
+          ></label>
+          <html:input
+            id="subfolder-format"
+            class="attanger-text-input"
+            type="text"
+            aria-labelledby="subfolder-template-label"
+            preference="extensions.zotero.__addonRef__.subfolderFormat"
+          ></html:input>
+          <checkbox
+            native="false"
+            data-l10n-id="slash-as-subfolder-delimiter"
+            preference="extensions.zotero.__addonRef__.slashAsSubfolderDelimiter"
+          />
+        </vbox>
+      </vbox>
+      <vbox class="attanger-rule-preview">
+        <label
+          id="rule-preview-title"
+          class="attanger-pref-note"
+          data-l10n-id="rules-preview-filename"
+        ></label>
+        <description
+          id="rule-preview-value"
+          aria-live="polite"
+          aria-labelledby="rule-preview-title"
+        ></description>
+        <description
+          id="rule-preview-note"
+          class="attanger-pref-note"
+          data-l10n-id="rules-preview-note"
+        ></description>
+      </vbox>
+    </vbox>
+  </html:details>
+
+  <html:details id="attachment-source-settings" class="attanger-pref-details">
+    <html:summary>
+      <html:span class="attanger-section-badge" aria-hidden="true">
+        <html:span class="attanger-icon" data-icon="folder-input"></html:span>
+      </html:span>
+      <html:span class="attanger-summary-copy">
+        <html:span
+          class="attanger-summary-title"
+          data-l10n-id="source-import-title"
+        ></html:span>
+        <html:span
+          class="attanger-summary-note"
+          data-l10n-id="source-import-optional-note"
+        ></html:span>
+      </html:span>
+    </html:summary>
+    <vbox>
+      <vbox class="attanger-field">
+        <label
+          id="source-dir-label"
+          class="attanger-field-heading"
+          control="source-dir"
+          data-l10n-id="source-directory-title"
+        ></label>
+        <hbox align="center" class="attanger-path-row">
+          <html:input
+            id="source-dir"
+            type="text"
+            readonly="true"
+            flex="1"
+            aria-labelledby="source-dir-label"
+            data-l10n-id="source-directory-placeholder"
+            preference="extensions.zotero.__addonRef__.sourceDir"
+          >
+          </html:input>
+          <button id="choose-source-dir" data-l10n-id="choose-dir"></button>
+        </hbox>
+        <!-- Extra download folders are rendered by preferenceScript.ts. -->
+        <vbox id="extra-source-dirs" class="attanger-path-list" hidden="true"></vbox>
+        <hbox align="center" class="attanger-path-actions">
+          <button id="add-source-dir" data-l10n-id="add-source-dir"></button>
+          <description
+            class="attanger-pref-note"
+            data-l10n-id="source-directory-note"
+          ></description>
+        </hbox>
+      </vbox>
+      <hbox align="center" class="attanger-setting-row">
         <label data-l10n-id="read-pdf-title"></label>
-        <menulist native="true" preference="extensions.zotero.__addonRef__.readPDFtitle">
+        <menulist
+          native="true"
+          preference="extensions.zotero.__addonRef__.readPDFtitle"
+        >
           <menupopup>
             <menuitem value="never" data-l10n-id="readPDFtitle-never">
             </menuitem>
@@ -28,249 +797,377 @@
             </menuitem>
           </menupopup>
         </menulist>
-
-        <!-- <radiogroup preference="extensions.zotero.__addonRef__.readPDFtitle">
-          <hbox>
-            <radio id="readPDFtitle-never" data-l10n-id="readPDFtitle-never" value="never" />
-            <radio id="readPDFtitle-nonCJK" data-l10n-id="readPDFtitle-nonCJK" value="nonCJK" />
-            <radio id="readPDFtitle-always" data-l10n-id="readPDFtitle-always" value="always" />
-          </hbox>
-        </radiogroup> -->
       </hbox>
+      <checkbox
+        id="delete-source-after-import"
+        native="true"
+        data-l10n-id="delete-source-after-import"
+        preference="extensions.zotero.__addonRef__.deleteSourceAfterImport"
+      />
     </vbox>
-  </groupbox>
-  <groupbox>
-    <label>
-      <html:h2 data-l10n-id="attach-title"></html:h2>
-    </label>
-    <vbox align="start">
-      <label data-l10n-id="attach-intro"></label>
-      <separator class="thin" />
-      <hbox align="center">
-        <label data-l10n-id="attach-type-start"></label>
-        <menulist native="true" id="attach-type" preference="extensions.zotero.__addonRef__.attachType">
-          <menupopup>
-            <menuitem data-l10n-id="importing" value="importing" />
-            <menuitem data-l10n-id="linking" value="linking" />
-          </menupopup>
-        </menulist>
-        <label data-l10n-id="attach-type-end"></label>
+  </html:details>
+
+  <html:details id="attachment-more-settings" class="attanger-pref-details">
+    <html:summary>
+      <html:span class="attanger-section-badge" aria-hidden="true">
+        <html:span class="attanger-icon" data-icon="wand-sparkles"></html:span>
+      </html:span>
+      <html:span class="attanger-summary-copy">
+        <html:span
+          class="attanger-summary-title"
+          data-l10n-id="automatic-processing-title"
+        ></html:span>
+        <html:span
+          class="attanger-summary-note"
+          data-l10n-id="more-settings-summary"
+        ></html:span>
+      </html:span>
+    </html:summary>
+    <vbox>
+      <checkbox
+        native="true"
+        data-l10n-id="auto-recognize-imported-pdf"
+        preference="extensions.zotero.__addonRef__.autoRecognizeImportedPDF"
+      />
+      <description
+        class="attanger-pref-note"
+        data-l10n-id="auto-recognize-imported-pdf-note"
+      ></description>
+      <hbox align="center" class="attanger-setting-row">
+        <checkbox
+          id="auto-rename-on-modify"
+          native="true"
+          data-l10n-id="auto-rename-on-modify"
+          preference="extensions.zotero.__addonRef__.autoRenameOnModify"
+        />
+        <hbox
+          data-l10n-id="auto-rename-on-modify-help"
+          role="img"
+          align="center"
+          style="
+            width: 16px;
+            height: 16px;
+            margin-inline-start: 8px;
+            opacity: 0.65;
+            cursor: pointer;
+          "
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
+            style="pointer-events: none"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
+        </hbox>
       </hbox>
+      <vbox
+        id="auto-rename-on-modify-options"
+        hidden="true"
+        style="margin-inline-start: 2em"
+      >
+        <html:details class="attanger-inline-details">
+          <html:summary data-l10n-id="rename-timing-title"></html:summary>
+          <vbox>
+            <hbox align="center" class="auto-rename-on-modify-setting">
+              <checkbox
+                id="auto-rename-on-modify-debounce"
+                native="true"
+                data-l10n-id="auto-rename-on-modify-debounce"
+                preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceEnabled"
+              />
+              <html:input
+                id="auto-rename-on-modify-debounce-ms"
+                type="number"
+                min="0"
+                step="100"
+                style="width: 8em; display: inline-block"
+                preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceMs"
+              >
+              </html:input>
+              <hbox
+                data-l10n-id="auto-rename-on-modify-debounce-help"
+                role="img"
+                align="center"
+                style="
+                  width: 16px;
+                  height: 16px;
+                  margin-inline-start: 8px;
+                  opacity: 0.65;
+                  cursor: pointer;
+                "
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
+                  style="pointer-events: none"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <path d="M12 17h.01" />
+                </svg>
+              </hbox>
+            </hbox>
+            <hbox align="center" class="auto-rename-on-modify-setting">
+              <checkbox
+                id="auto-rename-on-modify-delay"
+                native="true"
+                data-l10n-id="auto-rename-on-modify-delay"
+                preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayEnabled"
+              />
+              <html:input
+                id="auto-rename-on-modify-delay-ms"
+                type="number"
+                min="0"
+                step="100"
+                style="width: 8em; display: inline-block"
+                preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayMs"
+              >
+              </html:input>
+              <hbox
+                data-l10n-id="auto-rename-on-modify-delay-help"
+                role="img"
+                align="center"
+                style="
+                  width: 16px;
+                  height: 16px;
+                  margin-inline-start: 8px;
+                  opacity: 0.65;
+                  cursor: pointer;
+                "
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
+                  style="pointer-events: none"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <path d="M12 17h.01" />
+                </svg>
+              </hbox>
+            </hbox>
+          </vbox>
+        </html:details>
+      </vbox>
+      <html:details class="attanger-inline-details">
+        <html:summary
+          data-l10n-id="automatic-processing-scope-title"
+        ></html:summary>
+        <vbox>
+          <description
+            class="attanger-pref-note"
+            data-l10n-id="work-mode-scope"
+          ></description>
+        </vbox>
+      </html:details>
+      <html:details class="attanger-inline-details">
+        <html:summary data-l10n-id="filename-exceptions-title"></html:summary>
+        <vbox>
+          <label
+            id="file-types-label"
+            control="file-types"
+            data-l10n-id="file-types"
+          ></label>
+          <html:input
+            id="file-types"
+            class="attanger-text-input"
+            type="text"
+            aria-labelledby="file-types-label"
+            preference="extensions.zotero.__addonRef__.fileTypes"
+          ></html:input>
+          <checkbox
+            native="true"
+            data-l10n-id="remove-diacritics"
+            preference="extensions.zotero.__addonRef__.removeDiacritics"
+          />
+          <description
+            class="attanger-pref-note"
+            data-l10n-id="filename-rules-instructions"
+          ></description>
+          <label
+            id="filename-prefix-label"
+            control="filename-prefix"
+            data-l10n-id="filename-as-prefix-rules"
+          ></label>
+          <html:input
+            id="filename-prefix"
+            class="attanger-text-input"
+            type="text"
+            aria-labelledby="filename-prefix-label"
+            placeholder="SI\d+, .+_si"
+            preference="extensions.zotero.__addonRef__.filenameAsPrefixRules"
+          ></html:input>
+          <label
+            id="filename-skip-rename-label"
+            control="filename-skip-rename"
+            data-l10n-id="filename-skip-rename-rules"
+          ></label>
+          <html:input
+            id="filename-skip-rename"
+            class="attanger-text-input"
+            type="text"
+            aria-labelledby="filename-skip-rename-label"
+            placeholder="SI\d+, .+_si"
+            preference="extensions.zotero.__addonRef__.filenameSkipRenameRules"
+          ></html:input>
+          <label
+            id="filename-skip-auto-move-label"
+            control="filename-skip-auto-move"
+            data-l10n-id="filename-skip-auto-move-rename-rules"
+          ></label>
+          <html:input
+            id="filename-skip-auto-move"
+            class="attanger-text-input"
+            type="text"
+            aria-labelledby="filename-skip-auto-move-label"
+            placeholder="SI\d+, .+_si"
+            preference="extensions.zotero.__addonRef__.filenameSkipAutoMoveRenameRules"
+          ></html:input>
+        </vbox>
+      </html:details>
     </vbox>
-  </groupbox>
-  <groupbox id="dest-setting">
-    <label>
-      <html:h2 data-l10n-id="dest-title"></html:h2>
-    </label>
-    <vbox align="start">
-      <label data-l10n-id="dest-intro"></label>
-      <separator class="thin" />
-      <hbox align="center">
-        <label data-l10n-id="directory"></label>
-        <html:input id="dest-dir" type="text" readonly="true" flex="1"
-          preference="extensions.zotero.__addonRef__.destDir" style="background: none; border: none">
-        </html:input>
-        <button id="choose-dest-dir" data-l10n-id="choose-dir"></button>
-      </hbox>
+  </html:details>
 
-      <separator class="thin" />
-
-      <hbox align="center">
-        <label data-l10n-id="subfolder"></label>
-        <html:input id="subfolder-format" type="text" flex="1"
-          preference="extensions.zotero.__addonRef__.subfolderFormat">
-        </html:input>
-      </hbox>
-      <checkbox native="false" data-l10n-id="slash-as-subfolder-delimiter"
-        preference="extensions.zotero.__addonRef__.slashAsSubfolderDelimiter" />
-
-      <separator class="thin" />
-
-      <hbox align="center">
-        <label data-l10n-id="filename"></label>
-        <button id="file-renaming-button" data-l10n-id="preferences-file-renaming-customize-button"
-          data-search-strings="preferences-file-renaming-format-title, preferences-file-renaming-format-template"
-          oncommand="Zotero_Preferences.General.openFileRenamingDialog()"
-          ></button>
-      </hbox>
-
-      <separator class="thin" />
-
-      <label data-l10n-id="preferences-file-renaming-format-instructions-more">
-        <label is="zotero-text-link" href="https://www.zotero.org/support/file_renaming"
-          data-l10n-name="file-renaming-format-help-link"></label>
-      </label>
-    </vbox>
-  </groupbox>
-  <groupbox>
-    <label>
-      <html:h2 data-l10n-id="other-title"></html:h2>
-    </label>
-    <vbox align="start">
-      <hbox align="center">
-        <checkbox native="true" class="shortcut-enable" data-l10n-id="attach-new-file-shortcut"
-          preference="extensions.zotero.__addonRef__.attachNewFile.shortcut.enable" />
-        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
-          preference="extensions.zotero.__addonRef__.attachNewFile.shortcut">
+  <html:details id="attachment-shortcut-settings" class="attanger-pref-details">
+    <html:summary>
+      <html:span class="attanger-section-badge" aria-hidden="true">
+        <html:span class="attanger-icon" data-icon="keyboard"></html:span>
+      </html:span>
+      <html:span class="attanger-summary-copy">
+        <html:span
+          class="attanger-summary-title"
+          data-l10n-id="shortcuts-title"
+        ></html:span>
+        <html:span
+          class="attanger-summary-note"
+          data-l10n-id="shortcuts-summary"
+        ></html:span>
+      </html:span>
+    </html:summary>
+    <vbox class="attanger-shortcut-list">
+      <hbox align="center" class="attanger-shortcut-row">
+        <checkbox
+          native="true"
+          class="shortcut-enable"
+          data-l10n-id="attach-new-file-shortcut"
+          preference="extensions.zotero.__addonRef__.attachNewFile.shortcut.enable"
+        />
+        <html:input
+          type="text"
+          class="shortcut"
+          preference="extensions.zotero.__addonRef__.attachNewFile.shortcut"
+        >
         </html:input>
       </hbox>
-      <hbox align="center">
-        <checkbox native="true" class="shortcut-enable" data-l10n-id="match-attachment-shortcut"
-          preference="extensions.zotero.__addonRef__.matchAttachment.shortcut.enable" />
-        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
-          preference="extensions.zotero.__addonRef__.matchAttachment.shortcut">
+      <hbox align="center" class="attanger-shortcut-row">
+        <checkbox
+          native="true"
+          class="shortcut-enable"
+          data-l10n-id="match-attachment-shortcut"
+          preference="extensions.zotero.__addonRef__.matchAttachment.shortcut.enable"
+        />
+        <html:input
+          type="text"
+          class="shortcut"
+          preference="extensions.zotero.__addonRef__.matchAttachment.shortcut"
+        >
         </html:input>
       </hbox>
-      <hbox align="center">
-        <checkbox native="true" class="shortcut-enable" data-l10n-id="rename-attachment-shortcut"
-          preference="extensions.zotero.__addonRef__.renameAttachment.shortcut.enable" />
-        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
-          preference="extensions.zotero.__addonRef__.renameAttachment.shortcut">
+      <hbox align="center" class="attanger-shortcut-row">
+        <checkbox
+          native="true"
+          class="shortcut-enable"
+          data-l10n-id="rename-attachment-shortcut"
+          preference="extensions.zotero.__addonRef__.renameAttachment.shortcut.enable"
+        />
+        <html:input
+          type="text"
+          class="shortcut"
+          preference="extensions.zotero.__addonRef__.renameAttachment.shortcut"
+        >
         </html:input>
       </hbox>
-      <hbox align="center">
-        <checkbox native="true" class="shortcut-enable"
+      <hbox align="center" class="attanger-shortcut-row">
+        <checkbox
+          native="true"
+          class="shortcut-enable"
           data-l10n-id="rename-move-attachment-shortcut"
-          preference="extensions.zotero.__addonRef__.renameMoveAttachment.shortcut.enable" />
-        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
-          preference="extensions.zotero.__addonRef__.renameMoveAttachment.shortcut">
+          preference="extensions.zotero.__addonRef__.renameMoveAttachment.shortcut.enable"
+        />
+        <html:input
+          type="text"
+          class="shortcut"
+          preference="extensions.zotero.__addonRef__.renameMoveAttachment.shortcut"
+        >
         </html:input>
       </hbox>
-      <hbox align="center">
-        <checkbox native="true" class="shortcut-enable"
+      <hbox align="center" class="attanger-shortcut-row">
+        <checkbox
+          native="true"
+          class="shortcut-enable"
           data-l10n-id="move-attachment-shortcut"
-          preference="extensions.zotero.__addonRef__.moveAttachment.shortcut.enable" />
-        <html:input type="text" class="shortcut" style="width: 8em; display: inline-block;"
-          preference="extensions.zotero.__addonRef__.moveAttachment.shortcut">
-        </html:input>
-      </hbox>
-      <checkbox native="true" data-l10n-id="auto-rename" preference="extensions.zotero.autoRenameFiles" />
-      <hbox align="center">
-        <checkbox id="auto-rename-on-modify" native="true" data-l10n-id="auto-rename-on-modify" preference="extensions.zotero.__addonRef__.autoRenameOnModify" />
-        <hbox data-l10n-id="auto-rename-on-modify-help" role="img" align="center"
-          style="width: 16px; height: 16px; margin-inline-start: 8px; opacity: .65; cursor: pointer;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
-            style="pointer-events: none;" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-            <path d="M12 17h.01" />
-          </svg>
-        </hbox>
-      </hbox>
-      <vbox id="auto-rename-on-modify-options" hidden="true" style="margin-inline-start: 2em;">
-      <hbox align="center" class="auto-rename-on-modify-setting">
-        <checkbox id="auto-rename-on-modify-debounce" native="true" data-l10n-id="auto-rename-on-modify-debounce" preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceEnabled" />
+          preference="extensions.zotero.__addonRef__.moveAttachment.shortcut.enable"
+        />
         <html:input
-          id="auto-rename-on-modify-debounce-ms"
-          type="number"
-          min="0"
-          step="100"
-          style="width: 8em; display: inline-block"
-          preference="extensions.zotero.__addonRef__.autoRenameOnModifyDebounceMs"
+          type="text"
+          class="shortcut"
+          preference="extensions.zotero.__addonRef__.moveAttachment.shortcut"
         >
         </html:input>
-        <hbox data-l10n-id="auto-rename-on-modify-debounce-help" role="img" align="center"
-          style="width: 16px; height: 16px; margin-inline-start: 8px; opacity: .65; cursor: pointer;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
-            style="pointer-events: none;" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-            <path d="M12 17h.01" />
-          </svg>
-        </hbox>
       </hbox>
-      <hbox align="center" class="auto-rename-on-modify-setting">
-        <checkbox id="auto-rename-on-modify-delay" native="true" data-l10n-id="auto-rename-on-modify-delay" preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayEnabled" />
-        <html:input
-          id="auto-rename-on-modify-delay-ms"
-          type="number"
-          min="0"
-          step="100"
-          style="width: 8em; display: inline-block"
-          preference="extensions.zotero.__addonRef__.autoRenameOnModifyDelayMs"
-        >
-        </html:input>
-        <hbox data-l10n-id="auto-rename-on-modify-delay-help" role="img" align="center"
-          style="width: 16px; height: 16px; margin-inline-start: 8px; opacity: .65; cursor: pointer;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"
-            style="pointer-events: none;" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-            <path d="M12 17h.01" />
-          </svg>
-        </hbox>
-      </hbox>
-      </vbox>
-      <checkbox native="true" data-l10n-id="auto-recognize-imported-pdf"
-        preference="extensions.zotero.__addonRef__.autoRecognizeImportedPDF" />
-      <checkbox native="true" data-l10n-id="auto-move" preference="extensions.zotero.__addonRef__.autoMove" />
-      <checkbox native="true" data-l10n-id="auto-remove-empty-folder"
-        preference="extensions.zotero.__addonRef__.autoRemoveEmptyFolder" />
-      <checkbox native="true" data-l10n-id="move-without-deleting"
-        preference="extensions.zotero.__addonRef__.moveWithoutDeleting" />
-      <checkbox native="true" data-l10n-id="sync-attachment-title"
-        preference="extensions.zotero.__addonRef__.syncAttachmentTitle" />
-      <checkbox native="true" data-l10n-id="remove-diacritics"
-        preference="extensions.zotero.__addonRef__.removeDiacritics" />
-      <hbox align="center">
-        <label data-l10n-id="file-types"></label>
-        <html:input type="text" flex="1" preference="extensions.zotero.__addonRef__.fileTypes">
-        </html:input>
-      </hbox>
-      <vbox style="margin-top: 1em;">
-
-        <label data-l10n-id="filename-as-prefix-rules"></label>
-        <label style="opacity: .6;" data-l10n-id="filename-rules-instructions"></label>
-        <hbox align="center">
-          <html:input type="text" flex="1" style="width: 100%;" placeholder="SI\d+, .+_si"
-            preference="extensions.zotero.__addonRef__.filenameAsPrefixRules">
-          </html:input>
-
-        </hbox>
-        <label data-l10n-id="filename-skip-rename-rules"></label>
-        <hbox align="center">
-          <html:input type="text" flex="1" style="width: 100%;" placeholder="SI\d+, .+_si"
-            preference="extensions.zotero.__addonRef__.filenameSkipRenameRules">
-          </html:input>
-        </hbox>
-        <label data-l10n-id="filename-skip-auto-move-rename-rules"></label>
-        <hbox align="center">
-          <html:input type="text" flex="1" style="width: 100%;" placeholder="SI\d+, .+_si"
-            preference="extensions.zotero.__addonRef__.filenameSkipAutoMoveRenameRules">
-          </html:input>
-        </hbox>
-      </vbox>
     </vbox>
-  </groupbox>
-  <groupbox>
-    <label>
-      <html:h2 data-l10n-id="about-title"></html:h2>
-    </label>
-    <vbox align="start">
-      <label data-l10n-id="about-intro"></label>
-      <separator class="thin" />
-      <label style="margin-inline: 6px 5px; text-decoration: none" is="zotero-text-link"
-        href="https://github.com/MuiseDestiny/zotero-attanger" class="zotero-text-link">
-        ⭐ Star it
-      </label>
-      <label style="margin-inline: 6px 5px; text-decoration: none" is="zotero-text-link"
-        href="https://github.com/MuiseDestiny" class="zotero-text-link">
-        🔍 See author's Github
-      </label>
-      <label style="margin-inline: 6px 5px; text-decoration: none" is="zotero-text-link"
-        href="https://space.bilibili.com/13557814" class="zotero-text-link">
-        📺 See author's Bilibili
-      </label>
-      <label style="margin-inline: 6px 5px; text-decoration: none" is="zotero-text-link"
-        href="https://x9l8rgumba.feishu.cn/docx/CbvCdvc27opfDwxvTddcfJvDnDf" class="zotero-text-link">
-        🎊 See Pro plugins
-      </label>
-    </vbox>
-  </groupbox>
+  </html:details>
+
+  <vbox class="attanger-about">
+    <html:h2 data-l10n-id="about-title"></html:h2>
+    <description
+      class="attanger-pref-note"
+      data-l10n-id="about-intro"
+    ></description>
+    <hbox class="attanger-about-links">
+      <label
+        is="zotero-text-link"
+        href="https://github.com/MuiseDestiny/zotero-attanger"
+        >GitHub</label
+      >
+      <label is="zotero-text-link" href="https://space.bilibili.com/13557814"
+        >Bilibili</label
+      >
+      <label
+        is="zotero-text-link"
+        href="https://x9l8rgumba.feishu.cn/docx/CbvCdvc27opfDwxvTddcfJvDnDf"
+        data-l10n-id="about-pro-plugins"
+      ></label>
+    </hbox>
+  </vbox>
 </vbox>

@@ -1,8 +1,12 @@
 import { config } from "../package.json";
 import { getString, initLocale } from "./utils/locale";
-import { registerPrefsScripts } from "./modules/preferenceScript";
+import {
+  registerPrefsScripts,
+  unregisterPrefsScripts,
+} from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import Menu from "./modules/menu";
+import { initializeWorkMode } from "./utils/workMode";
 // import { getPref } from "./utils/prefs";
 
 async function onStartup() {
@@ -12,15 +16,14 @@ async function onStartup() {
     Zotero.uiReadyPromise,
   ]);
   initLocale();
-  Zotero.PreferencePanes.register(
-    {
-      pluginID: config.addonID,
-      src: rootURI + "chrome/content/preferences.xhtml",
-      label: "Attanger",
-      image: `chrome://${config.addonRef}/content/icons/favicon.png`,
-      // defaultXUL: true,
-    }
-  );
+  initializeWorkMode();
+  Zotero.PreferencePanes.register({
+    pluginID: config.addonID,
+    src: rootURI + "chrome/content/preferences.xhtml",
+    label: "Attanger",
+    image: `chrome://${config.addonRef}/content/icons/favicon.png`,
+    // defaultXUL: true,
+  });
   await onMainWindowLoad(window);
 }
 
@@ -36,6 +39,7 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 }
 
 function onShutdown(): void {
+  unregisterPrefsScripts();
   addon.data.menu?.dispose();
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();

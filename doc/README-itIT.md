@@ -20,15 +20,16 @@ nativi di Zotero e li sposta o copia in una struttura di cartelle prevedibile.
 
 - Allega il file modificato più di recente da una cartella sorgente a un
   elemento Zotero o direttamente a una collezione.
-- Conserva gli allegati in Zotero oppure converte i file importati in file
-  collegati dentro una cartella di destinazione esterna.
+- Sceglie una modalità di lavoro: solo archivio Zotero, collegamenti esterni
+  oppure archivio Zotero con una copia esterna organizzata (la
+  sincronizzazione file di Zotero continua a funzionare).
 - Rinomina uno o più allegati con il modello nativo di Zotero e, se richiesto,
   sincronizza il titolo dell'allegato.
 - Converte facoltativamente segni diacritici e legature nei nomi generati in
   equivalenti ASCII, migliorando la compatibilità con file system e strumenti.
 - Crea sottocartelle dai metadati o da `{{collection}}`; `/` può delimitare
   cartelle annidate.
-- Rinomina e organizza automaticamente i nuovi allegati importati.
+- Rinomina automaticamente i nuovi allegati importati e li elabora secondo la modalità.
 - Rinomina facoltativamente i file collegati dopo le modifiche ai metadati.
   Debounce e ritardo sono utili con le chiavi di citazione di Better BibTeX e
   altri campi completati dopo l'importazione.
@@ -36,8 +37,10 @@ nativi di Zotero e li sposta o copia in una struttura di cartelle prevedibile.
   leggendo metadati o testo del PDF.
 - Ricollega con precisione i file che rispettano già lo schema di cartelle e
   nomi previsto da Attanger.
-- Sposta o copia allegati mantenendo annotazioni, relazioni, indice full-text,
-  tag e note durante la conversione in file collegato.
+- Sposta o copia gli allegati esistenti, trasferendo annotazioni, relazioni,
+  indice full-text, tag e note durante la conversione in file collegati.
+- Aggiorna le copie esterne a senso unico da Zotero; una copia modificata
+  esternamente non viene mai sovrascritta.
 - Apre gli allegati con Zotero, l'applicazione di sistema o applicazioni
   personalizzate memorizzate.
 - Configura scorciatoie, estensioni supportate, pulizia e regole con espressioni
@@ -57,26 +60,48 @@ Il manifest attuale supporta Zotero dalla versione 7 alla versione 10.
 
 ## Prima configurazione
 
-Apri **Impostazioni di Zotero > Attanger**:
+Apri **Impostazioni di Zotero > Attanger** e scegli una **Modalità di lavoro**:
 
-1. Imposta il **Percorso sorgente**, dove browser, scanner o altri strumenti
-   salvano i nuovi file.
-2. Scegli il **Tipo di allegato**:
-   - **Copia archiviata** per Zotero Storage o WebDAV.
-   - **Collegamento** per OneDrive, Dropbox, Nutstore o altri servizi esterni.
-3. Con **Collegamento**, configura il **Percorso di destinazione**. Mantieni
-   attivo **Sposta automaticamente gli allegati aggiunti** per convertire
-   automaticamente i file importati.
-4. Imposta, se necessario, il modello **Sottocartella**. Il valore predefinito
-   `{{collection}}` segue la gerarchia delle collezioni dell'elemento.
-5. Usa **Personalizza formato del nome file** per modificare il modello nativo
-   di Zotero. Consulta la
+| Modalità                        | Zotero apre     | Sincronizzazione file   | Cartella esterna               |
+| ------------------------------- | --------------- | ----------------------- | ------------------------------ |
+| Solo archivio Zotero            | File archiviato | Zotero Storage / WebDAV | Non necessaria                 |
+| Collegamenti esterni            | File collegato  | Cloud o altro strumento | I file vengono spostati lì     |
+| Archivio Zotero + copia esterna | File archiviato | Zotero Storage / WebDAV | Copia organizzata e aggiornata |
+
+1. Per **Collegamenti esterni** o **Archivio Zotero + copia esterna**, scegli
+   la cartella esterna. Deve trovarsi fuori dall'archivio Zotero, anche
+   se raggiunta tramite un collegamento simbolico.
+2. Se vuoi, regola **Nomi allegati e cartelle**. La sottocartella predefinita
+   `{{collection}}` segue la gerarchia delle collezioni; **Personalizza il
+   formato del nome dei file** apre l'editor nativo di Zotero. Consulta la
    [documentazione di Zotero](https://www.zotero.org/support/file_renaming).
-6. Prima di operazioni in blocco controlla automazioni, tipi di file,
-   scorciatoie e conservazione dei file sorgente.
+3. Per **Allega nuovo file** o l'associazione, imposta la **Cartella dei
+   download**. Con **Aggiungi cartella** puoi aggiungerne altre: Allega nuovo
+   file usa il file più recente tra tutte, l'associazione le cerca in ordine.
+4. Prima di operazioni in blocco controlla elaborazione automatica, tipi di
+   file e scorciatoie.
 
-I file collegati non vengono caricati dalla sincronizzazione file di Zotero.
-La cartella di destinazione deve essere sincronizzata o salvata separatamente.
+### Aggiornamento da versioni precedenti
+
+La modalità viene ricavata una sola volta dalle impostazioni esistenti, quindi
+dopo l'aggiornamento non cambia nulla:
+
+- **Tipo di allegato: Collegamento** con un percorso di destinazione diventa
+  **Collegamenti esterni**. **Sposta automaticamente i nuovi allegati** e
+  **Mantieni i file originali** conservano il loro significato in questa
+  modalità.
+- Ogni altra configurazione diventa **Solo archivio Zotero**.
+- **Mantieni i file originali** diventa anche (invertita) la nuova opzione
+  **Elimina il file dalla cartella dei download**, così le importazioni dalla
+  cartella sorgente funzionano come prima.
+
+Voci di menu e scorciatoie mantengono gli stessi ID. Cambiare modalità non
+converte mai automaticamente gli allegati esistenti.
+
+I file collegati non vengono caricati dalla sincronizzazione file di Zotero;
+in modalità Collegamenti esterni la cartella va sincronizzata o salvata
+separatamente. Gli allegati delle librerie di gruppo non vengono mai convertiti
+in collegamenti.
 
 ## Flussi di lavoro comuni
 
@@ -87,9 +112,9 @@ La cartella di destinazione deve essere sincronizzata o salvata separatamente.
 3. Scegli **Attanger > Allega nuovo file** oppure premi `Ctrl + I`.
 
 Attanger usa il file non nascosto modificato più di recente. Lo stesso comando
-nel menu di una collezione crea un allegato di primo livello. Se **Mantieni i
-file originali** non è attivo, il file sorgente viene eliminato dopo
-l'importazione riuscita.
+nel menu di una collezione crea un allegato di primo livello. Dopo
+un'importazione riuscita il file di input viene eliminato, a meno che **Elimina
+il file dalla cartella dei download** sia disattivata.
 
 ### Associare file a più elementi
 
@@ -100,7 +125,7 @@ l'importazione riuscita.
 Ogni file sorgente viene usato al massimo una volta. Attanger confronta titoli
 e nomi file e, secondo l'opzione **Leggi titolo dal file PDF**, può analizzare
 metadati o testo del PDF. I file associati seguono poi le automazioni di rinomina
-e spostamento configurate.
+configurate e la modalità di lavoro.
 
 ### Ricollegare una libreria Attanger esistente
 
@@ -110,24 +135,43 @@ e spostamento configurate.
 Percorso sorgente / sottocartella generata / nome generato da Zotero.estensione
 ```
 
-Per ogni elemento selezionato, Attanger controlla le estensioni configurate e
-aggiunge i file corrispondenti come collegamenti senza copiarli.
+Per ogni elemento selezionato, Attanger controlla le estensioni configurate.
+In modalità Collegamenti esterni i file corrispondenti vengono collegati senza
+copiarli; nelle modalità di archivio vengono importati in Zotero, così la
+sincronizzazione file continua a funzionare.
 
-### Rinominare, spostare o copiare allegati esistenti
+### Rinominare, spostare o sincronizzare allegati esistenti
 
 Seleziona elementi bibliografici, allegati figli o allegati di primo livello,
 quindi usa:
 
-- **Rinomina allegato** per applicare il modello di Zotero.
-- **Sposta allegato** per collocare i file sotto la destinazione.
-- **Rinomina e sposta allegato** per eseguire entrambe le operazioni.
-- **Annulla spostamento allegato** per usare la conversione di Zotero da file
-  collegato a file archiviato.
+- **Rinomina allegato** per applicare il modello di Zotero (tutte le modalità).
+- **Sposta allegato** (Collegamenti esterni) per inserire i file nella cartella
+  esterna. Con **Mantieni i file originali** i comandi diventano «Copia».
+- **Sincronizza copia esterna** (Archivio Zotero + copia esterna) per creare o
+  aggiornare la copia senza modificare l'allegato archiviato.
+- **Rinomina e sposta/sincronizza** per eseguire entrambe le operazioni. In
+  Solo archivio Zotero rinomina soltanto e il comando Sposta è nascosto.
+- **Annulla lo spostamento allegato** per usare la conversione di Zotero da
+  file collegato a file archiviato.
 
-Con **Mantieni i file originali**, le voci Sposta diventano Copia e i file
-sorgente restano al loro posto. Lo spostamento richiede **Tipo di allegato:
-Collegamento**. In caso di nomi di destinazione uguali viene aggiunto un
-suffisso; un file di destinazione identico non viene copiato di nuovo.
+File diversi con la stessa destinazione ricevono un suffisso; i file di
+destinazione identici non vengono copiati di nuovo.
+
+### Aggiornare le copie esterne
+
+In modalità Archivio Zotero + copia esterna i nuovi allegati archiviati
+ricevono automaticamente una copia. Le copie esistenti seguono a senso unico
+rinomine, cambi di collezione e modifiche del file, circa un secondo dopo la
+modifica. Gli allegati collegati non ricevono copie.
+
+- Una copia modificata fuori da Zotero viene conservata e mai sovrascritta;
+  Attanger segnala un conflitto.
+- Se il percorso di destinazione cambia, la vecchia copia viene rimossa solo se
+  è invariata e non è usata da altri allegati.
+- Eliminare un allegato Zotero non elimina la sua copia esterna.
+- Le copie PDF contengono solo i byte del file; le annotazioni del database di
+  Zotero non vengono incorporate.
 
 ### Rinominare dopo gli aggiornamenti di Better BibTeX
 
@@ -146,23 +190,24 @@ ripetuti vengono deduplicati e i salvataggi di Attanger non creano cicli.
 
 ## Riferimento delle impostazioni
 
-| Impostazione                          | Comportamento                                                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Percorso sorgente                     | Cartella usata da Allega nuovo file e dai due comandi di associazione.                                                         |
-| Tipo di allegato                      | Copia archiviata in Zotero o file collegato gestito nella destinazione.                                                        |
-| Destinazione                          | Cartella principale per spostamento/copia in modalità Collegamento.                                                            |
-| Sottocartella                         | Modello basato sui metadati; `{{collection}}` usa il percorso della collezione.                                                |
-| Interpreta `/` come sottocartella     | Mantiene i livelli prodotti dalle variabili del modello.                                                                       |
-| Rinomina automaticamente all'aggiunta | Preferenza globale di Zotero per i nuovi allegati.                                                                             |
-| Recupera metadati dei PDF importati   | Riconosce automaticamente i PDF importati autonomi; rinomina/spostamento inizia solo dopo la creazione dell'elemento padre.      |
-| Rinomina quando cambia l'elemento     | Flusso opzionale dopo la modifica, con tempi in millisecondi.                                                                  |
-| Sposta automaticamente                | Converte i nuovi file importati in collegamenti; i collegamenti esistenti non vengono spostati di nuovo automaticamente.       |
-| Elimina cartelle vuote                | Pulisce solo dentro l'archivio Zotero, la sorgente o la destinazione.                                                          |
-| Mantieni file originali               | Trasforma lo spostamento in copia e impedisce la pulizia della sorgente.                                                       |
-| Sincronizza titolo                    | Aggiorna il titolo Zotero dopo una rinomina del file.                                                                          |
-| Rimuovi segni diacritici              | Converte segni diacritici e legature nel nome base finale, incluso un prefisso originale mantenuto; conserva l'estensione.     |
-| Tipi di file                          | Estensioni separate da virgole, senza punto. Predefinito: `pdf,doc,docx,txt,rtf,djvu,epub`.                                    |
-| Regole nomi file                      | Espressioni regolari separate da virgole per prefissi ed eccezioni.                                                            |
+| Impostazione                            | Comportamento                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Cartella dei download                   | Cartella usata da Allega nuovo file e dai due comandi di associazione.                                                                |
+| Elimina il file dai download            | Rimuove il file di input dopo un'aggiunta o associazione riuscita (attiva per impostazione predefinita).                              |
+| Modalità di lavoro                      | Solo archivio Zotero, Collegamenti esterni o Archivio Zotero + copia esterna; applicata ai nuovi importati supportati.                |
+| Cartella esterna                        | Radice per collegamenti o copie esterne; nascosta in Solo archivio Zotero.                                                            |
+| Sottocartella                           | Modello basato sui metadati; `{{collection}}` usa il percorso della collezione.                                                       |
+| Interpreta `/` come sottocartella       | Mantiene i livelli prodotti dalle variabili del modello.                                                                              |
+| Rinomina automaticamente all'aggiunta   | Preferenza globale di Zotero per i nuovi allegati.                                                                                    |
+| Recupera metadati dei PDF importati     | Riconosce automaticamente i PDF importati autonomi; rinomina/organizzazione inizia dopo la creazione dell'elemento padre.             |
+| Rinomina quando cambia l'elemento       | Flusso opzionale dopo la modifica, con tempi in millisecondi.                                                                         |
+| Sposta automaticamente i nuovi allegati | Solo Collegamenti esterni: converte i nuovi allegati importati in file collegati; quelli già collegati non vengono spostati di nuovo. |
+| Mantieni i file originali               | Solo Collegamenti esterni: lo spostamento diventa copia e l'allegato archiviato resta.                                                |
+| Elimina cartelle vuote                  | Rimuove le cartelle vuote nella cartella esterna dopo lo spostamento dei file.                                                        |
+| Sincronizza titolo                      | Aggiorna il titolo Zotero dopo una rinomina del file.                                                                                 |
+| Rimuovi segni diacritici                | Converte segni diacritici e legature nel nome base finale, incluso un prefisso originale mantenuto; conserva l'estensione.            |
+| Tipi di file                            | Estensioni separate da virgole, senza punto. Predefinito: `pdf,doc,docx,txt,rtf,djvu,epub`.                                           |
+| Regole nomi file                        | Espressioni regolari separate da virgole per prefissi ed eccezioni.                                                                   |
 
 Le espressioni regolari non valide vengono ignorate e registrate nel log senza
 interrompere l'elaborazione.
@@ -177,8 +222,8 @@ attive immediatamente.
 | Allega nuovo file       | `Ctrl + I`         | Sì                  |
 | Associa allegato        | `Ctrl + M`         | Sì                  |
 | Rinomina allegato       | `Ctrl + R`         | No                  |
-| Rinomina e sposta/copia | `Ctrl + Shift + R` | No                  |
-| Sposta/copia allegato   | `Ctrl + Shift + M` | No                  |
+| Rinomina e sposta/sinc. | `Ctrl + Shift + R` | No                  |
+| Sposta/sincronizza      | `Ctrl + Shift + M` | No                  |
 
 ## Schermate e guide
 
@@ -196,7 +241,7 @@ benvenuti. Pull request piccole e mirate sono più semplici da verificare e
 pubblicare in sicurezza.
 
 Una segnalazione dovrebbe includere versioni di Zotero e Attanger, sistema
-operativo, tipo di allegato, impostazioni rilevanti, passaggi esatti e output di
+operativo, modalità di lavoro, impostazioni rilevanti, passaggi esatti e output di
 debug. Rimuovi dati bibliografici privati e percorsi locali dai log.
 
 Sviluppo locale:
