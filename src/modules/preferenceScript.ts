@@ -432,9 +432,10 @@ function updateRulePreview(doc: PrefsDocument, rename: boolean) {
       !skipAutomatic &&
       !isFilenameMatched("filenameSkipRenameRules", original)
     ) {
+      // Older zotero-types declare only a string format argument.
       filename = Zotero.Attachments.getFileBaseNameFromItem(item, {
         attachmentTitle: "PDF",
-      });
+      } as any);
       if (isFilenameMatched("filenameAsPrefixRules", original))
         filename = `${original}_${filename}`;
       filename = removeFilenameDiacritics(filename);
