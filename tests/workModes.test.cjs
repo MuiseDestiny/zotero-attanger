@@ -435,6 +435,54 @@ test("undo uses Zotero's native conversion to stored files", async () => {
   menu.dispose();
 });
 
+test("undo keeps the converted attachment stored when automatic moving is on", async () => {
+  harness = createHarness({
+    directories: ["/dest", "/storage", "/storage/PAPER002"],
+    files: ["/dest/paper.pdf", "/storage/PAPER002/paper.pdf"],
+    prefs: {
+      workMode: "linked",
+      destDir: "/dest",
+      subfolderFormat: "",
+      autoMove: true,
+    },
+  });
+  const parent = createRegularItem(harness, { id: 1 });
+  const linked = createAttachment(harness, {
+    id: 2,
+    mode: "linked",
+    parent,
+    path: "/dest/paper.pdf",
+  });
+  harness.selectedItems = [linked];
+  let stored;
+  ZoteroPane.convertLinkedFilesToStoredFiles = async () => {
+    // Zotero creates a new stored item and fires an add notification.
+    stored = createAttachment(harness, {
+      id: 3,
+      key: "PAPER002",
+      mode: "imported",
+      parent,
+      path: "/storage/PAPER002/paper.pdf",
+    });
+    await harness.notify("add", [stored.id]);
+  };
+  const menu = new harness.module.default();
+
+  await menuItem("attanger-undo-move-attachment").commandListener();
+  await harness.clock.runAll();
+
+  assert.equal(harness.items.get(stored.id), stored);
+  assert.equal(stored.isImportedAttachment(), true);
+  assert.deepEqual(harness.calls.copy, []);
+  assert.equal(
+    [...harness.items.values()].filter(
+      (item) => item.isAttachment?.() && item.id !== linked.id,
+    ).length,
+    1,
+  );
+  menu.dispose();
+});
+
 // ---------------------------------------------------------------------------
 // Source folder inputs.
 
@@ -523,6 +571,34 @@ test("exact matching searches extra download folders after the primary one", asy
 
   assert.equal(harness.calls.linkFromFile.length, 1);
   assert.equal(harness.calls.linkFromFile[0].file, "/downloads-2/Expected.pdf");
+  menu.dispose();
+});
+
+test("exact matching tolerates spaces and dots in file types", async () => {
+  harness = createHarness({
+    baseName: "Expected",
+    directories: ["/source", "/dest"],
+    files: ["/source/Expected.docx"],
+    prefs: {
+      workMode: "linked",
+      sourceDir: "/source",
+      destDir: "/dest",
+      fileTypes: "pdf, .docx",
+      subfolderFormat: "",
+    },
+  });
+  harness.selectedItems = [
+    createRegularItem(harness, { fileBaseName: "Expected" }),
+  ];
+  const menu = new harness.module.default();
+  const exactMatch = rootMenu().children.find(
+    (child) => child.label === "zoteroattanger-match-attanger-attachment",
+  );
+
+  await exactMatch.commandListener();
+
+  assert.equal(harness.calls.linkFromFile.length, 1);
+  assert.equal(harness.calls.linkFromFile[0].file, "/source/Expected.docx");
   menu.dispose();
 });
 
@@ -723,6 +799,24 @@ test("copy mode allocates a unique path instead of replacing an unrelated file",
     "someone else's PDF",
   );
   assert.equal(Object.values(readCopies())[0].path, "/dest/paper_1.pdf");
+});
+
+test("copy mode adopts an identical file already at the copy path", async () => {
+  const { attachment } = setupStoredAttachment("copy", {
+    fileContents: {
+      "/storage/PAPER001/paper.pdf": "original PDF",
+      "/dest/paper.pdf": "original PDF",
+    },
+  });
+
+  const result = await harness.module.mirrorAttachment(attachment, {
+    silent: true,
+  });
+
+  assert.equal(result.status, "created");
+  assert.equal(harness.files.has("/dest/paper_1.pdf"), false);
+  assert.deepEqual(harness.calls.copy, []);
+  assert.equal(Object.values(readCopies())[0].path, "/dest/paper.pdf");
 });
 
 test("copy mode skips linked attachments", async () => {

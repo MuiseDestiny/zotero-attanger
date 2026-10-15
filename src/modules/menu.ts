@@ -77,6 +77,14 @@ const attachmentMutationInFlight = new Set<number>();
 /** Attanger 新建的链接附件，其 add 通知不应再次触发自动处理 */
 const automaticallyCreatedLinkedAttachmentIDs = new Set<number>();
 const AUTOMATIC_LINKED_ATTACHMENT_IGNORE_MS = 30_000;
+/**
+ * Number of running "Undo Move" conversions. Zotero's conversion creates a new
+ * stored attachment; without this guard automatic moving would immediately
+ * turn it back into a linked file.
+ */
+let nativeStoredConversionsInFlight = 0;
+const CJK_RE =
+  /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]/;
 export default class Menu {
   private notifierID?: string;
   private pendingAddedItemIDs = new Set<number>();
@@ -171,6 +179,13 @@ export default class Menu {
       if (Number.isInteger(numericID)) {
         if (automaticallyCreatedLinkedAttachmentIDs.has(numericID)) {
           this.pendingAddedItemIDs.delete(numericID);
+          continue;
+        }
+        if (
+          nativeStoredConversionsInFlight > 0 &&
+          Zotero.Items.get(numericID)?.isAttachment()
+        ) {
+          // Created by "Undo Move"; it must stay a stored attachment.
           continue;
         }
         this.pendingAddedItemIDs.add(numericID);
@@ -619,39 +634,39 @@ export default class Menu {
       });
     };
 
-    const renameMoveAttachmentCallback = async () => {
-      selectedCollection = getSelectedCollectionCompat();
-      const attachmentItems = getAttachmentItems(false);
-      if (!attachmentItems.length) {
-        showMoveMessage("No attachment selected.");
-        return;
-      }
-      const mode = getWorkMode();
-      for (const item of attachmentItems) {
-        try {
-          if (mode === "linked") {
-            const movedItem = await moveFile(item);
-            if (!movedItem) {
-              showMoveMessage(
-                `Move skipped or failed: ${item.getDisplayTitle()}`,
-              );
+    const renameMoveAttachmentCallback = () =>
+      withSelectedCollection(async () => {
+        const attachmentItems = getAttachmentItems(false);
+        if (!attachmentItems.length) {
+          showMoveMessage("No attachment selected.");
+          return;
+        }
+        const mode = getWorkMode();
+        for (const item of attachmentItems) {
+          try {
+            if (mode === "linked") {
+              const movedItem = await moveFile(item);
+              if (!movedItem) {
+                showMoveMessage(
+                  `Move skipped or failed: ${item.getDisplayTitle()}`,
+                );
+                continue;
+              }
+              const renamedItem = await renameFile(movedItem);
+              showAttachmentItem(renamedItem || movedItem);
               continue;
             }
-            const renamedItem = await renameFile(movedItem);
-            showAttachmentItem(renamedItem || movedItem);
-            continue;
+            const renamedItem = (await renameFile(item)) || item;
+            if (mode === "copy") {
+              await mirrorAttachmentWithFeedback(renamedItem);
+            }
+            showAttachmentItem(renamedItem);
+          } catch (e) {
+            ztoolkit.log(e);
+            showMoveMessage(`Move error: ${(e as Error).message || e}`);
           }
-          const renamedItem = (await renameFile(item)) || item;
-          if (mode === "copy") {
-            await mirrorAttachmentWithFeedback(renamedItem);
-          }
-          showAttachmentItem(renamedItem);
-        } catch (e) {
-          ztoolkit.log(e);
-          showMoveMessage(`Move error: ${(e as Error).message || e}`);
         }
-      }
-    };
+      });
 
     const renameAttachmentCallback = async () => {
       const attachmentItems = getAttachmentItems();
@@ -678,26 +693,26 @@ export default class Menu {
       }
     };
 
-    const moveAttachmentCallback = async () => {
-      selectedCollection = getSelectedCollectionCompat();
-      const mode = getWorkMode();
-      if (mode === "stored") {
-        showMoveMessage(getString("mode-stored-message"));
-        return;
-      }
-      for (const item of getAttachmentItems(false)) {
-        try {
-          if (mode === "copy") {
-            await mirrorAttachmentWithFeedback(item);
-            continue;
-          }
-          const attItem = await moveFile(item);
-          attItem && showAttachmentItem(attItem);
-        } catch (e) {
-          ztoolkit.log(e);
+    const moveAttachmentCallback = () =>
+      withSelectedCollection(async () => {
+        const mode = getWorkMode();
+        if (mode === "stored") {
+          showMoveMessage(getString("mode-stored-message"));
+          return;
         }
-      }
-    };
+        for (const item of getAttachmentItems(false)) {
+          try {
+            if (mode === "copy") {
+              await mirrorAttachmentWithFeedback(item);
+              continue;
+            }
+            const attItem = await moveFile(item);
+            attItem && showAttachmentItem(attItem);
+          } catch (e) {
+            ztoolkit.log(e);
+          }
+        }
+      });
 
     // Zotero 11+ registers via Zotero.MenuManager; Zotero 10 keeps ztoolkit.
     this.buildItemMenu = () => ({
@@ -799,7 +814,7 @@ export default class Menu {
           label: getString(getModeMenuLabels().undo),
           icon: addon.data.icons.undoMoveFile,
           commandListener: async () => {
-            await ZoteroPane.convertLinkedFilesToStoredFiles();
+            await convertLinkedFilesToStoredFiles();
           },
         },
       ],
@@ -1174,7 +1189,7 @@ async function matchAttachment() {
         ztoolkit.log("optical title: ", optTitle);
         if (
           optTitle &&
-          (!/[\u4e00-\u9fff]/.test(itemtitle) || readPDFTitle === "always")
+          (!CJK_RE.test(itemtitle) || readPDFTitle === "always")
         ) {
           filename = cleanLigature(optTitle);
         }
@@ -1211,6 +1226,29 @@ async function matchAttachment() {
   }
 }
 
+/**
+ * Use the collection selected for a manual command only during that command,
+ * so later add-time processing does not inherit a stale collection.
+ */
+async function withSelectedCollection<T>(task: () => Promise<T>) {
+  selectedCollection = getSelectedCollectionCompat();
+  try {
+    return await task();
+  } finally {
+    selectedCollection = undefined;
+  }
+}
+
+/** Run Zotero's linked-to-stored conversion without add-time reprocessing. */
+async function convertLinkedFilesToStoredFiles() {
+  nativeStoredConversionsInFlight++;
+  try {
+    await ZoteroPane.convertLinkedFilesToStoredFiles();
+  } finally {
+    nativeStoredConversionsInFlight--;
+  }
+}
+
 async function matchAttangerAttachment() {
   const sourceDirs = await getSourceDirs();
   if (!sourceDirs.length) {
@@ -1218,7 +1256,10 @@ async function matchAttangerAttachment() {
     return;
   }
   const fileTypes = getPref("fileTypes") as string;
-  const fileTypeList = fileTypes.split(",");
+  const fileTypeList = (fileTypes || "")
+    .split(",")
+    .map((type) => type.trim().replace(/^\./, ""))
+    .filter(Boolean);
   // ztoolkit.log('match attanger attachments for these file types: ', fileTypeList);
 
   const items = ZoteroPane.getSelectedItems()

@@ -120,10 +120,11 @@ another**.
 - **Automatically move new attachments to the storage directory** (on by
   default): new stored attachments are renamed (if automatic renaming is on),
   moved into the directory, and converted to linked attachments.
-- **Keep original files (move becomes copy)** (off by default): when a linked
-  attachment is moved, its old file stays in place, and the menu commands say
-  **Copy** instead of **Move**. Stored attachments are converted either way;
-  their stored file is removed together with the old item.
+- **Keep original files of linked attachments (move becomes copy)** (off by
+  default): when a linked attachment is moved, its old file stays in place,
+  and the menu commands say **Copy** instead of **Move**. It does not apply to
+  stored attachments: they are always converted, and their stored file is
+  removed together with the old item.
 - Zotero does not sync linked files. Sync the directory with a cloud drive or
   another tool. Attachments in group libraries are never converted.
 
@@ -240,7 +241,8 @@ and **Match Attanger Attachment**. Ordinary imports work without them.
 
 - **Types of Attachments for Renaming/Moving** (default
   `pdf,doc,docx,txt,rtf,djvu,epub`): comma-separated extensions,
-  case-insensitive, with or without a leading dot. Leave it empty to include
+  case-insensitive, with or without a leading dot; spaces after commas are
+  ignored. Leave it empty to include
   all types. Other files are not renamed, moved, or copied.
 - **Remove diacritics from filenames** (off by default): converts accented
   letters and ligatures in the final filename to plain letters, for example
@@ -348,7 +350,9 @@ Attachment**, **Copy Attachment**, and **Undo Copy Attachment** instead.
   attachments are included.
 - **Undo Move Attachment**: runs Zotero's **Convert to Stored Files** on the
   selected linked attachments and on the linked attachments of selected items.
-  Zotero asks whether to **Delete original files after storing**.
+  Zotero asks whether to **Delete original files after storing**. The
+  restored attachments stay in Zotero storage, even when automatic moving is
+  on.
 
 Two more commands are outside the Attanger submenu:
 
@@ -387,7 +391,8 @@ Only `.pdf` and `.caj` files directly inside the download folders are
 considered, and items with shorter titles are matched first. **Read title
 from PDF** decides what is compared with each item title: the filename
 (**Never**), the PDF title (**Always**), or the PDF title except for items
-whose titles contain CJK ideographs (**Except for CJK**). The PDF title comes
+whose titles contain Chinese, Japanese, or Korean characters (**Except for
+CJK**). The PDF title comes
 from its metadata or, if that is missing, the largest text; reading gives up
 after 30 seconds and falls back to the filename.
 
@@ -409,8 +414,9 @@ titled with that filename. Source files are never deleted.
 - In **Zotero Storage Only** and **External Links**, files are added as linked
   attachments where they are. This works only in My Library.
 - In **Zotero Storage + External Copy**, files are imported into Zotero
-  storage. If the download folder is the copy directory itself, the new
-  external copy is written next to the original as `name_1.ext`.
+  storage. If the download folder is the copy directory itself, the original
+  file is adopted as the external copy, so no `name_1.ext` duplicate is
+  written.
 
 ### Organize existing attachments after switching modes
 
@@ -419,10 +425,10 @@ titled with that filename. Source files are never deleted.
   their annotations, notes, tags, relations, and full-text index.
 - **To External Copy**: select the items and run **Sync External Copy** once.
   After that, their copies are refreshed automatically.
-- **Back to Zotero storage**: switch to **Zotero Storage Only** first, or turn
-  off automatic moving, then select the items and run **Undo Move
-  Attachment**. Otherwise the restored attachments count as new attachments
-  and are moved out again.
+- **Back to Zotero storage**: select the items and run **Undo Move
+  Attachment**. The attachments become stored files and are not moved out
+  again by automatic moving. Switch to **Zotero Storage Only** as well if new
+  attachments should stay in Zotero too.
 
 ### Rename files after Better BibTeX updates
 
@@ -441,7 +447,8 @@ Attachment** after the key changes.
 New attachments are collected for about a second and then processed one by
 one:
 
-1. Linked attachments that Attanger has just created itself are skipped.
+1. Linked attachments that Attanger has just created itself, and attachments
+   restored by **Undo Move Attachment**, are skipped.
 2. A standalone imported PDF is recognized first if **Recognize standalone
    imported PDFs** is on. Without a parent item, processing stops.
 3. Unsupported file types and files matching the "not automatically moved,
@@ -493,9 +500,10 @@ operations run through a single queue.
 - A missing copy is recreated. A copy that was edited outside Zotero, or that
   another attachment links to, is reported as a conflict and left untouched.
   Otherwise the copy is replaced atomically, with a backup and rollback.
-- When the target path changes, a new copy is written (`name_1.ext` if the
-  path is taken), and the old copy is removed only if it is unchanged and
-  unused.
+- When the target path changes, a new copy is written, and the old copy is
+  removed only if it is unchanged and unused. If a file with identical content
+  already sits at the target and no attachment uses it, it is adopted as the
+  copy; a different file there is kept, and the copy gets `name_1.ext`.
 - Copy records are kept in `attanger-external-copies.json` in the Zotero data
   directory.
 
@@ -513,18 +521,18 @@ On first start, Attanger converts the old settings once:
   old meaning.
 - Shortcuts and existing attachments are not changed.
 
-| Earlier setting                                                                     | Now                                                                                                                                                                      |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Attach Type: Stored Copy / Link                                                     | **Work Mode**                                                                                                                                                            |
-| Source Path                                                                         | **Download Folder > Download folder paths**                                                                                                                              |
-| Destination Path                                                                    | **File Storage Directory** (External Links) or **Copy Directory** (External Copy)                                                                                        |
-| Subfolder                                                                           | **Attachment Names and Folders > Subfolder**                                                                                                                             |
-| Automatically move added attachments                                                | **Link Options > Automatically move new attachments to the storage directory**                                                                                           |
-| Keep original files (never delete source files); move operations become copy        | **Keep original files (move becomes copy)** for moves, and the inverted **Delete the file from the download folder after attaching or matching it** for download folders |
-| Automatically retrieve metadata for standalone imported PDFs before renaming/moving | **Recognize standalone imported PDFs**                                                                                                                                   |
-| read title from PDF file                                                            | **Download Folder > Read title from PDF**                                                                                                                                |
-| Other Settings                                                                      | **Attachment Names and Folders**, **Automatic Processing**, and **Keyboard Shortcuts**                                                                                   |
-| Shortcut for Rename and Move/Copy Attachment, Shortcut for Move/Copy Attachment     | **Rename and Move/Sync Attachment**, **Move/Sync Attachment**                                                                                                            |
+| Earlier setting                                                                     | Now                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Attach Type: Stored Copy / Link                                                     | **Work Mode**                                                                                                                                                                                  |
+| Source Path                                                                         | **Download Folder > Download folder paths**                                                                                                                                                    |
+| Destination Path                                                                    | **File Storage Directory** (External Links) or **Copy Directory** (External Copy)                                                                                                              |
+| Subfolder                                                                           | **Attachment Names and Folders > Subfolder**                                                                                                                                                   |
+| Automatically move added attachments                                                | **Link Options > Automatically move new attachments to the storage directory**                                                                                                                 |
+| Keep original files (never delete source files); move operations become copy        | **Keep original files of linked attachments (move becomes copy)** for moves, and the inverted **Delete the file from the download folder after attaching or matching it** for download folders |
+| Automatically retrieve metadata for standalone imported PDFs before renaming/moving | **Recognize standalone imported PDFs**                                                                                                                                                         |
+| read title from PDF file                                                            | **Download Folder > Read title from PDF**                                                                                                                                                      |
+| Other Settings                                                                      | **Attachment Names and Folders**, **Automatic Processing**, and **Keyboard Shortcuts**                                                                                                         |
+| Shortcut for Rename and Move/Copy Attachment, Shortcut for Move/Copy Attachment     | **Rename and Move/Sync Attachment**, **Move/Sync Attachment**                                                                                                                                  |
 
 ## Notes and Limitations
 
@@ -536,7 +544,8 @@ On first start, Attanger converts the old settings once:
   Attanger Attachment** creates linked attachments, so it also needs My
   Library.
 - Existing files are never overwritten: moves and copies add `_1`, `_2`, and
-  so on, while renames use Zotero's numbering (`name 2.pdf`).
+  so on, while renames use Zotero's numbering (`name 2.pdf`). External Copy
+  reuses a file at the target only when its content is identical.
 - Download-folder files are deleted only while **My Library** or one of its
   collections is selected.
 - External PDF copies do not contain Zotero annotations; use Zotero's PDF

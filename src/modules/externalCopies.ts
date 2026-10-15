@@ -167,6 +167,35 @@ async function publishNewCopy(
   return copied.path;
 }
 
+/**
+ * Adopts a file already at the destination when it has exactly the source's
+ * content, e.g. after importing it back from the copy directory. Without this
+ * the mirror would write a second "name_1" file next to it.
+ */
+async function adoptExistingCopy(
+  attachment: Zotero.Item,
+  sourcePath: string,
+  desiredPath: string,
+) {
+  if (
+    isZoteroStoragePath(desiredPath) ||
+    !(await attachmentPathExists(desiredPath, "file")) ||
+    (await hasAttachmentFileReferences(desiredPath, attachment))
+  ) {
+    return false;
+  }
+  const [target, source] = await Promise.all([
+    fingerprintFile(desiredPath),
+    fingerprintFile(sourcePath),
+  ]);
+  if (!matchingFileContent(target, source)) return false;
+  await saveRecord(
+    attachment,
+    makeRecord(attachment, desiredPath, desiredPath, target, source),
+  );
+  return true;
+}
+
 /** Deletes an old copy only when its bytes are still exactly what Attanger wrote. */
 async function removePreviousCopy(
   attachment: Zotero.Item,
@@ -311,13 +340,18 @@ export async function syncExternalCopy(
     if (previous && (await samePath(previous.desiredPath, desiredPath))) {
       return await refreshCopy(attachment, previous, sourcePath, options);
     }
-    const path = await publishNewCopy(
+    const adopted = await adoptExistingCopy(
       attachment,
       sourcePath,
       desiredPath,
-      options,
     );
+    const path = adopted
+      ? desiredPath
+      : await publishNewCopy(attachment, sourcePath, desiredPath, options);
     if (!previous) return { status: "created", path };
+    if (await samePath(previous.path, path)) {
+      return { status: "moved", path };
+    }
     const removed = await removePreviousCopy(attachment, previous);
     return removed
       ? { status: "moved", path, removedPath: previous.path }
