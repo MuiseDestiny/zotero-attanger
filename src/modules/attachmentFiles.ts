@@ -39,8 +39,41 @@ export function runAttachmentOperation<T>(task: () => Promise<T>): Promise<T> {
   return operation;
 }
 
+/**
+ * Lexical path normalization. PathUtils.normalize() goes through
+ * nsIFile::Normalize, which throws NS_ERROR_FILE_NOT_FOUND for paths that do
+ * not exist yet (such as a move destination), so it cannot be used here.
+ */
+function lexicalNormalize(path: string) {
+  const windows = Zotero.isWin;
+  const separator = windows ? "\\" : "/";
+  let value = windows ? path.replace(/\//g, "\\") : path;
+  let prefix = "";
+  if (windows) {
+    const match =
+      /^(\\\\[?.]\\[a-z]:\\?|\\\\[^\\]+\\[^\\]+\\?|[a-z]:\\?|\\)/i.exec(value);
+    if (match) {
+      prefix = match[1].endsWith("\\") ? match[1] : match[1] + "\\";
+      value = value.slice(match[1].length);
+    }
+  } else if (value.startsWith("/")) {
+    prefix = "/";
+  }
+  const parts: string[] = [];
+  for (const part of value.split(windows ? /\\+/ : /\/+/)) {
+    if (!part || part === ".") continue;
+    if (part === ".." && parts.length && parts[parts.length - 1] !== "..") {
+      parts.pop();
+    } else if (part !== ".." || !prefix) {
+      parts.push(part);
+    }
+  }
+  const joined = prefix + parts.join(separator);
+  return joined || (prefix ? prefix : ".");
+}
+
 export function normalizeAttachmentPath(path: string) {
-  let normalized = PathUtils.normalize(path);
+  let normalized = lexicalNormalize(path);
   if (Zotero.isWin) normalized = normalized.toLowerCase();
   return normalized;
 }
@@ -79,7 +112,7 @@ function nsIFileExists(file: nsIFile) {
  */
 function canonicalAttachmentPath(path: string) {
   const suffix: string[] = [];
-  let current = PathUtils.normalize(path);
+  let current = lexicalNormalize(path);
   let canonical: string | undefined;
   let inspectedRoot = false;
   for (let depth = 0; depth < 256; depth++) {

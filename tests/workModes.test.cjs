@@ -1375,6 +1375,30 @@ test("destination checking tolerates nsIFile type checks throwing for missing pa
   assert.equal(core.isZoteroStoragePath("/storage/new/paper.pdf"), true);
 });
 
+test("destination checking does not depend on PathUtils.normalize for missing paths", () => {
+  setupStoredAttachment("linked");
+  const exists = (value) =>
+    harness.files.has(value) || harness.directories.has(value);
+  const original = PathUtils.normalize;
+  // Firefox resolves through nsIFile::Normalize and throws for missing paths.
+  PathUtils.normalize = (value) => {
+    if (!exists(value)) throw new Error("NS_ERROR_FILE_NOT_FOUND");
+    return original(value);
+  };
+  try {
+    const core = loadSourceModule("src/modules/attachmentFiles.ts");
+    assert.equal(core.isZoteroStoragePath("/dest/paper.pdf"), false);
+    assert.equal(core.isZoteroStoragePath("/dest/new/./sub//paper.pdf"), false);
+    assert.equal(core.isZoteroStoragePath("/storage/new/paper.pdf"), true);
+    assert.equal(
+      core.isZoteroStoragePath("/dest/../storage/new/paper.pdf"),
+      true,
+    );
+  } finally {
+    PathUtils.normalize = original;
+  }
+});
+
 test("PDF matching respects never and always title extraction settings", async () => {
   for (const readPDFtitle of ["never", "always"]) {
     let queries = 0;
