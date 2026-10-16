@@ -1240,6 +1240,83 @@ test("verified attachment copy uses content fingerprints and no-overwrite public
   assert.equal(harness.files.has("/source/paper.pdf"), true);
 });
 
+test("SMB timestamp settling during temporary-file hashing does not block a linked move", async () => {
+  const modifiedTimes = {};
+  const hashes = new Map();
+  const { attachment } = setupStoredAttachment("linked", {
+    modifiedTimes,
+    md5: (filePath) => {
+      hashes.set(filePath, (hashes.get(filePath) || 0) + 1);
+      if (filePath.includes(".attanger-") && hashes.get(filePath) === 1) {
+        modifiedTimes[filePath] = 2;
+      }
+      return filesFingerprint(harness.fileContents.get(filePath));
+    },
+  });
+
+  const result = await organize("linked", attachment);
+
+  assert.ok(result);
+  assert.equal(
+    harness.fileContents.get("/dest/paper.pdf").toString(),
+    "original PDF",
+  );
+  assert.equal(attachment.calls.erase, 1);
+  assert.equal(harness.files.has("/storage/PAPER001/paper.pdf"), false);
+  assert.equal(
+    [...harness.files].some((file) => file.includes(".attanger-")),
+    false,
+  );
+  assert.deepEqual(harness.calls.copyOptions, [{ noOverwrite: true }]);
+  assert.deepEqual(harness.calls.moveOptions, [{ noOverwrite: true }]);
+  assert.deepEqual(harness.delays, [100]);
+});
+
+test("stable fingerprints need neither retries nor delays", async () => {
+  harness = createHarness({
+    fileContents: { "/source/paper.pdf": "same bytes" },
+  });
+  const files = loadSourceModule("src/modules/attachmentFiles.ts");
+
+  const fingerprint = await files.fingerprintFile("/source/paper.pdf");
+
+  assert.equal(fingerprint.hash, filesFingerprint("same bytes"));
+  assert.equal(harness.calls.stat.length, 2);
+  assert.deepEqual(harness.delays, []);
+});
+
+for (const change of ["content", "size", "timestamp"]) {
+  test(`fingerprint retries reject changing ${change} and retain the source`, async () => {
+    const source = "/source/paper.pdf";
+    const modifiedTimes = {};
+    harness = createHarness({
+      fileContents: { [source]: "same bytes" },
+      modifiedTimes,
+      md5: (filePath) => {
+        const hash = filesFingerprint(harness.fileContents.get(filePath));
+        if (change === "content") harness.writeFile(filePath, "new  bytes");
+        if (change === "size")
+          harness.writeFile(filePath, "longer changed bytes");
+        modifiedTimes[filePath] = (modifiedTimes[filePath] || 1) + 1;
+        return hash;
+      },
+    });
+    const files = loadSourceModule("src/modules/attachmentFiles.ts");
+
+    await assert.rejects(files.copyAttachmentFile(source, "/dest/paper.pdf"), {
+      name: "AttachmentFileConflict",
+    });
+
+    assert.equal(harness.files.has(source), true);
+    assert.equal(harness.files.has("/dest/paper.pdf"), false);
+    assert.deepEqual(harness.calls.copy, []);
+    assert.deepEqual(
+      harness.delays,
+      change === "size" ? [] : change === "content" ? [100] : [100, 200],
+    );
+  });
+}
+
 test("cancelled attachment copies clean their temporary files", async () => {
   let cancelled = false;
   harness = createHarness({

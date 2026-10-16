@@ -222,16 +222,31 @@ export async function attachmentFileStat(path: string) {
 }
 
 export async function fingerprintFile(path: string): Promise<FileFingerprint> {
-  const before = await attachmentFileStat(path);
+  let before = await attachmentFileStat(path);
   const utilities = Zotero.Utilities.Internal;
-  const hash = utilities.md5Async
-    ? await utilities.md5Async(Zotero.File.pathToFile(path))
-    : utilities.md5(Zotero.File.pathToFile(path));
-  const after = await attachmentFileStat(path);
-  if (before.size !== after.size || before.modified !== after.modified) {
-    throw new AttachmentFileConflict(path);
+  let previousHash: string | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const hash = utilities.md5Async
+      ? await utilities.md5Async(Zotero.File.pathToFile(path))
+      : utilities.md5(Zotero.File.pathToFile(path));
+    const after = await attachmentFileStat(path);
+    if (
+      before.size !== after.size ||
+      (previousHash !== undefined && previousHash !== hash)
+    ) {
+      throw new AttachmentFileConflict(path);
+    }
+    if (before.modified === after.modified) return { hash, ...after };
+    // SMB can publish a copied file's timestamp late. Rehash after a bounded
+    // wait, accepting metadata settling only if the content stays unchanged.
+    if (attempt < 2) {
+      previousHash = hash;
+      await Zotero.Promise.delay(100 * (attempt + 1));
+      before = await attachmentFileStat(path);
+      if (before.size !== after.size) throw new AttachmentFileConflict(path);
+    }
   }
-  return { hash, ...after };
+  throw new AttachmentFileConflict(path);
 }
 
 export function matchingFileContent(
