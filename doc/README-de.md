@@ -219,15 +219,18 @@ auch ohne sie.
 - **Pfade der Download-Ordner**: **Auswählen...** legt den Hauptordner fest,
   **Ordner hinzufügen...** ergänzt weitere, **Entfernen** nimmt einen
   zusätzlichen Ordner aus der Liste. Neue Datei anhängen nimmt die neueste
-  Datei aus allen Ordnern; die Zuordnungsbefehle durchsuchen sie der Reihe
-  nach.
+  Datei aus allen Ordnern. Anhang zuordnen vergleicht Kandidaten aus allen
+  Ordnern; Attanger-Anhang zuordnen durchsucht sie der Reihe nach.
 - **Titel aus PDF lesen**: **Nie**, **Außer für CJK** (Standard) oder
-  **Immer**. Legt fest, ob Anhang zuordnen die Eintragstitel mit dem aus dem
-  PDF gelesenen Titel oder mit dem Dateinamen vergleicht.
+  **Immer**. Anhang zuordnen berücksichtigt immer die Dateinamen; diese
+  Einstellung bestimmt, ob zusätzlich PDF-Titel einbezogen werden. Bei
+  **Außer für CJK** werden für Eintragstitel mit chinesischen, japanischen
+  oder koreanischen Zeichen nur Dateinamen verwendet.
 - **Datei nach dem Anhängen oder Zuordnen aus dem Download-Ordner löschen**
-  (standardmäßig an): entfernt die Quelldatei nach Neue Datei anhängen oder
-  Anhang zuordnen. Dateien werden nur gelöscht, solange **Meine Bibliothek**
-  oder eine ihrer Sammlungen ausgewählt ist. Attanger-Anhang zuordnen löscht
+  (standardmäßig an): entfernt die Quelldatei nach erfolgreichem Anhängen
+  oder Zuordnen. Dateien werden nur gelöscht, solange
+  **Meine Bibliothek** oder eine ihrer Sammlungen ausgewählt ist.
+  Übersprungene Dateien bleiben erhalten; Attanger-Anhang zuordnen löscht
   nie Dateien.
 
 ### Automatische Verarbeitung
@@ -416,26 +419,64 @@ Zwei weitere Befehle liegen außerhalb des Attanger-Untermenüs:
 Um stattdessen aus dem PDF einen neuen Eintrag zu erzeugen, eine Sammlung
 rechts anklicken und **Neue Datei anhängen** wählen.
 
+Hat der Eintrag bereits denselben PDF-Inhalt als gespeicherten oder
+verknüpften Anhang, überspringt Attanger die Datei und behält den Download.
+Beide Zuordnungsbefehle verwenden diese Inhaltsprüfung ebenfalls, unabhängig
+von Dateiname oder Anhangstitel. Bereits vorhandene Dubletten in der
+Bibliothek werden nicht entfernt.
+
 ### Heruntergeladene Dateien zuordnen
 
 1. Die PDFs in einen Download-Ordner legen.
 2. Nur die Einträge auswählen, deren Dateien dort liegen, und `Ctrl + M`
    drücken.
-3. Jeder Eintrag erhält die verbleibende Datei mit dem ähnlichsten Titel;
-   jede Datei wird einmal verwendet.
+3. Attanger vergleicht alle Kandidaten und ordnet die sichersten Treffer
+   zuerst zu. Jede Datei wird höchstens einmal verwendet; kurze Eintragstitel
+   haben keinen Vorrang.
 
-> **Achtung:** Es gibt keinen Ähnlichkeitsschwellenwert. Solange Dateien
-> übrig sind, erhält jeder ausgewählte Eintrag die ähnlichste, auch wenn sie
-> schlecht passt.
+> Bei zu geringer Ähnlichkeit oder mehrdeutigen Treffern wird die Zuordnung
+> übersprungen und die Quelldatei behalten. Das gilt etwa für mehrere kaum
+> unterscheidbare PDFs zu einem Eintrag oder für Dateien, die sich mehreren
+> ausgewählten Einträgen nicht eindeutig zuordnen lassen.
 
 Berücksichtigt werden nur `.pdf`- und `.caj`-Dateien direkt in den
-Download-Ordnern; Einträge mit kürzeren Titeln werden zuerst zugeordnet.
-**Titel aus PDF lesen** bestimmt, was mit dem Eintragstitel verglichen wird:
-der Dateiname (**Nie**), der PDF-Titel (**Immer**) oder der PDF-Titel außer
-bei Einträgen, deren Titel chinesische, japanische oder koreanische Zeichen
-enthalten (**Außer für CJK**). Der PDF-Titel stammt aus den Metadaten oder,
-falls diese fehlen, aus dem größten Text; nach 30 Sekunden wird aufgegeben
-und der Dateiname verwendet.
+Download-Ordnern. Die Bewertung kombiniert Dateinamen mit verfügbaren
+PDF-Titelkandidaten, wenn **Titel aus PDF lesen** dies erlaubt: **Nie**
+verwendet nur Dateinamen, **Immer** Dateinamen und PDF-Titel. **Außer für
+CJK** verwendet für Eintragstitel mit chinesischen, japanischen oder
+koreanischen Zeichen nur Dateinamen. Satzzeichen, Ligaturen und diakritische
+Zeichen werden für den Vergleich vereinheitlicht; bedeutungstragende Zahlen
+und Verneinungen bleiben erhalten.
+
+Wenn das Lesen von PDFs erlaubt ist, hat die exakte Artikel-DOI Vorrang.
+Die Artikel-DOI des Verlags in den Metadaten hat Vorrang vor gedruckten
+Zitierempfehlungen; widerspruechliche oder mehrdeutige Artikel-DOIs werden
+nicht automatisch zugeordnet.
+
+PDF-Titelkandidaten stammen aus den Metadaten und zusammenhängenden Zeilen
+in großer Schrift auf der ersten brauchbaren Textseite, nicht aus großen
+Überschriften wie „Appendix“ auf späteren Seiten. Schlägt das Lesen fehl
+oder dauert es länger als 30 Sekunden, kann weiterhin der Dateiname
+verwendet werden.
+
+PDF-Dubletten werden anhand des tatsächlichen Inhalts (MD5 und Dateigröße)
+mit den gespeicherten und verknüpften PDFs desselben Eintrags verglichen.
+Gleiche Dateinamen oder Titel allein gelten nicht als Dubletten; abweichende
+Inhalte werden nicht als Dubletten übersprungen. Inhaltsgleiche Downloads,
+auch mit `(1)` im Dateinamen, werden pro Durchlauf nur einmal berücksichtigt.
+Weitere Kopien und als Dubletten übersprungene Dateien bleiben im
+Download-Ordner. Erfolgreich angehängte Dateien folgen weiterhin der
+Einstellung zum Löschen der Quelldatei.
+
+Bei erlaubtem PDF-Lesen werden auch neu kodierte Kopien mit abweichendem
+Dateihash erkannt: eindeutige gleiche Artikel-DOI, gleiche Seitenzahl,
+identischer Text und Layout der Anfangsseiten, vollständig identischer
+seitengenauer Text, nahezu gleiche Dateigröße und identische Render-Hashes
+aller vollständigen Seiten einschließlich Abbildungen sind erforderlich.
+DOI oder Titel allein reichen nicht. Die konservative Prüfung gilt für
+Text-PDFs bis 64 MiB und 100 Seiten, bei 144 dpi und höchstens 16 Megapixeln
+pro Seite. Ist der Renderer nicht verfügbar oder scheitert die Prüfung,
+werden die Dateien nicht als neu kodierte Dubletten übersprungen.
 
 ### Eine bestehende Bibliothek wieder verbinden
 
@@ -449,9 +490,10 @@ einer Neuinstallation von Zotero oder auf einem neuen Computer.
 
 Für jede Endung in **Anhangtypen zum Umbenennen/Verschieben** sucht Attanger
 nach `<Download-Ordner>/<Unterordner>/<Dateiname>.<Endung>` und probiert die
-Ordner der Reihe nach. Eine Datei wird übersprungen, wenn der Eintrag bereits
-einen Anhang mit diesem Dateinamen als Titel hat. Quelldateien werden nie
-gelöscht.
+Ordner der Reihe nach. PDFs werden als Dubletten übersprungen, wenn der
+Eintrag bereits einen gespeicherten oder verknüpften PDF-Anhang mit gleichem
+Inhalt hat, nicht bloß bei gleichem Dateinamen oder Titel. Quelldateien
+werden nie gelöscht.
 
 - Bei **Nur Zotero-Speicher** und **Externe Links** werden Dateien an Ort und
   Stelle als verknüpfte Anhänge hinzugefügt. Das funktioniert nur in Meine
@@ -601,9 +643,9 @@ Beim ersten Start übernimmt Attanger die alten Einstellungen einmalig:
   PDF-Export, wenn Sie sie in der Datei brauchen.
 - Eine Namensausnahme-Regel kann kein Komma enthalten.
 - `Ctrl` in Tastenkürzeln bedeutet auch unter macOS die Control-Taste.
-- **Anhang zuordnen** weist jedem ausgewählten Eintrag eine Datei zu, solange
-  Dateien übrig sind; wählen Sie daher nur Einträge aus, deren Dateien
-  vorhanden sind.
+- **Anhang zuordnen** überspringt unsichere, mehrdeutige oder doppelte PDFs
+  und behält deren Quelldateien. Bereits vorhandene doppelte Anhänge werden
+  nicht bereinigt.
 - Direkt hinzugefügte verknüpfte Dateien können an Ort und Stelle umbenannt,
   aber nie verschoben werden.
 - Neuere Zotero-Versionen können Dateien bei Metadatenänderungen selbst
@@ -651,7 +693,7 @@ unter `src/` oder `addon/` ändern.
 Vor einem Pull Request:
 
 ```bash
-npm run build                    # Typprüfung, dann build/zotero-attanger.xpi
+npm run build:local              # Typprüfung, dann build/zotero-attanger.xpi
 npm test
 npx eslint src/modules/menu.ts   # die geänderten Dateien prüfen
 ```

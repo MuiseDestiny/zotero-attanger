@@ -90,6 +90,9 @@ test("new automation locale keys exist in all supported locales", () => {
     "dir-not-set-destDir",
     "dir-not-set-sourceDir",
     "rename-linked-attachment-error",
+    "attachment-match-summary",
+    "attachment-duplicate-skipped",
+    "attachment-file-unverified",
   ];
 
   for (const locale of locales) {

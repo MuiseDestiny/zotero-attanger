@@ -1410,6 +1410,12 @@ test("PDF matching respects never and always title extraction settings", async (
         return { metadata: { title: "中文标题" }, pages: [] };
       },
     });
+    // Do not offer two distinct PDFs with identical title evidence: that is
+    // deliberately ambiguous under confidence-based matching.
+    if (readPDFtitle === "always") {
+      harness.files.delete("/source/中文标题.pdf");
+      harness.fileContents.delete("/source/中文标题.pdf");
+    }
     harness.selectedItems = [createRegularItem(harness, { title: "中文标题" })];
     const menu = new harness.module.default();
     const root = harness.menuRegistrations.find(
@@ -1418,7 +1424,7 @@ test("PDF matching respects never and always title extraction settings", async (
     await root.children
       .find((child) => child.id === "attanger-match-attachment")
       .commandListener();
-    assert.equal(queries, readPDFtitle === "never" ? 0 : 2);
+    assert.equal(queries, readPDFtitle === "never" ? 0 : 1);
     assert.equal(
       harness.calls.importFromFile[0].file,
       readPDFtitle === "never" ? "/source/中文标题.pdf" : "/source/wrong.pdf",

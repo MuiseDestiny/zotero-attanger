@@ -197,15 +197,18 @@ and **Match Attanger Attachment**. Ordinary imports work without them.
 
 - **Download folder paths**: **Choose...** sets the main folder, **Add
   Folder...** adds more, and **Remove** takes an extra folder off the list.
-  Attach New File takes the newest file across all folders; the match commands
-  search them in order.
+  Attach New File takes the newest file across all folders; Match Attachment
+  compares candidates across them, while Match Attanger Attachment searches
+  them in order.
 - **Read title from PDF**: **Never**, **Except for CJK** (default), or
-  **Always**. Decides whether Match Attachment compares item titles with the
-  title read from each PDF or with its filename.
+  **Always**. Match Attachment always considers filenames; this setting
+  controls whether PDF titles also contribute. **Except for CJK** uses only
+  filenames for items whose titles contain Chinese, Japanese, or Korean.
 - **Delete the file from the download folder after attaching or matching it**
   (on by default): removes the source file after Attach New File or Match
-  Attachment. Files are deleted only while **My Library** or one of its
-  collections is selected. Match Attanger Attachment never deletes files.
+  Attachment succeeds. Files are deleted only while **My Library** or one of
+  its collections is selected. Skipped files are kept; Match Attanger
+  Attachment never deletes files.
 
 ### Automatic Processing
 
@@ -377,24 +380,58 @@ Two more commands are outside the Attanger submenu:
 To start a new item from the PDF instead, right-click a collection and choose
 **Attach New File**.
 
+If the item already has the same PDF content as a stored or linked
+attachment, Attanger skips it and keeps the download. The content check is
+also used by both matching commands, regardless of filename or attachment
+title; it does not remove duplicates already in the library.
+
 ### Match downloaded files
 
 1. Put the PDFs in a download folder.
 2. Select only the items whose files are there, and press `Ctrl + M`.
-3. Each item receives the remaining file with the most similar title; every
-   file is used once.
+3. Attanger compares all candidates and assigns the most confident matches
+   first. Each file is used at most once; shorter item titles get no priority.
 
-> **Caution:** there is no similarity threshold. While files remain, every
-> selected item gets the closest one, even if it is a poor match.
+> Low-similarity or ambiguous matches are skipped and their source files are
+> kept. This includes competing PDFs for one item and files that cannot be
+> reliably distinguished between several selected items.
 
 Only `.pdf` and `.caj` files directly inside the download folders are
-considered, and items with shorter titles are matched first. **Read title
-from PDF** decides what is compared with each item title: the filename
-(**Never**), the PDF title (**Always**), or the PDF title except for items
-whose titles contain Chinese, Japanese, or Korean characters (**Except for
-CJK**). The PDF title comes
-from its metadata or, if that is missing, the largest text; reading gives up
-after 30 seconds and falls back to the filename.
+considered. Scoring combines filenames with available PDF title candidates
+when **Read title from PDF** permits it: **Never** uses filenames only,
+**Always** uses filenames and PDF titles, and **Except for CJK** uses
+filenames only for item titles containing Chinese, Japanese, or Korean.
+Punctuation, ligatures, and diacritics are normalized for comparison, while
+meaningful numbers and negation are preserved.
+
+When PDF reading is allowed, an exact article DOI takes priority over title
+similarity. Publisher article-DOI metadata takes precedence over citation
+DOIs printed on the page, so different editions are not confused. Conflicting
+or ambiguous article DOIs are not automatically matched. Explicitly identified
+supporting information and corrections are not assigned to the main article
+just because they share its DOI.
+
+PDF title candidates come from metadata and consecutive large-text lines on
+the first usable text page, using layout and font information. An explicit
+repository cover can be skipped; ordinary later-page headings such as
+"Appendix" are not used. If PDF reading fails or exceeds 30 seconds, matching
+can still use the filename.
+
+PDF duplicates are checked by actual content (MD5 and file size) against the
+item's existing stored and linked PDFs. Equal names or titles alone are not
+duplicates, and different content is not skipped as a duplicate. Identical
+downloaded copies, including names ending in `(1)`, are considered only once
+per batch; other copies and files skipped as duplicates stay in the download
+folder. Successful attachments follow the source-deletion setting as usual.
+
+When PDF reading is enabled, re-encoded copies can also be skipped despite
+different byte hashes. This requires the same unambiguous article DOI, page
+count, opening-page text/layout, complete page-by-page text, near-equal file
+sizes, and identical full-page render hashes for every page, including figures.
+DOI or title alone never establishes a duplicate. This conservative check is
+limited to text PDFs up to 64 MiB and 100 pages, rendered at 144 dpi with a
+16-megapixel page cap. If the installed renderer is unavailable or verification
+fails or times out, the files are not treated as re-encoded duplicates.
 
 ### Reconnect an existing library
 
@@ -408,8 +445,9 @@ example after reinstalling Zotero or moving to a new computer.
 
 For each extension in **Types of Attachments for Renaming/Moving**, Attanger
 looks for `<download folder>/<subfolder>/<filename>.<ext>`, trying the
-folders in order. A file is skipped if the item already has an attachment
-titled with that filename. Source files are never deleted.
+folders in order. PDFs are skipped when the item already has the same
+content as a stored or linked PDF, not merely the same filename or title.
+Source files are never deleted.
 
 - In **Zotero Storage Only** and **External Links**, files are added as linked
   attachments where they are. This works only in My Library.
@@ -552,8 +590,9 @@ On first start, Attanger converts the old settings once:
   export if you need them in the file.
 - A naming-exception rule cannot contain a comma.
 - `Ctrl` in shortcuts means the Control key on macOS too.
-- **Match Attachment** assigns a file to every selected item while files
-  remain, so select only items whose files are present.
+- **Match Attachment** skips low-confidence, ambiguous, or duplicate PDFs
+  without deleting their source files; it does not clean up existing
+  duplicate attachments.
 - Linked files you add directly can be renamed in place but are never moved.
 - Recent Zotero versions can rename files themselves when item metadata
   changes, including linked files if **Rename linked files** is enabled in
@@ -598,7 +637,7 @@ npm start
 Before opening a pull request:
 
 ```bash
-npm run build                    # type check, then build/zotero-attanger.xpi
+npm run build:local              # type check, then build/zotero-attanger.xpi
 npm test
 npx eslint src/modules/menu.ts   # lint the files you changed
 ```

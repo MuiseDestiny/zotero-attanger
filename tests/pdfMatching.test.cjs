@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { afterEach, test } = require("node:test");
@@ -52,6 +53,155 @@ function recognizerPage(text, fontSize = 24) {
   return [[[[textBlock]]]];
 }
 
+function pagePNG() {
+  const bytes = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  );
+}
+
+test("visual duplicate verification hashes every complete page using the installed renderer", async () => {
+  const queries = [];
+  harness = createHarness({
+    files: ["/source/paper.pdf"],
+    pdfWorkerQuery: async (...args) => {
+      queries.push(args);
+      return { buf: pagePNG() };
+    },
+  });
+  Zotero.version = "10.0.6";
+  Zotero.PDFWorker.renderAttachmentAnnotations = function () {
+    throw new Error("The item-based renderer must not be invoked");
+    return this._query("pdf.renderAnnotations", {});
+  };
+  let reads = 0;
+  const read = IOUtils.read;
+  IOUtils.read = async (...args) => {
+    reads++;
+    return read(...args);
+  };
+
+  const result = await harness.module.getPDFVisualIdentity(
+    "/source/paper.pdf",
+    3,
+  );
+  const expectedHash = crypto
+    .createHash("sha256")
+    .update(Buffer.from(pagePNG()))
+    .digest("hex");
+
+  assert.deepEqual(result, {
+    totalPages: 3,
+    pageHashes: Array(3).fill(expectedHash),
+  });
+  assert.equal(reads, 1);
+  assert.equal(queries.length, 3);
+  queries.forEach(([action, data, transfer], i) => {
+    assert.equal(action, "pdf.renderArea");
+    assert.equal(data.pageIndex, i);
+    assert.equal(data.scale, 2);
+    assert.deepEqual(data.rect, [
+      -Number.MAX_VALUE,
+      -Number.MAX_VALUE,
+      Number.MAX_VALUE,
+      Number.MAX_VALUE,
+    ]);
+    assert.equal(transfer[0], data.buf);
+    if (i) assert.notEqual(data.buf, queries[i - 1][1].buf);
+  });
+  assert.equal(harness.clock.tasks.size, 0);
+});
+
+for (const pages of [0, -1, 1.5, 101, NaN, Infinity]) {
+  test(`visual verification rejects invalid or oversized page count ${pages} before querying`, async () => {
+    const queries = [];
+    harness = createHarness({
+      pdfWorkerQuery: async (...args) => queries.push(args),
+    });
+    Zotero.version = "11.0.0";
+    assert.equal(
+      await harness.module.getPDFVisualIdentity("/source/paper.pdf", pages),
+      undefined,
+    );
+    assert.equal(queries.length, 0);
+    assert.equal(harness.clock.tasks.size, 0);
+  });
+}
+
+test("an unconfirmed legacy visual action is never probed", async () => {
+  const queries = [];
+  harness = createHarness({
+    pdfWorkerQuery: async (...args) => queries.push(args),
+  });
+  Zotero.version = "7.0.0";
+  assert.equal(
+    await harness.module.getPDFVisualIdentity("/source/paper.pdf", 1),
+    undefined,
+  );
+  Zotero.version = "11.0.0";
+  Zotero.PDFWorker.renderAttachmentAnnotations = function () {
+    return this._query("renderAnnotations", {});
+  };
+  assert.equal(
+    await harness.module.getPDFVisualIdentity("/source/paper.pdf", 1),
+    undefined,
+  );
+  assert.equal(queries.length, 0);
+});
+
+test("a missing or invalid rendered page fails closed without querying later pages", async () => {
+  let count = 0;
+  harness = createHarness({
+    pdfWorkerQuery: async () => ({
+      buf: ++count === 1 ? pagePNG() : new ArrayBuffer(33),
+    }),
+  });
+  Zotero.version = "11.0.0";
+  assert.equal(
+    await harness.module.getPDFVisualIdentity("/source/paper.pdf", 3),
+    undefined,
+  );
+  assert.equal(count, 2);
+  assert.equal(harness.clock.tasks.size, 0);
+});
+
+test("visual verification shares one whole-document deadline and never sends late page queries", async () => {
+  const queue = serialWorkerQueue();
+  const latePage = deferred();
+  let count = 0;
+  harness = createHarness({
+    pdfWorkerEnqueue: queue.enqueue,
+    pdfWorkerQuery: async () =>
+      ++count === 1 ? { buf: pagePNG() } : latePage.promise,
+  });
+  Zotero.version = "11.0.0";
+  const rejected = assert.rejects(
+    harness.module.getPDFVisualIdentity("/source/paper.pdf", 3),
+    /PDF visual verification timed out/,
+  );
+  for (let i = 0; i < 10 && count < 2; i++) await harness.clock.settle();
+  assert.equal(count, 2);
+  let released = false;
+  const next = queue.enqueue(() => {
+    released = true;
+  });
+
+  await harness.clock.runAll();
+  await rejected;
+  await next;
+  latePage.resolve({ buf: pagePNG() });
+  await harness.clock.settle();
+
+  assert.equal(released, true);
+  assert.equal(count, 2);
+  assert.equal(harness.clock.now, 30_000);
+  assert.equal(harness.clock.tasks.size, 0);
+});
+
 for (const [version, action] of [
   ["7.0.0", "getRecognizerData"],
   ["10.0.3", "getRecognizerData"],
@@ -77,6 +227,78 @@ for (const [version, action] of [
     assert.equal(harness.clock.tasks.size, 0);
   });
 }
+
+for (const [version, action] of [
+  ["7.0.0", "getFulltext"],
+  ["11.0-beta.1", "pdf.getFulltext"],
+]) {
+  test(`full-document duplicate verification uses ${action} on Zotero ${version}`, async () => {
+    const queries = [];
+    const fulltext = { text: "Every page", extractedPages: 12, totalPages: 12 };
+    harness = createHarness({
+      files: ["/source/paper.pdf"],
+      pdfWorkerQuery: async (...args) => {
+        queries.push(args);
+        return fulltext;
+      },
+    });
+    Zotero.version = version;
+
+    assert.equal(
+      await harness.module.getPDFFulltext("/source/paper.pdf"),
+      fulltext,
+    );
+    assert.equal(queries.length, 1);
+    assert.equal(queries[0][0], action);
+    assert.equal(queries[0][1].maxPages, undefined);
+    assert.equal(queries[0][2][0], queries[0][1].buf);
+    assert.equal(harness.clock.tasks.size, 0);
+  });
+}
+
+test("fulltext extraction follows the installed native protocol without invoking its item API", async () => {
+  const actions = [];
+  harness = createHarness({
+    pdfWorkerQuery: async (action) => {
+      actions.push(action);
+      return {};
+    },
+  });
+  Zotero.version = "10.0.0";
+  Zotero.PDFWorker.getFullText = function () {
+    throw new Error("The item-based API must not be invoked");
+    return this._query("pdf.getFulltext", {});
+  };
+
+  await harness.module.getPDFFulltext("/source/paper.pdf");
+
+  assert.deepEqual(actions, ["pdf.getFulltext"]);
+});
+
+test("a stalled fulltext verification releases Zotero's shared worker queue", async () => {
+  const queue = serialWorkerQueue();
+  harness = createHarness({
+    files: ["/source/paper.pdf"],
+    pdfWorkerEnqueue: queue.enqueue,
+    pdfWorkerQuery: async () => new Promise(() => {}),
+  });
+  const rejected = assert.rejects(
+    harness.module.getPDFFulltext("/source/paper.pdf"),
+    /PDF fulltext timed out/,
+  );
+  await harness.clock.settle();
+  let released = false;
+  const next = queue.enqueue(() => {
+    released = true;
+  });
+
+  await harness.clock.runAll();
+  await rejected;
+  await next;
+
+  assert.equal(released, true);
+  assert.equal(harness.clock.tasks.size, 0);
+});
 
 for (const [version, action, nativeRecognizer] of [
   [
@@ -395,6 +617,11 @@ test("PDF matching caches each path once per command, not across commands", asyn
     harness.calls.importFromFile.map(({ file }) => file),
     ["/source/first.pdf", "/source/shared.pdf"],
   );
+  // Use fresh parents: rerunning on the same parents now skips duplicate PDFs.
+  harness.selectedItems = [
+    createRegularItem(harness, { id: 3, title: "A" }),
+    createRegularItem(harness, { id: 4, title: "Longer title" }),
+  ];
   await command();
   assert.deepEqual(queries, ["first", "shared", "first", "shared"]);
 });
@@ -436,7 +663,7 @@ for (const metadataKey of ["title", "Title"]) {
       prefs: { workMode: "stored", readPDFtitle: "always" },
       pdfWorkerQuery: async (_action, { buf }) => {
         if (Buffer.from(buf).toString() === "decoy") {
-          return { metadata: { title: "Expected title!" }, pages: [] };
+          return { metadata: { title: "A different paper" }, pages: [] };
         }
         return {
           metadata: { [metadataKey]: "Expected title" },
@@ -467,7 +694,7 @@ test("PDF text extraction skips malformed pages while keeping valid page titles"
     prefs: { workMode: "stored", readPDFtitle: "always" },
     pdfWorkerQuery: async (_action, { buf }) => {
       if (Buffer.from(buf).toString() === "decoy") {
-        return { metadata: { title: "Expected title!" }, pages: [] };
+        return { metadata: { title: "A different paper" }, pages: [] };
       }
       return {
         pages: [null, {}, [], [null], recognizerPage("Expected title")],

@@ -216,16 +216,19 @@ anche senza.
 - **Percorsi delle cartelle dei download**: **Scegli...** imposta la cartella
   principale, **Aggiungi cartella...** ne aggiunge altre e **Rimuovi** toglie
   una cartella aggiuntiva dall'elenco. Allega nuovo file usa il file più
-  recente tra tutte le cartelle; i comandi di abbinamento le cercano in
-  ordine.
+  recente tra tutte le cartelle. Abbina allegato confronta candidati da tutte
+  le cartelle; Abbina allegato Attanger le cerca in ordine.
 - **Leggi il titolo dal PDF**: **Mai**, **Tranne per CJK** (predefinito) o
-  **Sempre**. Stabilisce se Abbina allegato confronta i titoli degli elementi
-  con il titolo letto da ogni PDF o con il suo nome file.
+  **Sempre**. Abbina allegato considera sempre i nomi file; questa opzione
+  stabilisce se usare anche i titoli dei PDF. **Tranne per CJK** usa solo i
+  nomi file per gli elementi con titoli contenenti caratteri cinesi,
+  giapponesi o coreani.
 - **Elimina il file dalla cartella dei download dopo averlo allegato o
   abbinato** (attiva per impostazione predefinita): rimuove il file sorgente
-  dopo Allega nuovo file o Abbina allegato. I file vengono eliminati solo
-  mentre è selezionata **La mia libreria** o una sua collezione. Abbina
-  allegato Attanger non elimina mai file.
+  dopo che Allega nuovo file o Abbina allegato ha completato l'operazione.
+  I file vengono eliminati solo mentre è selezionata **La mia libreria** o
+  una sua collezione. I file saltati vengono conservati; Abbina allegato
+  Attanger non elimina mai file.
 
 ### Elaborazione automatica
 
@@ -409,25 +412,62 @@ Altri due comandi si trovano fuori dal sottomenu Attanger:
 Per creare invece un nuovo elemento dal PDF, fai clic destro su una
 collezione e scegli **Allega nuovo file**.
 
+Se l'elemento ha già un allegato archiviato o collegato con lo stesso
+contenuto PDF, Attanger salta il file e conserva il download. Entrambi
+i comandi di abbinamento usano lo stesso controllo del contenuto, indipendente
+dal nome file o dal titolo dell'allegato. I duplicati già presenti nella
+libreria non vengono rimossi.
+
 ### Abbinare i file scaricati
 
 1. Metti i PDF in una cartella dei download.
 2. Seleziona solo gli elementi i cui file si trovano lì e premi `Ctrl + M`.
-3. Ogni elemento riceve il file rimanente con il titolo più simile; ogni file
-   viene usato una sola volta.
+3. Attanger confronta tutti i candidati e assegna prima gli abbinamenti più
+   affidabili. Ogni file viene usato al massimo una volta; i titoli brevi non
+   hanno più la precedenza.
 
-> **Attenzione:** non c'è una soglia di somiglianza. Finché restano file, ogni
-> elemento selezionato riceve il più vicino, anche se l'abbinamento è
-> scadente.
+> Gli abbinamenti poco simili o ambigui vengono saltati e i file sorgente
+> conservati. Questo vale, per esempio, quando più PDF sono candidati quasi
+> equivalenti per un elemento, oppure un file non è distinguibile con
+> sufficiente affidabilità tra più elementi selezionati.
 
 Vengono considerati solo i file `.pdf` e `.caj` direttamente nelle cartelle
-dei download, e gli elementi con titoli più brevi vengono abbinati per primi.
-**Leggi il titolo dal PDF** stabilisce cosa confrontare con il titolo
-dell'elemento: il nome file (**Mai**), il titolo del PDF (**Sempre**) o il
-titolo del PDF tranne per gli elementi il cui titolo contiene caratteri
-cinesi, giapponesi o coreani (**Tranne per CJK**). Il titolo del PDF proviene
-dai metadati o, se mancano, dal testo più grande; dopo 30 secondi la lettura
-si interrompe e si usa il nome file.
+dei download. Il punteggio combina i nomi file con i titoli candidati
+disponibili nel PDF, quando **Leggi il titolo dal PDF** lo consente:
+**Mai** usa solo i nomi file, **Sempre** usa nomi file e titoli del PDF,
+mentre **Tranne per CJK** usa solo i nomi file per i titoli contenenti
+caratteri cinesi, giapponesi o coreani. Punteggiatura, legature e segni
+diacritici vengono normalizzati per il confronto, mantenendo numeri
+significativi e negazioni.
+
+Quando la lettura dei PDF e consentita, il DOI esatto dell'articolo ha
+priorita. Il DOI dell'articolo nei metadati dell'editore prevale sui DOI
+delle citazioni consigliate stampate nella pagina; DOI in conflitto o
+ambigui non vengono abbinati automaticamente.
+
+I titoli candidati del PDF provengono dai metadati e da righe consecutive in
+caratteri grandi sulla prima pagina di testo utilizzabile, non da
+intestazioni grandi come «Appendix» nelle pagine successive. Se la lettura
+fallisce o supera 30 secondi, resta possibile usare il nome file.
+
+I PDF duplicati vengono verificati in base al contenuto effettivo (MD5 e
+dimensione del file), confrontandoli con i PDF archiviati e collegati dello
+stesso elemento. Nomi o titoli uguali non bastano; contenuti diversi non
+vengono saltati come duplicati. Le copie scaricate con contenuto identico,
+anche con `(1)` nel nome file, vengono considerate una sola volta per
+operazione. Le altre copie e i file saltati come duplicati restano nella
+cartella dei download. Per i file allegati con successo continua a valere
+l'opzione di eliminazione del file sorgente.
+
+Se la lettura del PDF è consentita, vengono riconosciute anche copie
+ricodificate con hash diversi: servono lo stesso DOI univoco, lo stesso
+numero di pagine, testo e impaginazione iniziali identici, testo completo
+identico pagina per pagina, dimensioni quasi uguali e hash di rendering
+identici per tutte le pagine complete, comprese le figure. DOI o titolo
+da soli non bastano. Il controllo conservativo è limitato a PDF testuali
+fino a 64 MiB e 100 pagine, a 144 dpi e al massimo 16 megapixel per pagina.
+Se il renderer non è disponibile o la verifica fallisce o scade, i file
+non vengono ignorati come duplicati ricodificati.
 
 ### Ricollegare una libreria esistente
 
@@ -441,8 +481,9 @@ per esempio dopo aver reinstallato Zotero o su un nuovo computer.
 
 Per ogni estensione in **Tipi di allegati da rinominare/spostare**, Attanger
 cerca `<cartella dei download>/<sottocartella>/<nome file>.<estensione>`,
-provando le cartelle in ordine. Un file viene saltato se l'elemento ha già un
-allegato con quel nome file come titolo. I file sorgente non vengono mai
+provando le cartelle in ordine. I PDF vengono saltati come duplicati se
+l'elemento ha già un PDF archiviato o collegato con lo stesso contenuto, non
+soltanto con lo stesso nome file o titolo. I file sorgente non vengono mai
 eliminati.
 
 - In **Solo archivio Zotero** e **Collegamenti esterni**, i file vengono
@@ -589,8 +630,8 @@ Al primo avvio Attanger converte una sola volta le vecchie impostazioni:
   l'esportazione PDF di Zotero se ti servono nel file.
 - Una regola di eccezione non può contenere virgole.
 - `Ctrl` nelle scorciatoie indica il tasto Control anche su macOS.
-- **Abbina allegato** assegna un file a ogni elemento selezionato finché
-  restano file, quindi seleziona solo elementi i cui file sono presenti.
+- **Abbina allegato** salta i PDF poco affidabili, ambigui o duplicati e
+  conserva i file sorgente; non elimina gli allegati duplicati già presenti.
 - I file collegati aggiunti direttamente possono essere rinominati sul posto
   ma non vengono mai spostati.
 - Le versioni recenti di Zotero possono rinominare i file da sole quando
@@ -638,7 +679,7 @@ npm start
 Prima di aprire una pull request:
 
 ```bash
-npm run build                    # controllo dei tipi, poi build/zotero-attanger.xpi
+npm run build:local              # controllo dei tipi, poi build/zotero-attanger.xpi
 npm test
 npx eslint src/modules/menu.ts   # controlla i file modificati
 ```

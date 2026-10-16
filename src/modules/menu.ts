@@ -3,7 +3,6 @@ import { getString } from "../utils/locale";
 import { config } from "../../package.json";
 import { getPref, setPref } from "../utils/prefs";
 import { waitUntil } from "../utils/wait";
-import comparison from "string-comparison";
 import {
   registerShortcut,
   isShortcutEnabled,
@@ -17,14 +16,33 @@ import {
 import {
   AttachmentOperationCancelled,
   copyAttachmentFile,
+  type FileFingerprint,
   fingerprintMatches,
   hasAttachmentFileReferences,
   isZoteroStoragePath,
+  matchingFileContent,
   normalizeAttachmentPath,
   removeVerifiedAttachmentFile,
   runAttachmentOperation,
   sameFiles,
 } from "./attachmentFiles";
+import {
+  createAttachmentFingerprintCache,
+  createPDFIdentityCache,
+  findDuplicatePDFAttachment,
+  fingerprintForMatching,
+  MAX_PDF_VISUAL_PAGES,
+  samePDFContent,
+} from "./attachmentDuplicates";
+import {
+  ATTACHMENT_MATCH_AMBIGUITY_MARGIN,
+  getPDFDocumentRole,
+  getPDFPrimaryDOIs,
+  getPDFTitleCandidates,
+  MIN_ATTACHMENT_MATCH_SCORE,
+  normalizeDOI,
+  scoreAttachmentMatch,
+} from "./attachmentMatching";
 import { getExternalCopy, syncExternalCopy } from "./externalCopies";
 import { getConfiguredSourceDirs } from "../utils/sourceDirs";
 import { convertStoredAttachmentToLinked } from "./attachmentConversions";
@@ -1107,95 +1125,296 @@ function getAttachmentItems(hasParent = true) {
 }
 
 async function matchAttachment() {
-  const items = ZoteroPane.getSelectedItems()
-    .filter((i) => i.isTopLevelItem() && i.isRegularItem())
-    .sort((a, b) => getPlainTitle(a).length - getPlainTitle(b).length);
+  const items = ZoteroPane.getSelectedItems().filter(
+    (i) =>
+      !i.deleted &&
+      i.isTopLevelItem() &&
+      i.isRegularItem() &&
+      canEditAttachment(i),
+  );
+  if (!items.length) return;
   ztoolkit.log(
     "item titles: ",
     items.map((i) => i.getDisplayTitle()),
   );
   const sourceDirs = await getSourceDirs();
   if (!sourceDirs.length) return;
-  let files: OS.File.Entry[] = [];
+  const files = new Map<string, OS.File.Entry>();
   /* TODO: migrate to IOUtils */
   for (const sourceDir of sourceDirs) {
     await Zotero.File.iterateDirectory(
       sourceDir,
       async function (child: OS.File.Entry) {
         if (!child.isDir && /\.(caj|pdf)$/i.test(child.name)) {
-          files.push(child);
+          files.set(normalizeAttachmentPath(child.path), child);
         }
       },
     );
   }
   ztoolkit.log(
     "found pdf files:",
-    files.map((f) => f.path),
+    [...files.values()].map((f) => f.path),
   );
   const readPDFTitle = String(
     getPref("readPDFtitle") || "nonCJK",
   ).toLowerCase();
   ztoolkit.log("read PDF title: ", readPDFTitle);
-  const pdfTitles = new Map<string, Promise<string>>();
-  for (const item of items) {
-    const itemtitle = getPlainTitle(item);
-    ztoolkit.log("processing item: ", itemtitle);
-    let iniDistance = Infinity;
-    let matchedFile: OS.File.Entry | undefined = undefined;
-    for (const file of files) {
-      let filename = file.name.replace(filenameExtRE, "");
-      if (
-        readPDFTitle !== "never" &&
-        (readPDFTitle === "always" || !CJK_RE.test(itemtitle)) &&
-        /^pdf$/i.test(Zotero.File.getExtension(file.path))
-      ) {
-        let titleTask = pdfTitles.get(file.path);
-        if (!titleTask) {
-          ztoolkit.log("check file:", file.name + ": ");
-          // Cache failures too, so a stalled PDF is tried only once per command.
-          titleTask = getPDFData(file.path)
-            .then((data) => {
-              const title = getPDFTitleFromData(data);
-              ztoolkit.log("optical title: ", title);
-              return title;
-            })
-            .catch((error) => {
-              ztoolkit.log(error);
-              return "";
-            });
-          pdfTitles.set(file.path, titleTask);
-        }
-        const title = await titleTask;
-        if (title) filename = title;
-      }
-      ztoolkit.log("filename:", filename);
-      const distance = comparison.metricLcs.distance(
-        itemtitle.toLowerCase(),
-        filename.toLowerCase(),
-      );
-      ztoolkit.log(`【${itemtitle}】 × 【${filename}】 => ${distance}`);
-      if (distance <= iniDistance) {
-        iniDistance = distance;
-        matchedFile = file;
-      }
+  const fingerprintCache = createAttachmentFingerprintCache();
+  const identityCache = createPDFIdentityCache(
+    getPDFData,
+    getPDFFulltext,
+    getPDFVisualIdentity,
+  );
+  type CandidateGroup = {
+    files: OS.File.Entry[];
+    fingerprint?: FileFingerprint;
+    titles: string[];
+    dois: string[];
+    role: ReturnType<typeof getPDFDocumentRole>;
+  };
+  const groups = new Map<string, CandidateGroup>();
+  const fileFingerprints = new Map<string, FileFingerprint>();
+  for (const file of files.values()) {
+    const pdf = /\.pdf$/i.test(file.name);
+    const fingerprint = pdf
+      ? await fingerprintForMatching(file.path, fingerprintCache)
+      : undefined;
+    if (pdf && !fingerprint) continue;
+    if (fingerprint) {
+      fileFingerprints.set(normalizeAttachmentPath(file.path), fingerprint);
     }
-    if (matchedFile) {
-      ztoolkit.log("==>", itemtitle, matchedFile.path, iniDistance);
-      const attItem = await runAttachmentOperation(() =>
-        Zotero.Attachments.importFromFile({
-          file: matchedFile.path,
-          libraryID: item.libraryID,
-          parentItemID: item.id,
-        }),
-      );
-      showAttachmentItem(attItem);
-      if (!attItem.parentItemID) {
-        Zotero.RecognizeDocument.recognizeItems([attItem]);
-      }
-      await removeSourceFile(matchedFile.path);
-      files = files.filter((file) => file !== matchedFile);
+    const key = fingerprint
+      ? `${fingerprint.size}:${fingerprint.hash}`
+      : normalizeAttachmentPath(file.path);
+    const group = groups.get(key);
+    if (group) group.files.push(file);
+    else {
+      groups.set(key, {
+        files: [file],
+        fingerprint,
+        titles: [],
+        dois: [],
+        role: "unknown",
+      });
     }
   }
+
+  let added = 0;
+  let duplicates = 0;
+  const duplicateOwners = new Set<Zotero.Item>();
+  const remaining = new Set(items);
+  const readPDFForItem = (item: Zotero.Item) =>
+    canReadPDFForItem(item, readPDFTitle);
+  for (const [key, group] of groups) {
+    if (!group.fingerprint) continue;
+    for (const item of items) {
+      if (
+        await findDuplicatePDFAttachment(
+          item,
+          group.files[0].path,
+          fingerprintCache,
+          readPDFForItem(item) ? identityCache : undefined,
+        )
+      ) {
+        // Never recycle a duplicate download onto another selected paper.
+        duplicates += group.files.length;
+        duplicateOwners.add(item);
+        groups.delete(key);
+        break;
+      }
+    }
+    if (groups.has(key) && items.some(readPDFForItem)) {
+      try {
+        const data = await getPDFData(group.files[0].path);
+        group.titles = getPDFTitleCandidates(data);
+        group.dois = getPDFPrimaryDOIs(data);
+        group.role = getPDFDocumentRole(data);
+        ztoolkit.log("PDF identity evidence", group.files[0].path, {
+          titles: group.titles,
+          dois: group.dois,
+          role: group.role,
+        });
+      } catch (error) {
+        // Failures are cached with the group for the rest of this command.
+        ztoolkit.log("PDF title extraction failed; using filenames", error);
+      }
+    }
+  }
+
+  // Downloads can be re-encoded without changing their article content. Only
+  // merge equal article identities after full-document verification, not DOI alone.
+  const groupEntries = [...groups.entries()];
+  for (let i = 0; i < groupEntries.length; i++) {
+    const [key, group] = groupEntries[i];
+    if (!groups.has(key) || group.dois.length !== 1) continue;
+    for (let j = i + 1; j < groupEntries.length; j++) {
+      const [otherKey, other] = groupEntries[j];
+      if (
+        !groups.has(otherKey) ||
+        other.dois.length !== 1 ||
+        other.dois[0] !== group.dois[0] ||
+        other.role !== group.role
+      ) {
+        continue;
+      }
+      if (
+        await samePDFContent(
+          group.files[0].path,
+          other.files[0].path,
+          fingerprintCache,
+          identityCache,
+        )
+      ) {
+        group.files.push(...other.files);
+        group.titles = [...new Set([...group.titles, ...other.titles])];
+        groups.delete(otherKey);
+      }
+    }
+  }
+
+  const candidates = [...remaining].flatMap((item) =>
+    [...groups.values()].map((group) => {
+      const titles = readPDFForItem(item) ? group.titles : [];
+      const dois = readPDFForItem(item) ? group.dois : [];
+      const itemDOI = normalizeDOI(item.getField("DOI"));
+      const itemRole = getPDFDocumentRole({
+        metadata: { Title: getPlainTitle(item) },
+      });
+      const doiMatch = dois.length === 1 && dois[0] === itemDOI;
+      const doiConflict =
+        dois.length > 1 || Boolean(itemDOI && dois.length && !doiMatch);
+      const rankedFiles = group.files
+        .map((file) => {
+          const filenameRole = getPDFDocumentRole(undefined, file.name);
+          const role =
+            readPDFForItem(item) && group.role !== "unknown"
+              ? group.role
+              : filenameRole;
+          const roleConflict = role !== "unknown" && role !== itemRole;
+          return {
+            file,
+            fingerprint: fileFingerprints.get(
+              normalizeAttachmentPath(file.path),
+            ),
+            // A supplement can share its parent article DOI. Document-role
+            // conflicts therefore veto even an otherwise exact DOI match.
+            score:
+              doiConflict || roleConflict
+                ? 0
+                : doiMatch && role === "unknown" && itemRole === "unknown"
+                  ? 2
+                  : scoreAttachmentMatch(
+                      getPlainTitle(item),
+                      file.name,
+                      titles,
+                    ),
+          };
+        })
+        .sort((a, b) => b.score - a.score);
+      return { item, group, doiMatch, ...rankedFiles[0] };
+    }),
+  );
+
+  const availableGroups = new Set(groups.values());
+  while (remaining.size && availableGroups.size) {
+    const ranked = candidates
+      .filter(
+        (candidate) =>
+          remaining.has(candidate.item) &&
+          availableGroups.has(candidate.group) &&
+          candidate.score >= MIN_ATTACHMENT_MATCH_SCORE,
+      )
+      .sort((a, b) => b.score - a.score);
+    // Only choose a pair that is clearly better in both directions. This
+    // prevents a short title stealing another paper's exact PDF match.
+    const best = ranked.find((candidate) =>
+      ranked.every(
+        (other) =>
+          other === candidate ||
+          (other.item !== candidate.item && other.group !== candidate.group) ||
+          candidate.score - other.score >= ATTACHMENT_MATCH_AMBIGUITY_MARGIN,
+      ),
+    );
+    if (!best) break;
+    remaining.delete(best.item);
+    availableGroups.delete(best.group);
+    ztoolkit.log("Confident attachment match", {
+      title: getPlainTitle(best.item),
+      file: best.file.path,
+      score: best.score,
+      evidence: best.doiMatch ? "article DOI" : "title",
+    });
+    try {
+      const result = await runAttachmentOperation(async () => {
+        if (best.item.deleted || !canEditAttachment(best.item)) return;
+        if (best.fingerprint) {
+          const current = await fingerprintForMatching(
+            best.file.path,
+            fingerprintCache,
+          );
+          if (!current || !matchingFileContent(current, best.fingerprint)) {
+            return;
+          }
+          const duplicate = await findDuplicatePDFAttachment(
+            best.item,
+            best.file.path,
+            fingerprintCache,
+            readPDFForItem(best.item) ? identityCache : undefined,
+          );
+          if (duplicate) return { duplicate };
+          const verified = await fingerprintForMatching(
+            best.file.path,
+            fingerprintCache,
+          );
+          if (!verified || !matchingFileContent(verified, best.fingerprint)) {
+            return;
+          }
+        }
+        const attachment = await Zotero.Attachments.importFromFile({
+          file: best.file.path,
+          libraryID: best.item.libraryID,
+          parentItemID: best.item.id,
+        });
+        // Skipped duplicates never reach source cleanup.
+        await removeSourceFile(best.file.path, best.fingerprint);
+        return { attachment };
+      });
+      if (result?.duplicate) {
+        duplicates += best.group.files.length;
+        duplicateOwners.add(best.item);
+      } else if (result?.attachment) {
+        added++;
+        duplicates += best.group.files.length - 1;
+        showAttachmentItem(result.attachment);
+      } else {
+        remaining.add(best.item);
+      }
+    } catch (error) {
+      remaining.add(best.item);
+      ztoolkit.log("Cannot import matched attachment", best.file.path, error);
+    }
+  }
+  for (const item of remaining) {
+    ztoolkit.log("Attachment matching skipped", {
+      title: getPlainTitle(item),
+      doi: normalizeDOI(item.getField("DOI")),
+      candidates: candidates
+        .filter((candidate) => candidate.item === item)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map((candidate) => ({
+          file: candidate.file.path,
+          score: candidate.score,
+          dois: candidate.group.dois,
+        })),
+    });
+  }
+  showAttachmentMatchMessage("attachment-match-summary", {
+    added,
+    duplicates,
+    unmatched: [...remaining].filter((item) => !duplicateOwners.has(item))
+      .length,
+  });
 }
 
 /**
@@ -1235,8 +1454,20 @@ async function matchAttangerAttachment() {
   // ztoolkit.log('match attanger attachments for these file types: ', fileTypeList);
 
   const items = ZoteroPane.getSelectedItems()
-    .filter((i) => i.isTopLevelItem() && i.isRegularItem())
+    .filter(
+      (i) =>
+        !i.deleted &&
+        i.isTopLevelItem() &&
+        i.isRegularItem() &&
+        canEditAttachment(i),
+    )
     .sort((a, b) => getPlainTitle(a).length - getPlainTitle(b).length);
+  const fingerprintCache = createAttachmentFingerprintCache();
+  const identityCache = createPDFIdentityCache(
+    getPDFData,
+    getPDFFulltext,
+    getPDFVisualIdentity,
+  );
 
   for (const item of items) {
     // 使用 getCollectionPathsOfItem 获取条目所在的分类路径
@@ -1272,7 +1503,8 @@ async function matchAttangerAttachment() {
       if (!file) continue;
       const fullpath = file.path;
       const basename = file.leafName;
-      if (!existAttachments.includes(basename)) {
+      const pdf = /\.pdf$/i.test(fullpath);
+      if (pdf || !existAttachments.includes(basename)) {
         try {
           const attachOptions = {
             file: fullpath,
@@ -1282,14 +1514,49 @@ async function matchAttangerAttachment() {
           // Existing Attanger libraries are linked files, as in earlier
           // versions. Only the copy mode imports them so the attachment is
           // stored in Zotero and the external file becomes its copy source.
-          const attItem = await runAttachmentOperation(() =>
-            getWorkMode() === "copy"
+          const attItem = await runAttachmentOperation(async () => {
+            if (item.deleted || !canEditAttachment(item)) return;
+            if (pdf) {
+              const expected = await fingerprintForMatching(
+                fullpath,
+                fingerprintCache,
+              );
+              if (!expected) {
+                showAttachmentMatchMessage("attachment-file-unverified", {
+                  title: basename,
+                });
+                return;
+              }
+              if (
+                await findDuplicatePDFAttachment(
+                  item,
+                  fullpath,
+                  fingerprintCache,
+                  canReadPDFForItem(item) ? identityCache : undefined,
+                )
+              ) {
+                showAttachmentMatchMessage("attachment-duplicate-skipped", {
+                  title: basename,
+                });
+                return;
+              }
+              const verified = await fingerprintForMatching(
+                fullpath,
+                fingerprintCache,
+              );
+              if (!verified || !matchingFileContent(verified, expected)) {
+                return;
+              }
+            }
+            return getWorkMode() === "copy"
               ? Zotero.Attachments.importFromFile(attachOptions)
-              : Zotero.Attachments.linkFromFile(attachOptions),
-          );
+              : Zotero.Attachments.linkFromFile(attachOptions);
+          });
 
-          showAttachmentItem(attItem);
-          ztoolkit.log("|  Imported attachment:", attItem.getDisplayTitle());
+          if (attItem) {
+            showAttachmentItem(attItem);
+            ztoolkit.log("|  Imported attachment:", attItem.getDisplayTitle());
+          }
         } catch (error) {
           ztoolkit.log("|  Error importing attachment:", error);
         }
@@ -1953,27 +2220,82 @@ async function attachNewFile(options: {
       .createLine({ text: "No File Found", type: "default" })
       .show();
   } else {
-    const attItem = await runAttachmentOperation(() =>
-      Zotero.Attachments.importFromFile({ file: path, ...options }),
-    );
+    const attItem = await runAttachmentOperation(async () => {
+      let fingerprint: FileFingerprint | undefined;
+      if (/\.pdf$/i.test(path) && options.parentItemID) {
+        const parent = await Zotero.Items.getAsync(options.parentItemID);
+        if (!parent || parent.deleted || !canEditAttachment(parent)) return;
+        const cache = createAttachmentFingerprintCache();
+        fingerprint = await fingerprintForMatching(path, cache);
+        if (!fingerprint) {
+          showAttachmentMatchMessage("attachment-file-unverified", {
+            title: PathUtils.filename(path),
+          });
+          return;
+        }
+        if (
+          await findDuplicatePDFAttachment(
+            parent,
+            path,
+            cache,
+            canReadPDFForItem(parent)
+              ? createPDFIdentityCache(
+                  getPDFData,
+                  getPDFFulltext,
+                  getPDFVisualIdentity,
+                )
+              : undefined,
+          )
+        ) {
+          showAttachmentMatchMessage("attachment-duplicate-skipped", {
+            title: PathUtils.filename(path),
+          });
+          return;
+        }
+        const verified = await fingerprintForMatching(path, cache);
+        if (!verified || !matchingFileContent(verified, fingerprint)) return;
+      }
+      const attachment = await Zotero.Attachments.importFromFile({
+        file: path,
+        ...options,
+      });
+      await removeSourceFile(path, fingerprint);
+      return attachment;
+    });
+    if (!attItem) return;
     showAttachmentItem(attItem);
     if (!attItem.parentItemID) {
       Zotero.RecognizeDocument.recognizeItems([attItem]);
     }
-    await removeSourceFile(path);
   }
+}
+
+function showAttachmentMatchMessage(
+  key: string,
+  args: Record<string, unknown>,
+) {
+  new ztoolkit.ProgressWindow(config.addonName, {
+    closeTime: 6000,
+    closeOtherProgressWindows: true,
+  })
+    .createLine({ text: getString(key, { args }), type: "default" })
+    .show();
 }
 
 /**
  * Source-folder inputs are deleted after a successful import, as in earlier
  * versions, so "Attach New File" does not keep picking the same newest file.
  */
-async function removeSourceFile(path: string) {
+async function removeSourceFile(path: string, expected?: FileFingerprint) {
   if (!getPref("deleteSourceAfterImport")) return;
   if (ZoteroPane.getSelectedLibraryID() != Zotero.Libraries.userLibraryID) {
     return;
   }
   try {
+    if (expected) {
+      await removeVerifiedAttachmentFile(path, expected);
+      return;
+    }
     const file = Zotero.File.pathToFile(path);
     if (file.exists() && file.isFile()) file.remove(false);
   } catch (error) {
@@ -2308,90 +2630,168 @@ function getPlainTitle(item: Zotero.Item) {
     .replace(/<(?:i|b|sub|sub)>(.+?)<\/(?:i|b|sub|sub)>/g, "$1");
 }
 
-function cleanLigature(filename: string) {
-  let result = filename;
-  interface StringMap {
-    [key: string]: string;
-  }
-  const ligature: StringMap = {
-    æ: "ae",
-    Æ: "AE",
-    œ: "oe",
-    Œ: "OE",
-    ﬀ: "ff",
-    ﬁ: "fi",
-    ﬂ: "fl",
-    ﬃ: "ffi",
-    ﬄ: "ffl",
-  };
-  Object.keys(ligature).forEach((key) => {
-    result = result.replace(new RegExp(key, "g"), ligature[key]);
-  });
-  return result;
+function canReadPDFForItem(
+  item: Zotero.Item,
+  setting = String(getPref("readPDFtitle") || "nonCJK").toLowerCase(),
+) {
+  return (
+    setting !== "never" &&
+    (setting === "always" || !CJK_RE.test(getPlainTitle(item)))
+  );
 }
 
-function getPDFTitleFromData(data: any): string {
-  for (const title of [data?.metadata?.title, data?.metadata?.Title]) {
-    if (typeof title === "string" && title.trim()) {
-      return cleanLigature(title.trim());
-    }
-  }
-
-  let title = "";
-  let maxFontSize = -Infinity;
-  for (const page of Array.isArray(data?.pages) ? data.pages : []) {
-    const lines = page?.[page.length - 1]?.[0]?.[0]?.[0]?.[4];
-    if (!Array.isArray(lines)) continue;
-    for (const line of lines) {
-      const words = Array.isArray(line?.[0])
-        ? line[0].filter(
-            (word: any) =>
-              Array.isArray(word) &&
-              Number.isFinite(word[4]) &&
-              typeof word[word.length - 1] === "string",
-          )
-        : [];
-      if (!words.length) continue;
-      const fontSize =
-        words.reduce((sum: number, word: any[]) => sum + word[4], 0) /
-        words.length;
-      const text = words
-        .map((word: any[]) => word[word.length - 1] + (word[5] > 0 ? " " : ""))
-        .join("");
-      if (fontSize > maxFontSize) {
-        maxFontSize = fontSize;
-        title = text;
-      } else if (fontSize === maxFontSize) {
-        title += ` ${text}`;
-      }
-    }
-  }
-  return cleanLigature(title.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1").trim());
-}
-
-function getPDFRecognizerAction(): string {
-  const nativeRecognizer = Zotero.PDFWorker.getRecognizerData;
-  if (typeof nativeRecognizer === "function") {
+function getPDFWorkerAction(
+  actionName: "getRecognizerData" | "getFulltext" | "renderAnnotations",
+  nativeMethod: unknown,
+): string {
+  if (typeof nativeMethod === "function") {
     // Follow the installed implementation, including beta/backported changes.
     // Probing an unknown action would leave the shared worker waiting forever.
-    const source = Function.prototype.toString.call(nativeRecognizer);
+    const source = Function.prototype.toString.call(nativeMethod);
     const action = source.match(
-      /\b_query\s*\(\s*(["'])(pdf\.getRecognizerData|getRecognizerData)\1/,
+      new RegExp(
+        `\\b_query\\s*\\(\\s*(["'])(pdf\\.${actionName}|${actionName})\\1`,
+      ),
     );
     if (action) return action[2];
   }
-  return parseInt(Zotero.version, 10) >= 11
-    ? "pdf.getRecognizerData"
-    : "getRecognizerData";
+  return parseInt(Zotero.version, 10) >= 11 ? `pdf.${actionName}` : actionName;
 }
 
 /** Read recognizer data from a path without creating a Zotero attachment. */
 export async function getPDFData(path: string) {
-  const action = getPDFRecognizerAction();
+  return queryPDFFile(
+    path,
+    getPDFWorkerAction("getRecognizerData", Zotero.PDFWorker.getRecognizerData),
+    "recognizer",
+  );
+}
+
+/** Full text is used only to verify re-encoded copies of the same article. */
+export async function getPDFFulltext(path: string) {
+  return queryPDFFile(
+    path,
+    getPDFWorkerAction("getFulltext", Zotero.PDFWorker.getFullText),
+    "fulltext",
+  );
+}
+
+/** Confirm every page, including figures, before treating re-encoded PDFs as copies. */
+export async function getPDFVisualIdentity(path: string, totalPages: number) {
+  const crypto = ztoolkit.getGlobal("crypto") as Crypto | undefined;
+  if (
+    !Number.isInteger(totalPages) ||
+    totalPages < 1 ||
+    totalPages > MAX_PDF_VISUAL_PAGES ||
+    !crypto?.subtle ||
+    getPDFWorkerAction(
+      "renderAnnotations",
+      (Zotero.PDFWorker as any).renderAttachmentAnnotations,
+    ) !== "pdf.renderAnnotations"
+  ) {
+    // The old unnamespaced protocol has no confirmed full-page render action.
+    return;
+  }
+  return withPDFWorkerDeadline(
+    path,
+    "visual verification",
+    async (ensureActive) => {
+      const bytes = await IOUtils.read(path);
+      ensureActive();
+      const pageHashes: string[] = [];
+      for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+        ensureActive();
+        const buf = new Uint8Array(bytes).buffer;
+        const result = await Zotero.PDFWorker._query(
+          "pdf.renderArea",
+          {
+            buf,
+            pageIndex,
+            // The worker clips this rectangle to the actual (possibly negative) crop box.
+            rect: [
+              -Number.MAX_VALUE,
+              -Number.MAX_VALUE,
+              Number.MAX_VALUE,
+              Number.MAX_VALUE,
+            ],
+            scale: 2,
+          },
+          [buf],
+        );
+        ensureActive();
+        const image = result?.buf;
+        if (
+          Object.prototype.toString.call(image) !== "[object ArrayBuffer]" ||
+          image.byteLength < 33 ||
+          image.byteLength > 80 * 1024 * 1024
+        ) {
+          return;
+        }
+        const png = new Uint8Array(image);
+        const header = new DataView(image);
+        const width = header.getUint32(16);
+        const height = header.getUint32(20);
+        if (
+          ![137, 80, 78, 71, 13, 10, 26, 10].every(
+            (byte, i) => png[i] === byte,
+          ) ||
+          header.getUint32(8) !== 13 ||
+          header.getUint32(12) !== 0x49484452 ||
+          !width ||
+          !height ||
+          width * height > 16_777_216
+        ) {
+          return;
+        }
+        const hash = new Uint8Array(
+          await crypto.subtle.digest("SHA-256", image),
+        );
+        ensureActive();
+        pageHashes.push(
+          Array.from(hash, (byte) => byte.toString(16).padStart(2, "0")).join(
+            "",
+          ),
+        );
+      }
+      return { totalPages, pageHashes };
+    },
+  );
+}
+
+async function queryPDFFile(path: string, action: string, label: string) {
+  return withPDFWorkerDeadline(path, label, async (ensureActive) => {
+    const bytes = await IOUtils.read(path);
+    ensureActive();
+    const buf = new Uint8Array(bytes).buffer;
+    let result;
+    try {
+      result = await Zotero.PDFWorker._query(action, { buf }, [buf]);
+    } catch (e: any) {
+      const error = new Error(`Worker '${action}' failed: ${e?.message || e}`);
+      try {
+        const details = JSON.parse(e.message);
+        if (details.name) error.name = details.name;
+      } catch {
+        // Older workers also return plain-text errors.
+      }
+      ztoolkit.log(error);
+      throw error;
+    }
+    ensureActive();
+    ztoolkit.log(`Extracted PDF ${label} data for path ${path}`);
+    return result;
+  });
+}
+
+async function withPDFWorkerDeadline<T>(
+  path: string,
+  label: string,
+  readAndQuery: (ensureActive: () => void) => Promise<T>,
+) {
   let timeoutID: number | undefined;
   let expired = false;
   const timeoutError = new Error(
-    `PDF recognizer timed out after ${PDF_RECOGNIZER_TIMEOUT_MS} ms`,
+    `PDF ${label} timed out after ${PDF_RECOGNIZER_TIMEOUT_MS} ms`,
   );
   const ensureActive = () => {
     if (expired) throw timeoutError;
@@ -2406,33 +2806,9 @@ export async function getPDFData(path: string) {
   try {
     const workerTask = Zotero.PDFWorker._enqueue(async () => {
       ensureActive();
-      const readAndQuery = (async () => {
-        const bytes = await IOUtils.read(path);
-        ensureActive();
-        const buf = new Uint8Array(bytes).buffer;
-        let result;
-        try {
-          result = await Zotero.PDFWorker._query(action, { buf }, [buf]);
-        } catch (e: any) {
-          const error = new Error(
-            `Worker '${action}' failed: ${e?.message || e}`,
-          );
-          try {
-            const details = JSON.parse(e.message);
-            if (details.name) error.name = details.name;
-          } catch {
-            // Older workers also return plain-text errors.
-          }
-          ztoolkit.log(error);
-          throw error;
-        }
-        ensureActive();
-        ztoolkit.log(`Extracted PDF recognizer data for path ${path}`);
-        return result;
-      })();
       // The deadline must reject inside the callback as well as outside the
       // queue, so a hung read/query cannot block unrelated Zotero PDF tasks.
-      return Promise.race([readAndQuery, timeoutTask]);
+      return Promise.race([readAndQuery(ensureActive), timeoutTask]);
     }, false);
     return await Promise.race([workerTask, timeoutTask]);
   } finally {
