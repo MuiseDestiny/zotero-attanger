@@ -19,6 +19,7 @@ process.env.NODE_ENV =
   process.argv[2] === "production" ? "production" : "development";
 
 const buildDir = "build";
+const localBuild = process.argv.includes("--local");
 
 const { name, author, description, homepage, version, config } = details;
 const isPreRelease = version.includes("-");
@@ -146,7 +147,7 @@ function prepareUpdateJson() {
   }
 
   const updateLink =
-    config.updateLink ?? isPreRelease
+    (config.updateLink ?? isPreRelease)
       ? `${config.releasePage}/download/v${version}/${name}.xpi`
       : `${config.releasePage}/latest/download/${name}.xpi`;
 
@@ -167,9 +168,10 @@ function prepareUpdateJson() {
   });
 
   Logger.debug(
-    `[Build] Prepare Update.json for ${isPreRelease
-      ? "\u001b[31m Prerelease \u001b[0m"
-      : "\u001b[32m Release \u001b[0m"
+    `[Build] Prepare Update.json for ${
+      isPreRelease
+        ? "\u001b[31m Prerelease \u001b[0m"
+        : "\u001b[32m Release \u001b[0m"
     }`,
     replaceResult
       .filter((f) => f.hasChanged)
@@ -226,7 +228,10 @@ export async function main() {
       },
     );
 
-    prepareUpdateJson();
+    // Test packages must not rewrite the public update manifests.
+    if (!localBuild) {
+      prepareUpdateJson();
+    }
 
     Logger.debug(
       `[Build] Finished in ${(new Date().getTime() - t.getTime()) / 1000} s.`,

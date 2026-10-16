@@ -1136,65 +1136,37 @@ async function matchAttachment() {
     getPref("readPDFtitle") || "nonCJK",
   ).toLowerCase();
   ztoolkit.log("read PDF title: ", readPDFTitle);
+  const pdfTitles = new Map<string, Promise<string>>();
   for (const item of items) {
     const itemtitle = getPlainTitle(item);
     ztoolkit.log("processing item: ", itemtitle);
     let iniDistance = Infinity;
     let matchedFile: OS.File.Entry | undefined = undefined;
     for (const file of files) {
-      let filename = file.name.replace(/\..+?$/, "");
-
-      /* 尝试从PDF元数据或文本中读取标题 */
-      try {
-        if (readPDFTitle === "never") {
-          throw new Error("PDF title extraction is disabled");
+      let filename = file.name.replace(filenameExtRE, "");
+      if (
+        readPDFTitle !== "never" &&
+        (readPDFTitle === "always" || !CJK_RE.test(itemtitle)) &&
+        /^pdf$/i.test(Zotero.File.getExtension(file.path))
+      ) {
+        let titleTask = pdfTitles.get(file.path);
+        if (!titleTask) {
+          ztoolkit.log("check file:", file.name + ": ");
+          // Cache failures too, so a stalled PDF is tried only once per command.
+          titleTask = getPDFData(file.path)
+            .then((data) => {
+              const title = getPDFTitleFromData(data);
+              ztoolkit.log("optical title: ", title);
+              return title;
+            })
+            .catch((error) => {
+              ztoolkit.log(error);
+              return "";
+            });
+          pdfTitles.set(file.path, titleTask);
         }
-        if (!/pdf/i.test(Zotero.File.getExtension(file.path))) {
-          throw new Error("This is not a PDF file.");
-        }
-        ztoolkit.log("check file:", file.name + ": ");
-        const data: any = await getPDFData(file.path);
-        const lines: Array<any> = [];
-        (data.pages || []).forEach((page: Array<any>) => {
-          page[page.length - 1][0][0][0][4].forEach(
-            (line: Array<Array<Array<any>>>) => {
-              const lineObj = { fontSize: 0, text: "" };
-              line[0].forEach((word) => {
-                lineObj.fontSize += word[4];
-                lineObj.text +=
-                  word[word.length - 1] + (word[5] > 0 ? " " : "");
-              });
-              lineObj.fontSize /= line[0].length;
-              // ztoolkit.log(lineObj);
-              lines.push(lineObj);
-            },
-          );
-        });
-        const optTitle =
-          data?.metadata?.title ||
-          data?.metadata?.Title ||
-          lines
-            .reduce(
-              (max, cur) => {
-                if (cur.fontSize > max.fontSize) {
-                  return cur;
-                } else if (cur.fontSize == max.fontSize) {
-                  max.text += ` ${cur.text}`;
-                }
-                return max;
-              },
-              { fontSize: -Infinity, text: "" },
-            )
-            .text.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1");
-        ztoolkit.log("optical title: ", optTitle);
-        if (
-          optTitle &&
-          (!CJK_RE.test(itemtitle) || readPDFTitle === "always")
-        ) {
-          filename = cleanLigature(optTitle);
-        }
-      } catch (e: any) {
-        ztoolkit.log(e);
+        const title = await titleTask;
+        if (title) filename = title;
       }
       ztoolkit.log("filename:", filename);
       const distance = comparison.metricLcs.distance(
@@ -2358,50 +2330,110 @@ function cleanLigature(filename: string) {
   return result;
 }
 
-/**
- * 对Zotero.PDFWorker.getRecognizerData的重写，以便支持直接给出路径。
- */
-export async function getPDFData(path: string) {
-  let timeoutID: number | undefined;
-  // Zotero 10 can leave the private worker queue pending after a worker
-  // disconnect, so keep filename-based matching available as a fallback.
-  const workerTask = (async () =>
-    Zotero.PDFWorker._enqueue(async () => {
-      const buf = new Uint8Array(await IOUtils.read(path)).buffer;
-      let result = {};
-      try {
-        result = await Zotero.PDFWorker._query("getRecognizerData", { buf }, [
-          buf,
-        ]);
-      } catch (e: any) {
-        const error = new Error(
-          `Worker 'getRecognizerData' failed: ${JSON.stringify({
-            error: e.message,
-          })}`,
-        );
-        try {
-          error.name = JSON.parse(e.message).name;
-        } catch (e: any) {
-          ztoolkit.log(e);
-        }
-        ztoolkit.log(error);
-        throw error;
+function getPDFTitleFromData(data: any): string {
+  for (const title of [data?.metadata?.title, data?.metadata?.Title]) {
+    if (typeof title === "string" && title.trim()) {
+      return cleanLigature(title.trim());
+    }
+  }
+
+  let title = "";
+  let maxFontSize = -Infinity;
+  for (const page of Array.isArray(data?.pages) ? data.pages : []) {
+    const lines = page?.[page.length - 1]?.[0]?.[0]?.[0]?.[4];
+    if (!Array.isArray(lines)) continue;
+    for (const line of lines) {
+      const words = Array.isArray(line?.[0])
+        ? line[0].filter(
+            (word: any) =>
+              Array.isArray(word) &&
+              Number.isFinite(word[4]) &&
+              typeof word[word.length - 1] === "string",
+          )
+        : [];
+      if (!words.length) continue;
+      const fontSize =
+        words.reduce((sum: number, word: any[]) => sum + word[4], 0) /
+        words.length;
+      const text = words
+        .map((word: any[]) => word[word.length - 1] + (word[5] > 0 ? " " : ""))
+        .join("");
+      if (fontSize > maxFontSize) {
+        maxFontSize = fontSize;
+        title = text;
+      } else if (fontSize === maxFontSize) {
+        title += ` ${text}`;
       }
+    }
+  }
+  return cleanLigature(title.replace(/\s?([\u4e00-\u9fff])\s?/g, "$1").trim());
+}
 
-      ztoolkit.log(`Extracted PDF recognizer data for path ${path}`);
+function getPDFRecognizerAction(): string {
+  const nativeRecognizer = Zotero.PDFWorker.getRecognizerData;
+  if (typeof nativeRecognizer === "function") {
+    // Follow the installed implementation, including beta/backported changes.
+    // Probing an unknown action would leave the shared worker waiting forever.
+    const source = Function.prototype.toString.call(nativeRecognizer);
+    const action = source.match(
+      /\b_query\s*\(\s*(["'])(pdf\.getRecognizerData|getRecognizerData)\1/,
+    );
+    if (action) return action[2];
+  }
+  return parseInt(Zotero.version, 10) >= 11
+    ? "pdf.getRecognizerData"
+    : "getRecognizerData";
+}
 
-      return result;
-    }, false))();
+/** Read recognizer data from a path without creating a Zotero attachment. */
+export async function getPDFData(path: string) {
+  const action = getPDFRecognizerAction();
+  let timeoutID: number | undefined;
+  let expired = false;
+  const timeoutError = new Error(
+    `PDF recognizer timed out after ${PDF_RECOGNIZER_TIMEOUT_MS} ms`,
+  );
+  const ensureActive = () => {
+    if (expired) throw timeoutError;
+  };
   const timeoutTask = new Promise<never>((_, reject) => {
     timeoutID = window.setTimeout(() => {
-      const error = new Error(
-        `PDF recognizer timed out after ${PDF_RECOGNIZER_TIMEOUT_MS} ms`,
-      );
-      ztoolkit.log(error, path);
-      reject(error);
+      expired = true;
+      ztoolkit.log(timeoutError, path);
+      reject(timeoutError);
     }, PDF_RECOGNIZER_TIMEOUT_MS);
   });
   try {
+    const workerTask = Zotero.PDFWorker._enqueue(async () => {
+      ensureActive();
+      const readAndQuery = (async () => {
+        const bytes = await IOUtils.read(path);
+        ensureActive();
+        const buf = new Uint8Array(bytes).buffer;
+        let result;
+        try {
+          result = await Zotero.PDFWorker._query(action, { buf }, [buf]);
+        } catch (e: any) {
+          const error = new Error(
+            `Worker '${action}' failed: ${e?.message || e}`,
+          );
+          try {
+            const details = JSON.parse(e.message);
+            if (details.name) error.name = details.name;
+          } catch {
+            // Older workers also return plain-text errors.
+          }
+          ztoolkit.log(error);
+          throw error;
+        }
+        ensureActive();
+        ztoolkit.log(`Extracted PDF recognizer data for path ${path}`);
+        return result;
+      })();
+      // The deadline must reject inside the callback as well as outside the
+      // queue, so a hung read/query cannot block unrelated Zotero PDF tasks.
+      return Promise.race([readAndQuery, timeoutTask]);
+    }, false);
     return await Promise.race([workerTask, timeoutTask]);
   } finally {
     if (timeoutID !== undefined) {

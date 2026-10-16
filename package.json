@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node scripts/server.mjs",
     "build": "tsc --noEmit && node scripts/build.mjs production",
+    "build:local": "tsc --noEmit && node scripts/build.mjs production --local",
     "stop": "node scripts/stop.mjs",
     "lint": "prettier --write . && eslint . --ext .ts --fix",
     "test": "node --test tests/*.test.cjs",
