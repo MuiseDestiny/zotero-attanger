@@ -27,3 +27,13 @@ copy-conflict = 外部副本已在 Zotero 之外被修改，已保留且未覆�
 copy-error = 同步外部副本失败：{ $title }
 linked-library-unavailable = 外部链接模式仅支持可编辑的个人文库。
 target-inside-storage = 外部目录应位于 Zotero 存储目录之外，并使用真实目录路径（不含符号链接）。
+
+unused-pdf-title = 未引用的 PDF
+unused-pdf-preview = 当前 Zotero 未引用 { $count } 个 PDF（{ $size } MB）。已跳过的隐藏、链接或受保护项目：{ $skipped }。
+unused-pdf-warning = 请仔细核对：其他 Zotero 数据目录、电脑或软件可能仍在使用这些文件。Zotero 回收站中的附件已受到保护。仅将勾选文件移至系统废纸篓；无法移入时保留原文件。
+unused-pdf-reveal = 定位文件
+unused-pdf-cancel = 关闭
+unused-pdf-trash = 将所选文件移至废纸篓
+unused-pdf-confirm = 将所选的 { $count } 个 PDF 移至系统废纸篓？此操作不修改 Zotero 条目。请确认其他电脑和软件不再需要这些文件。
+unused-pdf-result = 已移至废纸篓：{ $moved }；复核后保留：{ $skipped }；失败或不可用：{ $failed }。可重新扫描以更新结果。
+unused-pdf-error = 无法安全核实目录或附件引用。请确认配置目录可写、不是符号链接且位于 Zotero 存储目录之外；有无法解析的附件路径时需先修复。移入废纸篓失败时不会改为永久删除。

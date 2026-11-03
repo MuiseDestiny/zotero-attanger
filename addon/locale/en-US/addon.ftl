@@ -27,3 +27,13 @@ copy-conflict = The external copy was edited outside Zotero and was kept without
 copy-error = Failed to sync external copy: { $title }
 linked-library-unavailable = External links work only in an editable personal library.
 target-inside-storage = The external directory must be outside Zotero storage and use a real path (no symbolic links).
+
+unused-pdf-title = Unreferenced PDFs
+unused-pdf-preview = { $count } PDFs ({ $size } MB) are not referenced by the current Zotero. Hidden, linked or protected entries skipped: { $skipped }.
+unused-pdf-warning = Review carefully: these files may still be used by another Zotero data directory, computer or app. Attachments in Zotero’s trash are protected. Only selected files will be moved to the system Trash; recycling failures leave files in place.
+unused-pdf-reveal = Show file
+unused-pdf-cancel = Close
+unused-pdf-trash = Move selected files to Trash
+unused-pdf-confirm = Move { $count } selected PDFs to the system Trash? This does not change Zotero items. Confirm that other computers and apps do not need these files.
+unused-pdf-result = Moved to Trash: { $moved }. Retained after recheck: { $skipped }. Failed or unavailable: { $failed }. Scan again to refresh results.
+unused-pdf-error = The directory or attachment references could not be safely verified. Check that the configured directory is writable, is not a symbolic link and is outside Zotero storage. Unresolved attachment paths must be fixed before cleanup. If recycling fails, affected files are not permanently deleted.

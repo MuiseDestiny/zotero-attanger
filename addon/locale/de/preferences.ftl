@@ -167,3 +167,11 @@ automatic-processing-scope-title = Welche Importe werden automatisch verarbeitet
 filename-exceptions-title = Dateitypen und Namensausnahmen
 shortcuts-title = Tastenkürzel
 shortcuts-summary = Zum Aktivieren anhaken, dann ins Feld klicken und Tastenkombination drücken
+
+scan-unused-pdfs =
+    .label = Nicht referenzierte PDFs suchen…
+scan-unused-pdfs-note = Durchsucht den Dateiablageordner und seine Unterordner nach PDFs ohne Anhangreferenz im aktuellen Zotero, einschließlich dessen Papierkorb. Dateien werden erst nach Vorschau, Auswahl und Bestätigung in den Systempapierkorb verschoben. Die Nutzung auf anderen Computern oder in anderen Apps wird nicht erkannt.
+unused-pdf-scanning = PDFs und Anhangreferenzen werden geprüft…
+unused-pdf-scanned = { $count } nicht referenzierte PDFs gefunden. Vorschau prüfen; nach der Bereinigung erneut suchen, um die Anzahl zu aktualisieren.
+unused-pdf-none = Keine nicht referenzierten PDFs gefunden. Anhänge im Zotero-Papierkorb gelten weiterhin als referenziert.
+unused-pdf-scan-error = Suche fehlgeschlagen. Ordner und Anhangpfade prüfen; es wurden keine Dateien bereinigt.

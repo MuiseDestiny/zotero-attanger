@@ -167,3 +167,11 @@ automatic-processing-scope-title = Quali importazioni vengono elaborate automati
 filename-exceptions-title = Tipi di file ed eccezioni di rinomina
 shortcuts-title = Scorciatoie da tastiera
 shortcuts-summary = Spunta per attivare, poi fai clic nel campo e premi la combinazione di tasti
+
+scan-unused-pdfs =
+    .label = Cerca PDF senza riferimenti…
+scan-unused-pdfs-note = Cerca nella cartella di archiviazione e nelle sottocartelle i PDF non referenziati da allegati nello Zotero corrente, incluso il cestino. I file vengono spostati nel cestino di sistema solo dopo anteprima, selezione e conferma. Non è possibile rilevare l’uso da altri computer o applicazioni.
+unused-pdf-scanning = Scansione dei PDF e dei riferimenti agli allegati…
+unused-pdf-scanned = Trovati { $count } PDF senza riferimenti. Controlla l’anteprima; ripeti la scansione dopo la pulizia per aggiornare il conteggio.
+unused-pdf-none = Nessun PDF senza riferimenti trovato. Gli allegati nel cestino di Zotero contano ancora come riferimenti.
+unused-pdf-scan-error = Scansione non riuscita. Controlla la cartella e i percorsi degli allegati; nessun file è stato rimosso.

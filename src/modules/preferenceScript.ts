@@ -12,6 +12,8 @@ import {
   removeExtraSourceDir,
 } from "../utils/sourceDirs";
 import { attachmentPathExists, isZoteroStoragePath } from "./attachmentFiles";
+import { getString } from "../utils/locale";
+import { previewUnusedPDFs, scanUnusedPDFs } from "./unusedPDFs";
 import {
   getSubfolderPath,
   isFilenameMatched,
@@ -622,6 +624,62 @@ function bindPrefEvents(session: PrefsSession) {
   const _window = session.window;
   // 选择源目录
   const doc = getPrefsDocument(session);
+  let scanningPDFs = false;
+  onPrefsEvent(
+    session,
+    doc.querySelector("#scan-unused-pdfs"),
+    "command",
+    async () => {
+      if (scanningPDFs || getWorkMode() !== "linked") return;
+      const root = getPref("destDir");
+      const button = doc.querySelector(
+        "#scan-unused-pdfs",
+      ) as HTMLButtonElement;
+      const status = doc.querySelector("#unused-pdf-status");
+      const isActive = () =>
+        isPrefsSessionActive(session) &&
+        getWorkMode() === "linked" &&
+        getPref("destDir") === root;
+      scanningPDFs = true;
+      button.disabled = true;
+      setLocalizedText(doc, "#unused-pdf-status", "unused-pdf-scanning");
+      try {
+        if (typeof root !== "string" || !root.trim())
+          throw new Error("Missing PDF directory");
+        const scan = await scanUnusedPDFs(root, isActive);
+        if (!isActive()) return;
+        setLocalizedText(
+          doc,
+          "#unused-pdf-status",
+          scan.files.length ? "unused-pdf-scanned" : "unused-pdf-none",
+          { count: String(scan.files.length) },
+        );
+        if (scan.files.length)
+          await previewUnusedPDFs(scan, isActive, (close) =>
+            session.disposers.push(close),
+          );
+      } catch (error) {
+        ztoolkit.log("Unused PDF scan failed", error);
+        if (isActive()) {
+          setLocalizedText(doc, "#unused-pdf-status", "unused-pdf-scan-error");
+          Services.prompt.alert(
+            _window,
+            getString("unused-pdf-title"),
+            getString("unused-pdf-error"),
+          );
+        }
+      } finally {
+        scanningPDFs = false;
+        if (isPrefsSessionActive(session)) {
+          button.disabled = false;
+          if (!isActive()) {
+            status?.removeAttribute("data-l10n-id");
+            if (status) status.textContent = "";
+          }
+        }
+      }
+    },
+  );
   const search = _window.document.querySelector("#prefs-search");
   for (const type of ["input", "command"]) {
     onPrefsEvent(session, search, type, () => updateSearchSections(session), {

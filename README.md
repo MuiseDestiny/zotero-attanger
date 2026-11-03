@@ -127,6 +127,15 @@ another**.
   removed together with the old item.
 - Zotero does not sync linked files. Sync the directory with a cloud drive or
   another tool. Attachments in group libraries are never converted.
+- **Scan unreferenced PDFs…**: scans the storage directory and its subfolders
+  without changing files. Attachments in every current library, including
+  Zotero's trash, protect their files. Review the list, select files, and
+  confirm before moving them to the system Trash. Hidden entries, symbolic
+  links and Zotero storage are excluded. References and file contents are
+  checked again before recycling; failures never fall back to permanent
+  deletion. Windows recycling is limited to fixed local volumes; Linux needs
+  `gio`. Files used by other Zotero data directories, computers or apps cannot
+  be detected, so shared directories require particular care.
 
 **About Copies** (External Copy only):
 

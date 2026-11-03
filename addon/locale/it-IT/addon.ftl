@@ -27,3 +27,13 @@ copy-conflict = La copia esterna è stata modificata fuori da Zotero ed è stata
 copy-error = Impossibile sincronizzare la copia esterna: { $title }
 linked-library-unavailable = I collegamenti esterni funzionano solo in una libreria personale modificabile.
 target-inside-storage = La cartella esterna deve trovarsi fuori dall'archivio di Zotero e usare un percorso reale (senza collegamenti simbolici).
+
+unused-pdf-title = PDF senza riferimenti
+unused-pdf-preview = { $count } PDF ({ $size } MB) non sono referenziati dallo Zotero corrente. Elementi nascosti, collegati o protetti ignorati: { $skipped }.
+unused-pdf-warning = Controlla con attenzione: un’altra cartella dati Zotero, un altro computer o un’app potrebbero usare questi file. Gli allegati nel cestino di Zotero sono protetti. Solo i file selezionati saranno spostati nel cestino di sistema; in caso di errore restano al loro posto.
+unused-pdf-reveal = Mostra file
+unused-pdf-cancel = Chiudi
+unused-pdf-trash = Sposta i file selezionati nel cestino
+unused-pdf-confirm = Spostare { $count } PDF selezionati nel cestino di sistema? Gli elementi Zotero non cambiano. Verifica che altri computer e applicazioni non abbiano bisogno di questi file.
+unused-pdf-result = Nel cestino: { $moved }. Conservati dopo verifica: { $skipped }. Non riusciti o non disponibili: { $failed }. Ripeti la scansione per aggiornare i risultati.
+unused-pdf-error = Impossibile verificare in sicurezza la cartella o i riferimenti agli allegati. La cartella deve essere scrivibile, non essere un collegamento simbolico e trovarsi fuori dall’archivio Zotero. Correggi prima i percorsi degli allegati non risolvibili. In caso di errore del cestino non viene eseguita l’eliminazione definitiva.

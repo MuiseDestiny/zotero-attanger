@@ -93,6 +93,42 @@ test("loading settings preserves configured modes, rules and timing preferences"
   assertNoFileOperations();
 });
 
+test("unused PDF scan is linked-only, read-only on load, and does not duplicate listeners on refresh", async () => {
+  setup({ prefs: { workMode: "linked", destDir: "/dest" } });
+  await harness.register();
+  const button = harness.node("scan-unused-pdfs");
+  assert.equal(harness.node("linked-mode-options").hidden, false);
+  assert.equal(button.listenerCount("command"), 1);
+  await harness.window.emit("focus");
+  await harness.settle();
+  assert.equal(button.listenerCount("command"), 1);
+  await harness.chooseMode("copy");
+  assert.equal(harness.node("linked-mode-options").hidden, true);
+  await button.emit("command");
+  assert.equal(
+    harness.node("unused-pdf-status").getAttribute("data-l10n-id"),
+    null,
+  );
+  await harness.chooseMode("stored");
+  assert.equal(harness.node("linked-mode-options").hidden, true);
+  assertNoFileOperations();
+  harness.preferences.unregisterPrefsScripts();
+  assert.equal(button.listenerCount("command"), 0);
+});
+
+test("unused PDF button reports empty scan and re-enables itself without modifying files", async () => {
+  setup({ prefs: { workMode: "linked", destDir: "/dest" } });
+  await harness.register();
+  const button = harness.node("scan-unused-pdfs");
+  await button.emit("command");
+  assert.equal(button.disabled, false);
+  assert.equal(
+    harness.node("unused-pdf-status").getAttribute("data-l10n-id"),
+    "zoteroattanger-unused-pdf-none",
+  );
+  assertNoFileOperations();
+});
+
 test("stored mode is ready without a destination and hides irrelevant directory settings", async () => {
   setup({ prefs: { workMode: "stored", destDir: "" } });
   await harness.register();

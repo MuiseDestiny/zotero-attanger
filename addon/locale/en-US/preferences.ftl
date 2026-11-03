@@ -179,3 +179,11 @@ automatic-processing-scope-title = Which imports are processed automatically?
 filename-exceptions-title = File Types and Naming Exceptions
 shortcuts-title = Keyboard Shortcuts
 shortcuts-summary = Check to enable, then click a field and press a key combination
+
+scan-unused-pdfs =
+    .label = Scan unreferenced PDFs…
+scan-unused-pdfs-note = Scan the file storage directory and its subfolders for PDFs not referenced by any attachment in the current Zotero, including its trash. Review and select files before moving them to the system Trash. Files used by other computers or apps cannot be detected.
+unused-pdf-scanning = Scanning PDFs and attachment references…
+unused-pdf-scanned = Found { $count } unreferenced PDFs. Review the preview before cleanup; scan again after cleanup to refresh this count.
+unused-pdf-none = No unreferenced PDFs found. Attachments in Zotero’s trash still count as references.
+unused-pdf-scan-error = Scan failed. Check the directory and attachment paths; no files were cleaned up.

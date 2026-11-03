@@ -179,3 +179,11 @@ automatic-processing-scope-title = 哪些导入会自动处理？
 filename-exceptions-title = 文件类型与命名例外
 shortcuts-title = 快捷键
 shortcuts-summary = 勾选启用，点击输入框后按下组合键
+
+scan-unused-pdfs =
+    .label = 扫描未引用的 PDF…
+scan-unused-pdfs-note = 扫描文件存储目录及其子文件夹，查找当前 Zotero 中没有附件引用的 PDF（回收站中的附件也算引用）。预览并勾选确认后才会移至系统废纸篓；无法判断其他电脑或软件是否仍在使用这些文件。
+unused-pdf-scanning = 正在扫描 PDF 和附件引用…
+unused-pdf-scanned = 找到 { $count } 个未引用的 PDF。请在预览中确认；清理后可重新扫描以更新数量。
+unused-pdf-none = 未找到未引用的 PDF。Zotero 回收站中的附件仍算引用。
+unused-pdf-scan-error = 扫描失败。请检查目录和附件路径；未执行文件清理。

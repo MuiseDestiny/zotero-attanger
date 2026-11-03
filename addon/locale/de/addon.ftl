@@ -27,3 +27,13 @@ copy-conflict = Die externe Kopie wurde außerhalb von Zotero bearbeitet und nic
 copy-error = Externe Kopie konnte nicht synchronisiert werden: { $title }
 linked-library-unavailable = Externe Links funktionieren nur in einer bearbeitbaren eigenen Bibliothek.
 target-inside-storage = Das externe Verzeichnis muss außerhalb des Zotero-Speichers liegen und einen echten Pfad (ohne symbolische Links) verwenden.
+
+unused-pdf-title = Nicht referenzierte PDFs
+unused-pdf-preview = { $count } PDFs ({ $size } MB) werden vom aktuellen Zotero nicht referenziert. Übersprungene versteckte, verknüpfte oder geschützte Einträge: { $skipped }.
+unused-pdf-warning = Sorgfältig prüfen: Ein anderes Zotero-Datenverzeichnis, ein anderer Computer oder eine andere App könnte diese Dateien noch nutzen. Anhänge im Zotero-Papierkorb sind geschützt. Nur ausgewählte Dateien werden in den Systempapierkorb verschoben; bei Fehlern bleiben sie erhalten.
+unused-pdf-reveal = Datei anzeigen
+unused-pdf-cancel = Schließen
+unused-pdf-trash = Auswahl in den Papierkorb verschieben
+unused-pdf-confirm = { $count } ausgewählte PDFs in den Systempapierkorb verschieben? Zotero-Einträge bleiben unverändert. Sicherstellen, dass andere Computer und Apps diese Dateien nicht benötigen.
+unused-pdf-result = Im Papierkorb: { $moved }. Nach Prüfung behalten: { $skipped }. Fehlgeschlagen oder nicht verfügbar: { $failed }. Erneut suchen, um die Ergebnisse zu aktualisieren.
+unused-pdf-error = Ordner oder Anhangreferenzen konnten nicht sicher geprüft werden. Der Ordner muss beschreibbar sein, darf kein symbolischer Link sein und muss außerhalb des Zotero-Speichers liegen. Nicht auflösbare Anhangpfade müssen zuerst korrigiert werden. Bei Papierkorbfehlern wird nicht dauerhaft gelöscht.
