@@ -115,6 +115,132 @@ test("scan fails closed on reference enumeration or unresolved paths", async () 
   assert.deepEqual(harness.trashCalls, []);
 });
 
+for (const foreign of [
+  String.raw`D:\OneDrive - junblue\Zotero\2009_Satellite aerosol remote sensing over land.pdf`,
+  "D:/OneDrive/Zotero/2009_Satellite aerosol remote sensing over land.pdf",
+  String.raw`\\server\papers\2009_Satellite aerosol remote sensing over land.pdf`,
+  "//server/papers/2009_Satellite aerosol remote sensing over land.pdf",
+]) {
+  test(`macOS protects same-named PDFs for foreign reference ${foreign}`, async () => {
+    const filename = "2009_Satellite aerosol remote sensing over land.pdf";
+    setup({
+      files: [
+        `/dest/${filename}`,
+        `/dest/sub/${filename.toUpperCase()}`,
+        "/dest/orphan.pdf",
+      ],
+      directories: ["/dest/sub"],
+    });
+    const item = attachment({ path: foreign, deleted: true });
+    item.getFilePath = () => {
+      throw new Error("Foreign paths must not enter native resolution");
+    };
+    const nativeFile = Zotero.File.pathToFile;
+    const nativeCalls = [];
+    Zotero.File.pathToFile = (path) => {
+      nativeCalls.push(path);
+      if (path === foreign) throw new Error("Unexpected path value");
+      return nativeFile(path);
+    };
+    const scan = await scanUnusedPDFs("/dest");
+    assert.deepEqual(
+      scan.files.map((file) => file.path),
+      ["/dest/orphan.pdf"],
+    );
+    assert.equal(scan.foreignReferences, 1);
+    assert.equal(nativeCalls.includes(foreign), false);
+    assert.equal(item.attachmentPath, foreign);
+    assert.deepEqual(harness.trashCalls, []);
+  });
+}
+
+test("foreign paths resolved from relative links also avoid native APIs", async () => {
+  setup({ files: ["/dest/paper.pdf", "/dest/free.pdf"] });
+  const item = attachment({ path: "attachments:paper.pdf" });
+  item.getFilePath = () => String.raw`D:\papers\paper.pdf`;
+  const nativeFile = Zotero.File.pathToFile;
+  Zotero.File.pathToFile = (path) => {
+    assert.doesNotMatch(path, /^[a-z]:/i);
+    return nativeFile(path);
+  };
+  const scan = await scanUnusedPDFs("/dest");
+  assert.deepEqual(
+    scan.files.map((file) => file.path),
+    ["/dest/free.pdf"],
+  );
+  assert.equal(scan.foreignReferences, 1);
+});
+
+test("a foreign reference added after preview prevents recycling", async () => {
+  setup({ files: ["/dest/Paper.pdf", "/dest/free.pdf"] });
+  const scan = await scanUnusedPDFs("/dest");
+  attachment({ path: String.raw`E:\Library\paper.PDF` });
+  const result = await trashUnusedPDFs(scan, scan.files);
+  assert.deepEqual(result, { moved: 1, skipped: 1, failed: 0 });
+  assert.equal(harness.files.has("/dest/Paper.pdf"), true);
+  assert.equal(harness.files.has("/dest/free.pdf"), false);
+});
+
+test("an invalid foreign filename still fails closed", async () => {
+  setup({ files: ["/dest/free.pdf"] });
+  attachment({ path: "D:\\Library\\" });
+  await assert.rejects(scanUnusedPDFs("/dest"), /foreign attachment filename/);
+  assert.deepEqual(harness.trashCalls, []);
+});
+
+test("Windows protects Unix references before native path resolution", async () => {
+  setup({ files: ["/dest/Paper.pdf", "/dest/free.pdf"] });
+  const nativeFile = Zotero.File.pathToFile;
+  // Adapt only the test filesystem; production Windows passes drive paths directly.
+  const toWindows = (path) => path.replace(/^\//, "C:/").replace(/\//g, "\\");
+  const toPosix = (path) => path.replace(/\\/g, "/").replace(/^C:\//, "/");
+  Zotero.isMac = false;
+  Zotero.isWin = true;
+  Zotero.File.pathToFile = (path) => {
+    if (!path.startsWith("C:\\"))
+      throw new Error("Unexpected Unix native path");
+    const file = nativeFile(toPosix(path));
+    return new Proxy(file, {
+      get(target, property) {
+        if (property === "path") return toWindows(target.path);
+        if (property === "normalize") return () => {};
+        if (property === "target") return toWindows(target.target);
+        if (property === "directoryEntries") {
+          const entries = target.directoryEntries;
+          return {
+            hasMoreElements: () => entries.hasMoreElements(),
+            getNext: () => {
+              const entry = entries.getNext();
+              return {
+                QueryInterface: () =>
+                  Zotero.File.pathToFile(toWindows(entry.path)),
+              };
+            },
+          };
+        }
+        return target[property];
+      },
+    });
+  };
+  PathUtils.parent = (path) =>
+    path === "C:\\" ? null : require("node:path").win32.dirname(path);
+  PathUtils.filename = path.win32.basename;
+  PathUtils.joinRelative = path.win32.join;
+  Zotero.getStorageDirectory = () => ({ path: "C:\\storage" });
+  IOUtils.stat = async () => ({ type: "regular", size: 1, lastModified: 1 });
+  Zotero.Utilities.Internal.md5Async = async () => "hash";
+  const item = attachment({ path: "/Users/me/Paper.pdf" });
+  item.getFilePath = () => {
+    throw new Error("Foreign path was resolved");
+  };
+  const scan = await scanUnusedPDFs("C:\\dest");
+  assert.deepEqual(
+    scan.files.map((file) => file.path),
+    ["C:\\dest\\free.pdf"],
+  );
+  assert.equal(scan.foreignReferences, 1);
+});
+
 test("symlink directories and files, hidden directories and Zotero storage are excluded", async () => {
   setup({
     files: [

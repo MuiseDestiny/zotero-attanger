@@ -29,6 +29,9 @@ linked-library-unavailable = Externe Links funktionieren nur in einer bearbeitba
 target-inside-storage = Das externe Verzeichnis muss außerhalb des Zotero-Speichers liegen und einen echten Pfad (ohne symbolische Links) verwenden.
 
 unused-pdf-title = Nicht referenzierte PDFs
+unused-pdf-foreign-summary = { $count } PDFs zur Prüfung gefunden. Weitere { $foreign } Anhänge verwenden absolute Pfade eines anderen Betriebssystems; alle gleichnamigen PDFs im Zielordner wurden vorsorglich behalten. Anhangverknüpfungen wurden nicht geändert.
+unused-pdf-foreign-note = { $count } absolute Pfade eines anderen Betriebssystems erkannt. Ihr lokaler Speicherort ist nicht prüfbar. Alle gleichnamigen PDFs bleiben erhalten (ohne Beachtung der Groß-/Kleinschreibung); Pfade werden nicht zugeordnet und Verknüpfungen nicht geändert.
+unused-pdf-error-detail = Suche fehlgeschlagen; keine Dateien wurden bereinigt. Ursache: { $reason }
 unused-pdf-preview = { $count } PDFs ({ $size } MB) werden vom aktuellen Zotero nicht referenziert. Übersprungene versteckte, verknüpfte oder geschützte Einträge: { $skipped }.
 unused-pdf-warning = Sorgfältig prüfen: Ein anderes Zotero-Datenverzeichnis, ein anderer Computer oder eine andere App könnte diese Dateien noch nutzen. Anhänge im Zotero-Papierkorb sind geschützt. Nur ausgewählte Dateien werden in den Systempapierkorb verschoben; bei Fehlern bleiben sie erhalten.
 unused-pdf-reveal = Datei anzeigen

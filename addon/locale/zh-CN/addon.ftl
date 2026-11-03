@@ -29,6 +29,9 @@ linked-library-unavailable = 外部链接模式仅支持可编辑的个人文库
 target-inside-storage = 外部目录应位于 Zotero 存储目录之外，并使用真实目录路径（不含符号链接）。
 
 unused-pdf-title = 未引用的 PDF
+unused-pdf-foreign-summary = 找到 { $count } 个待确认的 PDF。另有 { $foreign } 个附件使用其他系统的绝对路径；已保守保留目标目录中所有同名 PDF，未修改附件链接。
+unused-pdf-foreign-note = 检测到 { $count } 个其他系统的绝对路径。无法确认它们在本机的位置，已保留所有同名 PDF（不区分大小写），没有自动映射路径或修改链接。
+unused-pdf-error-detail = 扫描失败，未执行文件清理。具体原因：{ $reason }
 unused-pdf-preview = 当前 Zotero 未引用 { $count } 个 PDF（{ $size } MB）。已跳过的隐藏、链接或受保护项目：{ $skipped }。
 unused-pdf-warning = 请仔细核对：其他 Zotero 数据目录、电脑或软件可能仍在使用这些文件。Zotero 回收站中的附件已受到保护。仅将勾选文件移至系统废纸篓；无法移入时保留原文件。
 unused-pdf-reveal = 定位文件

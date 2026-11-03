@@ -29,6 +29,9 @@ linked-library-unavailable = I collegamenti esterni funzionano solo in una libre
 target-inside-storage = La cartella esterna deve trovarsi fuori dall'archivio di Zotero e usare un percorso reale (senza collegamenti simbolici).
 
 unused-pdf-title = PDF senza riferimenti
+unused-pdf-foreign-summary = Trovati { $count } PDF da controllare. Altri { $foreign } allegati usano percorsi assoluti di un altro sistema operativo; tutti i PDF con lo stesso nome nella cartella di destinazione sono stati conservati per precauzione. I collegamenti non sono stati modificati.
+unused-pdf-foreign-note = Rilevati { $count } percorsi assoluti di un altro sistema operativo. La posizione locale non è verificabile. Tutti i PDF con lo stesso nome vengono conservati (senza distinzione tra maiuscole e minuscole); nessun percorso viene rimappato e nessun collegamento viene modificato.
+unused-pdf-error-detail = Scansione non riuscita; nessun file è stato rimosso. Motivo: { $reason }
 unused-pdf-preview = { $count } PDF ({ $size } MB) non sono referenziati dallo Zotero corrente. Elementi nascosti, collegati o protetti ignorati: { $skipped }.
 unused-pdf-warning = Controlla con attenzione: un’altra cartella dati Zotero, un altro computer o un’app potrebbero usare questi file. Gli allegati nel cestino di Zotero sono protetti. Solo i file selezionati saranno spostati nel cestino di sistema; in caso di errore restano al loro posto.
 unused-pdf-reveal = Mostra file

@@ -654,6 +654,17 @@ function bindPrefEvents(session: PrefsSession) {
           scan.files.length ? "unused-pdf-scanned" : "unused-pdf-none",
           { count: String(scan.files.length) },
         );
+        if (scan.foreignReferences) {
+          status?.removeAttribute("data-l10n-id");
+          status?.removeAttribute("data-l10n-args");
+          if (status)
+            status.textContent = getString("unused-pdf-foreign-summary", {
+              args: {
+                count: scan.files.length,
+                foreign: scan.foreignReferences,
+              },
+            });
+        }
         if (scan.files.length)
           await previewUnusedPDFs(scan, isActive, (close) =>
             session.disposers.push(close),
@@ -665,7 +676,11 @@ function bindPrefEvents(session: PrefsSession) {
           Services.prompt.alert(
             _window,
             getString("unused-pdf-title"),
-            getString("unused-pdf-error"),
+            getString("unused-pdf-error-detail", {
+              args: {
+                reason: error instanceof Error ? error.message : String(error),
+              },
+            }),
           );
         }
       } finally {

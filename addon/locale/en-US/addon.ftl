@@ -29,6 +29,9 @@ linked-library-unavailable = External links work only in an editable personal li
 target-inside-storage = The external directory must be outside Zotero storage and use a real path (no symbolic links).
 
 unused-pdf-title = Unreferenced PDFs
+unused-pdf-foreign-summary = Found { $count } PDFs to review. Another { $foreign } attachments use absolute paths from another operating system; all same-named PDFs in the target directory were conservatively retained. Attachment links were not changed.
+unused-pdf-foreign-note = Detected { $count } absolute paths from another operating system. Their local locations cannot be verified. All same-named PDFs are retained (case-insensitive); paths are not mapped and attachment links are not changed.
+unused-pdf-error-detail = Scan failed; no files were cleaned up. Reason: { $reason }
 unused-pdf-preview = { $count } PDFs ({ $size } MB) are not referenced by the current Zotero. Hidden, linked or protected entries skipped: { $skipped }.
 unused-pdf-warning = Review carefully: these files may still be used by another Zotero data directory, computer or app. Attachments in Zotero’s trash are protected. Only selected files will be moved to the system Trash; recycling failures leave files in place.
 unused-pdf-reveal = Show file

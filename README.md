@@ -136,6 +136,10 @@ another**.
   deletion. Windows recycling is limited to fixed local volumes; Linux needs
   `gio`. Files used by other Zotero data directories, computers or apps cannot
   be detected, so shared directories require particular care.
+  Absolute attachment paths from another operating system do not stop the
+  scan: all same-named PDFs are conservatively retained, regardless of case or
+  subfolder. The scan reports these references without mapping or changing
+  attachment links. Other unresolved paths still stop cleanup for safety.
 
 **About Copies** (External Copy only):
 

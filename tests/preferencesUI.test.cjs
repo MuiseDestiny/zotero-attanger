@@ -129,6 +129,50 @@ test("unused PDF button reports empty scan and re-enables itself without modifyi
   assertNoFileOperations();
 });
 
+test("foreign-only references show a conservative protection notice even with no candidates", async () => {
+  setup({ prefs: { workMode: "linked", destDir: "/dest" } });
+  const rawPath = String.raw`D:\OneDrive\paper.pdf`;
+  harness.items.set(20, {
+    libraryID: 1,
+    isFileAttachment: () => true,
+    attachmentLinkMode: Zotero.Attachments.LINK_MODE_LINKED_FILE,
+    attachmentPath: rawPath,
+    getFilePath() {
+      throw new Error("Must not resolve foreign paths natively");
+    },
+  });
+  await harness.register();
+  await harness.node("scan-unused-pdfs").emit("command");
+  const status = harness.node("unused-pdf-status");
+  assert.equal(status.getAttribute("data-l10n-id"), null);
+  assert.equal(status.textContent, "zoteroattanger-unused-pdf-foreign-summary");
+  assert.deepEqual(harness.calls.localeMessages.at(-1), {
+    id: "zoteroattanger-unused-pdf-foreign-summary",
+    args: { count: 0, foreign: 1 },
+  });
+  assert.deepEqual(harness.calls.remove, []);
+  assert.deepEqual(harness.calls.move, []);
+});
+
+test("scan failure reports the actual reason rather than assuming directory permissions", async () => {
+  setup({ prefs: { workMode: "linked", destDir: "/dest" } });
+  const alerts = [];
+  Services.prompt = { alert: (...args) => alerts.push(args) };
+  Zotero.Items.getAll = async () => {
+    throw new Error("Reference lookup failed");
+  };
+  await harness.register();
+  await harness.node("scan-unused-pdfs").emit("command");
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0][2], "zoteroattanger-unused-pdf-error-detail");
+  assert.deepEqual(harness.calls.localeMessages.at(-1), {
+    id: "zoteroattanger-unused-pdf-error-detail",
+    args: { reason: "Reference lookup failed" },
+  });
+  assert.equal(harness.node("scan-unused-pdfs").disabled, false);
+  assertNoFileOperations();
+});
+
 test("stored mode is ready without a destination and hides irrelevant directory settings", async () => {
   setup({ prefs: { workMode: "stored", destDir: "" } });
   await harness.register();

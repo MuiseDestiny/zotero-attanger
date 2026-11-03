@@ -20,7 +20,28 @@ export type UnusedPDFScan = {
   root: string;
   files: UnusedPDF[];
   skipped: number;
+  foreignReferences: number;
 };
+
+type AttachmentReferences = {
+  paths: Set<string>;
+  foreignNames: Set<string>;
+  foreignCount: number;
+};
+
+/** Classify before calling native APIs: nsIFile rejects other OS path formats. */
+function isForeignAbsolutePath(path: string) {
+  const windowsPath = /^(?:[a-z]:[\\/]|[\\/]{2}[^\\/]+[\\/][^\\/]+)/i.test(
+    path,
+  );
+  const unixPath = path.startsWith("/") && !path.startsWith("//");
+  return Zotero.isWin ? unixPath : windowsPath;
+}
+
+function filenameKey(path: string) {
+  // Do not use PathUtils.filename(): this path may use another OS's separators.
+  return path.split(/[\\/]/).pop()!.normalize("NFC").toLowerCase();
+}
 
 function lexicalKey(path: string) {
   const key = normalizeAttachmentPath(path);
@@ -94,27 +115,57 @@ function isInside(path: string, rootKey: string) {
 
 /** A failed or unresolved reference aborts cleanup, never means 'unused'. */
 async function collectReferences() {
-  const references = new Set<string>();
+  const references: AttachmentReferences = {
+    paths: new Set(),
+    foreignNames: new Set(),
+    foreignCount: 0,
+  };
+  const protectForeignPath = (path: string) => {
+    const name = filenameKey(path);
+    if (!name || name === "." || name === "..") {
+      throw new Error("Cannot resolve foreign attachment filename");
+    }
+    // No guessed drive/base-directory mapping: retain every same-named file.
+    references.foreignNames.add(name);
+    references.foreignCount++;
+  };
   const libraries = Zotero.Libraries.getAll();
   if (!libraries.length) throw new Error("Cannot enumerate Zotero libraries");
   for (const library of libraries) {
     const items = await Zotero.Items.getAll(library.libraryID, false, true);
     for (const item of items) {
       if (!item.isFileAttachment()) continue;
+      const rawPath = item.attachmentPath;
+      if (
+        item.attachmentLinkMode === Zotero.Attachments.LINK_MODE_LINKED_FILE &&
+        typeof rawPath === "string" &&
+        isForeignAbsolutePath(rawPath)
+      ) {
+        protectForeignPath(rawPath);
+        continue;
+      }
       // Unlike getFilePathAsync(), getFilePath() does not require file existence.
       const path = item.getFilePath();
       if (!path) throw new Error("Cannot resolve attachment path");
+      if (isForeignAbsolutePath(path)) {
+        protectForeignPath(path);
+        continue;
+      }
       const file = Zotero.File.pathToFile(path);
       // Missing files cannot be scan candidates, but retain their lexical path.
-      references.add(lexicalKey(path));
-      if (file.exists()) references.add(pathKey(path));
+      references.paths.add(lexicalKey(path));
+      if (file.exists()) references.paths.add(pathKey(path));
     }
   }
   return references;
 }
 
-function isReferenced(path: string, references: Set<string>) {
-  return references.has(lexicalKey(path)) || references.has(pathKey(path));
+function isReferenced(path: string, references: AttachmentReferences) {
+  return (
+    references.foreignNames.has(filenameKey(path)) ||
+    references.paths.has(lexicalKey(path)) ||
+    references.paths.has(pathKey(path))
+  );
 }
 
 export async function scanUnusedPDFs(
@@ -123,7 +174,12 @@ export async function scanUnusedPDFs(
 ): Promise<UnusedPDFScan> {
   const rootKey = validateRoot(root);
   const references = await collectReferences();
-  const scan: UnusedPDFScan = { root, files: [], skipped: 0 };
+  const scan: UnusedPDFScan = {
+    root,
+    files: [],
+    skipped: 0,
+    foreignReferences: references.foreignCount,
+  };
   const pending = [root];
   let visited = 0;
   while (pending.length) {
@@ -391,6 +447,20 @@ export async function previewUnusedPDFs(
           properties: { textContent: text("unused-pdf-warning") },
           styles: { color: "var(--fill-secondary)", margin: "0" },
         },
+        ...(scan.foreignReferences
+          ? [
+              {
+                tag: "p" as const,
+                namespace: "html" as const,
+                properties: {
+                  textContent: text("unused-pdf-foreign-note", {
+                    count: scan.foreignReferences,
+                  }),
+                },
+                styles: { color: "var(--fill-secondary)", margin: "0" },
+              },
+            ]
+          : []),
         {
           tag: "p",
           namespace: "html",
