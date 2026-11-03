@@ -13,7 +13,8 @@ import {
 } from "../utils/sourceDirs";
 import { attachmentPathExists, isZoteroStoragePath } from "./attachmentFiles";
 import { getString } from "../utils/locale";
-import { previewUnusedPDFs, scanUnusedPDFs } from "./unusedPDFs";
+import { scanUnusedPDFs } from "./unusedPDFs";
+import { previewUnusedPDFs } from "./unusedPDFPreview";
 import {
   getSubfolderPath,
   isFilenameMatched,

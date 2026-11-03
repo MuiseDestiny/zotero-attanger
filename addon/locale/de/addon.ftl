@@ -40,3 +40,7 @@ unused-pdf-trash = Auswahl in den Papierkorb verschieben
 unused-pdf-confirm = { $count } ausgewählte PDFs in den Systempapierkorb verschieben? Zotero-Einträge bleiben unverändert. Sicherstellen, dass andere Computer und Apps diese Dateien nicht benötigen.
 unused-pdf-result = Im Papierkorb: { $moved }. Nach Prüfung behalten: { $skipped }. Fehlgeschlagen oder nicht verfügbar: { $failed }. Erneut suchen, um die Ergebnisse zu aktualisieren.
 unused-pdf-error = Ordner oder Anhangreferenzen konnten nicht sicher geprüft werden. Der Ordner muss beschreibbar sein, darf kein symbolischer Link sein und muss außerhalb des Zotero-Speichers liegen. Nicht auflösbare Anhangpfade müssen zuerst korrigiert werden. Bei Papierkorbfehlern wird nicht dauerhaft gelöscht.
+
+unused-pdf-select-all = Alle auswählen
+unused-pdf-selected = { $count } ausgewählt · { $size } MB
+unused-pdf-recycling = Erneute Prüfung und Verschieben in den Papierkorb…

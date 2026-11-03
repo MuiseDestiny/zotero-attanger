@@ -40,3 +40,7 @@ unused-pdf-trash = 将所选文件移至废纸篓
 unused-pdf-confirm = 将所选的 { $count } 个 PDF 移至系统废纸篓？此操作不修改 Zotero 条目。请确认其他电脑和软件不再需要这些文件。
 unused-pdf-result = 已移至废纸篓：{ $moved }；复核后保留：{ $skipped }；失败或不可用：{ $failed }。可重新扫描以更新结果。
 unused-pdf-error = 无法安全核实目录或附件引用。请确认配置目录可写、不是符号链接且位于 Zotero 存储目录之外；有无法解析的附件路径时需先修复。移入废纸篓失败时不会改为永久删除。
+
+unused-pdf-select-all = 全选
+unused-pdf-selected = 已选 { $count } 个 · { $size } MB
+unused-pdf-recycling = 正在复核并移至废纸篓…

@@ -40,3 +40,7 @@ unused-pdf-trash = Sposta i file selezionati nel cestino
 unused-pdf-confirm = Spostare { $count } PDF selezionati nel cestino di sistema? Gli elementi Zotero non cambiano. Verifica che altri computer e applicazioni non abbiano bisogno di questi file.
 unused-pdf-result = Nel cestino: { $moved }. Conservati dopo verifica: { $skipped }. Non riusciti o non disponibili: { $failed }. Ripeti la scansione per aggiornare i risultati.
 unused-pdf-error = Impossibile verificare in sicurezza la cartella o i riferimenti agli allegati. La cartella deve essere scrivibile, non essere un collegamento simbolico e trovarsi fuori dall’archivio Zotero. Correggi prima i percorsi degli allegati non risolvibili. In caso di errore del cestino non viene eseguita l’eliminazione definitiva.
+
+unused-pdf-select-all = Seleziona tutto
+unused-pdf-selected = { $count } selezionati · { $size } MB
+unused-pdf-recycling = Verifica e spostamento nel cestino…

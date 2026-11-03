@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css"?>
+<?xml-stylesheet href="chrome://zotero/skin/overlay.css"?>
+<?xml-stylesheet href="chrome://zotero-platform/content/overlay.css"?>
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css"?>
+<?xml-stylesheet href="chrome://__addonRef__/content/unusedPDFPreview.css"?>
+
+<!-- Same native window structure and skin stack as Zotero's renameFilesPreview.xhtml. -->
+<window
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  id="attanger-unused-pdf-preview"
+  width="860"
+  height="640"
+  onload="window.arguments[0].wrappedJSObject.init(window)"
+>
+  <script>
+    Services.scriptloader.loadSubScript(
+      "chrome://zotero/content/include.js",
+      this,
+    );
+    Services.scriptloader.loadSubScript(
+      "chrome://zotero/content/customElements.js",
+      this,
+    );
+  </script>
+  <keyset>
+    <key keycode="VK_ESCAPE" oncommand="window.close()" />
+    <key key="w" modifiers="accel" oncommand="window.close()" />
+  </keyset>
+  <vbox id="unused-pdf-content" flex="1">
+    <html:header id="unused-pdf-header">
+      <html:p id="unused-pdf-summary" />
+      <html:p id="unused-pdf-warning" class="unused-pdf-note" />
+      <html:p id="unused-pdf-foreign" class="unused-pdf-note" hidden="true" />
+      <html:p id="unused-pdf-root" />
+    </html:header>
+    <html:div id="unused-pdf-toolbar">
+      <html:label id="unused-pdf-select-all-label">
+        <html:input id="unused-pdf-select-all" type="checkbox" />
+        <html:span id="unused-pdf-select-all-text" />
+      </html:label>
+      <html:span
+        id="unused-pdf-selected"
+        class="unused-pdf-note"
+        aria-live="polite"
+      />
+    </html:div>
+    <html:div id="unused-pdf-list" role="group" />
+    <hbox id="unused-pdf-footer" align="center">
+      <html:span
+        id="unused-pdf-progress"
+        class="unused-pdf-note"
+        aria-live="polite"
+      />
+      <spacer flex="1" />
+      <button id="unused-pdf-cancel" />
+      <button id="unused-pdf-trash" disabled="true" />
+    </hbox>
+  </vbox>
+</window>

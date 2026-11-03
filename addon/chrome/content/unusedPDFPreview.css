@@ -1,0 +1,148 @@
+/* Semantic colors from the pinned Zotero Reader themes; native controls use Zotero skins. */
+#attanger-unused-pdf-preview {
+  display: flex;
+  flex-direction: column;
+  min-width: 600px;
+  min-height: 460px;
+  overflow: hidden;
+  background: var(--color-background);
+  color: var(--fill-primary);
+}
+
+#unused-pdf-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 16px 0;
+  box-sizing: border-box;
+}
+
+#unused-pdf-header {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+#unused-pdf-header p {
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+#unused-pdf-summary {
+  font-weight: 600;
+}
+
+.unused-pdf-note {
+  color: var(--fill-secondary);
+  font-size: 0.92em;
+}
+
+#unused-pdf-root {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#unused-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  background: var(--material-toolbar, var(--fill-senary));
+}
+
+#unused-pdf-select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+#unused-pdf-list {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-control);
+}
+
+.unused-pdf-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 80px 100px;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--color-border50, var(--color-border));
+}
+
+.unused-pdf-row:hover {
+  background: var(--fill-senary);
+}
+
+.unused-pdf-row input,
+#unused-pdf-select-all {
+  margin: 0;
+}
+
+.unused-pdf-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  cursor: default;
+}
+
+.unused-pdf-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unused-pdf-size {
+  color: var(--fill-secondary);
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.unused-pdf-reveal {
+  width: 100px;
+  min-width: 100px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+#unused-pdf-footer {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+#unused-pdf-footer button {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+#unused-pdf-footer spacer {
+  flex: 1;
+}
+
+#unused-pdf-progress {
+  min-width: 0;
+}
+
+#unused-pdf-foreign[hidden] {
+  display: none;
+}

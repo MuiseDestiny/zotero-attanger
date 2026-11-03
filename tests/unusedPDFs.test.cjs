@@ -8,7 +8,11 @@ const {
 } = require("./helpers/menuHarness.cjs");
 
 const code = esbuild.buildSync({
-  entryPoints: [path.join(process.cwd(), "src/modules/unusedPDFs.ts")],
+  stdin: {
+    contents:
+      'export * from "./src/modules/unusedPDFs"; export * from "./src/modules/unusedPDFPreview";',
+    resolveDir: process.cwd(),
+  },
   bundle: true,
   platform: "node",
   format: "cjs",
@@ -353,6 +357,15 @@ test("preview requires explicit selection and confirmation; closing it never rec
   setup({ files: ["/dest/one.pdf", "/dest/two.pdf"] });
   const scan = await scanUnusedPDFs("/dest");
   const dialogs = [];
+  const localeMessages = [];
+  addon.data.locale = {
+    current: {
+      formatMessagesSync(messages) {
+        localeMessages.push(...messages);
+        return messages.map(({ id }) => ({ value: id }));
+      },
+    },
+  };
   class Node {
     constructor(tag = "div") {
       this.tag = tag;
@@ -363,75 +376,72 @@ test("preview requires explicit selection and confirmation; closing it never rec
       this.checked = false;
     }
     append(...nodes) {
-      this.children.push(...nodes);
+      for (const node of nodes) {
+        this.children.push(...(node.fragment ? node.children : [node]));
+      }
     }
     addEventListener(type, callback) {
       this.listeners[type] = callback;
     }
-    setAttribute() {}
+    setAttribute(name, value) {
+      this[name] = value;
+    }
     click() {
       if (this.disabled) return;
       this.checked = !this.checked;
       this.listeners.change?.();
     }
   }
-  ztoolkit.Dialog = class {
-    constructor() {
-      this.buttons = [];
-      dialogs.push(this);
-    }
-    setDialogData(data) {
-      this.dialogData = data;
-      return this;
-    }
-    addCell() {
-      return this;
-    }
-    addButton(label, id, options = {}) {
-      this.buttons.push({ label, id, ...options });
-      return this;
-    }
-    open() {
-      const nodes = new Map(
-        [
-          "unused-pdf-summary",
-          "unused-pdf-root",
-          "unused-pdf-list",
-          "unused-pdf-trash",
-        ].map((id) => [id, new Node()]),
-      );
-      let resolve;
-      this.dialogData.unloadLock = {
-        promise: new Promise((done) => (resolve = done)),
-      };
-      this.window = {
-        closed: false,
-        close() {
-          this.closed = true;
-          resolve();
-        },
-        document: {
-          head: new Node(),
-          body: new Node(),
-          createElement: (tag) => new Node(tag),
-          querySelector: (selector) => nodes.get(selector.slice(1)),
-          querySelectorAll: () => [
-            ...nodes.values(),
-            ...nodes
-              .get("unused-pdf-list")
-              .children.flatMap((row) => row.children),
-          ],
-        },
-      };
-      this.dialogData.loadCallback();
-      return this;
-    }
-  };
   previousServices = global.Services;
   const alerts = [];
   let confirmed = false;
   global.Services = {
     prompt: { confirm: () => confirmed, alert: (...args) => alerts.push(args) },
+    ww: {
+      openWindow(owner, url, name, features, args) {
+        const nodes = new Map(
+          [
+            "unused-pdf-summary",
+            "unused-pdf-warning",
+            "unused-pdf-foreign",
+            "unused-pdf-root",
+            "unused-pdf-list",
+            "unused-pdf-trash",
+            "unused-pdf-select-all",
+            "unused-pdf-select-all-text",
+            "unused-pdf-selected",
+            "unused-pdf-cancel",
+            "unused-pdf-progress",
+          ].map((id) => [id, new Node()]),
+        );
+        const listeners = {};
+        const win = {
+          closed: false,
+          url,
+          features,
+          close() {
+            this.closed = true;
+            listeners.unload?.();
+          },
+          addEventListener(type, callback) {
+            listeners[type] = callback;
+          },
+          document: {
+            getElementById: (id) => nodes.get(id),
+            createElementNS: (_namespace, tag) => new Node(tag),
+            createXULElement: (tag) => new Node(tag),
+            createDocumentFragment: () => {
+              const node = new Node();
+              node.fragment = true;
+              return node;
+            },
+          },
+        };
+        dialogs.push(win);
+        queueMicrotask(() => args.wrappedJSObject.init(win));
+        return win;
+      },
+    },
   };
   let close;
   const closedPreview = previewUnusedPDFs(
@@ -444,20 +454,51 @@ test("preview requires explicit selection and confirmation; closing it never rec
   assert.deepEqual(harness.trashCalls, []);
 
   const preview = previewUnusedPDFs(scan, () => true);
+  await Promise.resolve();
   const dialog = dialogs.at(-1);
-  const button = dialog.window.document.querySelector("#unused-pdf-trash");
+  assert.match(
+    dialog.url,
+    /chrome:\/\/zoteroattanger\/content\/unusedPDFPreview.xhtml/,
+  );
+  assert.match(dialog.features, /resizable/);
+  const button = dialog.document.getElementById("unused-pdf-trash");
   assert.equal(button.disabled, true);
+  const selectAll = dialog.document.getElementById("unused-pdf-select-all");
+  assert.equal(selectAll.checked, false);
+  selectAll.click();
+  assert.equal(selectAll.checked, true);
+  assert.equal(selectAll.indeterminate, false);
+  assert.equal(button.disabled, false);
+  const rows = dialog.document.getElementById("unused-pdf-list").children;
+  assert.equal(
+    rows.every((row) => row.children[0].checked),
+    true,
+  );
+  assert.equal(rows[0].children[1].title, "/dest/one.pdf");
+  assert.equal(rows[0].children[1].children[0].textContent, "one.pdf");
+  assert.equal(rows[0].children[3].tag, "button");
+  assert.ok(rows[0].children[3].listeners.command);
+  assert.deepEqual(localeMessages.at(-1).args, {
+    count: 2,
+    size: "0.0",
+  });
+  selectAll.click();
+  assert.equal(button.disabled, true);
+  assert.equal(
+    rows.every((row) => !row.children[0].checked),
+    true,
+  );
   const checkbox =
-    dialog.window.document.querySelector("#unused-pdf-list").children[0]
-      .children[0];
+    dialog.document.getElementById("unused-pdf-list").children[0].children[0];
   checkbox.click();
   assert.equal(button.disabled, false);
-  const accept = dialog.buttons.find(
-    (button) => button.id === "unused-pdf-trash",
-  ).callback;
+  assert.equal(selectAll.checked, false);
+  assert.equal(selectAll.indeterminate, true);
+  assert.equal(localeMessages.at(-1).args.count, 1);
+  const accept = button.listeners.command;
   await accept();
   assert.deepEqual(harness.trashCalls, []);
-  assert.equal(dialog.window.closed, false);
+  assert.equal(dialog.closed, false);
   confirmed = true;
   await accept();
   await preview;

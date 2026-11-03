@@ -40,3 +40,7 @@ unused-pdf-trash = Move selected files to Trash
 unused-pdf-confirm = Move { $count } selected PDFs to the system Trash? This does not change Zotero items. Confirm that other computers and apps do not need these files.
 unused-pdf-result = Moved to Trash: { $moved }. Retained after recheck: { $skipped }. Failed or unavailable: { $failed }. Scan again to refresh results.
 unused-pdf-error = The directory or attachment references could not be safely verified. Check that the configured directory is writable, is not a symbolic link and is outside Zotero storage. Unresolved attachment paths must be fixed before cleanup. If recycling fails, affected files are not permanently deleted.
+
+unused-pdf-select-all = Select all
+unused-pdf-selected = { $count } selected · { $size } MB
+unused-pdf-recycling = Rechecking and moving to Trash…
