@@ -430,6 +430,88 @@ export async function fingerprintForMatching(
   return fingerprint;
 }
 
+/** Batch preflight uses bytes only; semantic verification belongs to the chosen pair. */
+export async function findByteDuplicatePDFAttachments(
+  parents: Zotero.Item[],
+  sourcePaths: string[],
+  cache: AttachmentFingerprintCache,
+  onProgress: (current: number, total: number) => void,
+): Promise<Map<string, Zotero.Item>> {
+  const sources = new Map<string, Map<string, FileFingerprint>>();
+  const sizes = new Set<number>();
+  for (const path of sourcePaths) {
+    const fingerprint = await fingerprintForMatching(path, cache);
+    if (!fingerprint) continue;
+    const key = `${fingerprint.size}:${fingerprint.hash}`;
+    let group = sources.get(key);
+    if (!group) sources.set(key, (group = new Map()));
+    group.set(path, fingerprint);
+    sizes.add(fingerprint.size);
+  }
+
+  const duplicates = new Map<string, Zotero.Item>();
+  for (let index = 0; index < parents.length && sources.size; index++) {
+    onProgress(index + 1, parents.length);
+    const parent = parents[index];
+    if (parent.deleted || !parent.isRegularItem()) continue;
+    let attachmentIDs: number[];
+    try {
+      attachmentIDs = parent.getAttachments();
+    } catch (error) {
+      ztoolkit.log("Cannot inspect parent PDF attachments", parent.id, error);
+      continue;
+    }
+    for (const id of attachmentIDs) {
+      try {
+        const attachment = await Zotero.Items.getAsync(id);
+        if (
+          !attachment ||
+          attachment.deleted ||
+          !attachment.isAttachment() ||
+          attachment.parentItemID !== parent.id ||
+          attachment.libraryID !== parent.libraryID ||
+          (!attachment.isImportedAttachment() &&
+            !attachment.isLinkedFileAttachment())
+        ) {
+          continue;
+        }
+        const path = await attachment.getFilePathAsync();
+        if (
+          !path ||
+          (attachment.attachmentContentType !== "application/pdf" &&
+            !/\.pdf$/i.test(path)) ||
+          !sizes.has((await attachmentFileStat(path)).size)
+        ) {
+          continue;
+        }
+        const existing = await fingerprintForMatching(path, cache);
+        if (!existing) continue;
+        const key = `${existing.size}:${existing.hash}`;
+        const group = sources.get(key);
+        if (!group) continue;
+        for (const [sourcePath, expected] of group) {
+          if (
+            (await matchesExpectedFingerprint(sourcePath, expected, cache)) &&
+            (await attachment.getFilePathAsync()) === path &&
+            sameFileStat(existing, await attachmentFileStat(path)) &&
+            !attachment.deleted &&
+            attachment.parentItemID === parent.id &&
+            attachment.libraryID === parent.libraryID &&
+            !parent.deleted
+          ) {
+            duplicates.set(sourcePath, parent);
+            group.delete(sourcePath);
+          }
+        }
+        if (!group.size) sources.delete(key);
+      } catch (error) {
+        ztoolkit.log("Cannot compare existing PDF attachment", id, error);
+      }
+    }
+  }
+  return duplicates;
+}
+
 /** Compare local PDFs by bytes, optionally checking strong re-encoding evidence. */
 export async function findDuplicatePDFAttachment(
   parent: Zotero.Item,

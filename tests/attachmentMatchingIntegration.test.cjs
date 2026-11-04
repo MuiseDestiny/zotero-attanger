@@ -57,6 +57,12 @@ function importedFiles() {
   }));
 }
 
+function matchSummary() {
+  return harness.calls.localeMessages.findLast(
+    ({ id }) => id === "zoteroattanger-attachment-match-summary",
+  )?.args;
+}
+
 function createArticle(options = {}) {
   const item = createRegularItem(harness, options);
   const getField = item.getField;
@@ -1522,6 +1528,304 @@ test("a large download fingerprint failure leaves that source intact and does no
   assert.equal(harness.files.has(unverified), true);
   assert.equal(harness.files.has(safe), false);
   assert.equal(reads.includes(unverified), false);
+  assert.deepEqual(matchSummary(), {
+    added: 1,
+    duplicates: 0,
+    unmatched: 1,
+    unverified: 1,
+  });
+});
+
+test("batch matching scans existing attachments once without recognizing unrelated PDFs", async () => {
+  const downloads = Array.from(
+    { length: 7 },
+    (_, i) => `/source/download-${i}.pdf`,
+  );
+  const existing = Array.from(
+    { length: 25 },
+    (_, i) => `/storage/ARTICLE${i}/paper.pdf`,
+  );
+  const contents = Object.fromEntries([
+    ...downloads.map((file, i) => [file, encodedArticle(`source${i}`)]),
+    ...existing.map((file, i) => [file, encodedArticle(`stored${i % 10}`)]),
+  ]);
+  const queries = [];
+  const hashed = [];
+  setup({
+    fileContents: contents,
+    prefs: { readPDFtitle: "always" },
+    md5(file) {
+      hashed.push(file);
+      return crypto.createHash("md5").update(contents[file]).digest("hex");
+    },
+    pdfWorkerQuery: async (action, { buf }) => {
+      queries.push({ action, bytes: Buffer.from(buf).toString() });
+      return {};
+    },
+  });
+  let pathReads = 0;
+  harness.selectedItems = existing.map((file, i) => {
+    const parent = createArticle({
+      id: i + 1,
+      title: `Unrelated bibliographic record ${i}`,
+    });
+    const attachment = createAttachment(harness, {
+      id: i + 101,
+      parent,
+      path: file,
+    });
+    const readPath = attachment.getFilePathAsync;
+    attachment.getFilePathAsync = async () => {
+      pathReads++;
+      return readPath.call(attachment);
+    };
+    return parent;
+  });
+
+  await command()();
+
+  assert.equal(pathReads, existing.length);
+  assert.equal(hashed.length, downloads.length + existing.length);
+  assert.equal(queries.length, downloads.length);
+  assert.ok(
+    queries.every(
+      ({ action, bytes }) =>
+        /getRecognizerData$/.test(action) && bytes.includes("source"),
+    ),
+  );
+  assert.deepEqual(importedFiles(), []);
+  assert.deepEqual(matchSummary(), {
+    added: 0,
+    duplicates: 0,
+    unmatched: 25,
+    unverified: 0,
+  });
+  assert.equal(harness.calls.progressWindows.length, 1);
+  assert.equal(harness.calls.progressWindows[0].closeTime, 6000);
+});
+
+test("batch preflight does not hash attachments whose sizes do not match any source", async () => {
+  const source = "/source/download.pdf";
+  const stored = "/storage/ARTICLE1/paper.pdf";
+  const hashed = [];
+  const contents = { [source]: "source", [stored]: "a much larger stored PDF" };
+  setup({
+    fileContents: contents,
+    md5(file) {
+      hashed.push(file);
+      return crypto.createHash("md5").update(contents[file]).digest("hex");
+    },
+  });
+  const parent = createArticle({ title: articleTitle });
+  createAttachment(harness, { id: 2, parent, path: stored });
+  harness.selectedItems = [parent];
+
+  await command()();
+
+  assert.deepEqual(hashed, [source]);
+  assert.deepEqual(importedFiles(), []);
+});
+
+test("batch byte preflight preserves a duplicate even when its owner has an unrelated title", async () => {
+  const source = `/source/${articleTitle}.pdf`;
+  const existing = "/storage/OWNER/paper.pdf";
+  setup({
+    fileContents: { [source]: "same PDF bytes", [existing]: "same PDF bytes" },
+    prefs: { deleteSourceAfterImport: true },
+  });
+  const owner = createArticle({ id: 1, title: "An unrelated catalog title" });
+  const apparentMatch = createArticle({ id: 2, title: articleTitle });
+  createAttachment(harness, { id: 101, parent: owner, path: existing });
+  harness.selectedItems = [apparentMatch, owner];
+
+  await command()();
+
+  assert.deepEqual(importedFiles(), []);
+  assert.equal(harness.files.has(source), true);
+  assert.deepEqual(matchSummary(), {
+    added: 0,
+    duplicates: 1,
+    unmatched: 1,
+    unverified: 0,
+  });
+});
+
+test("a missing existing attachment does not abort batch duplicate scanning", async () => {
+  const source = `/source/${articleTitle}.pdf`;
+  const existing = "/storage/OWNER/paper.pdf";
+  setup({
+    fileContents: { [source]: "same PDF bytes", [existing]: "same PDF bytes" },
+  });
+  const parent = createArticle({ title: articleTitle });
+  createAttachment(harness, {
+    id: 101,
+    parent,
+    path: "/storage/MISSING/paper.pdf",
+  });
+  createAttachment(harness, { id: 102, parent, path: existing });
+  harness.selectedItems = [parent];
+
+  await command()();
+
+  assert.deepEqual(importedFiles(), []);
+  assert.equal(matchSummary().duplicates, 1);
+  assert.equal(harness.files.has(source), true);
+});
+
+test("only the confidently chosen pair receives semantic duplicate verification", async () => {
+  const source = `/source/${articleTitle}.pdf`;
+  const existing = "/storage/CORRECT/paper.pdf";
+  const unrelated = "/storage/OTHER/paper.pdf";
+  const queries = [];
+  setup({
+    fileContents: {
+      [source]: encodedArticle("download-A", 6),
+      [existing]: encodedArticle("existing-B"),
+      [unrelated]: encodedArticle("unrelated-C"),
+    },
+    prefs: { readPDFtitle: "always" },
+    pdfWorkerQuery(action, input) {
+      assert.ok(!Buffer.from(input.buf).toString().includes("unrelated-C"));
+      return semanticWorker({ queries })(action, input);
+    },
+  });
+  const other = createArticle({
+    id: 1,
+    title: "Different mechanisms of rice adaptation",
+    doi: "10.1000/other",
+  });
+  createAttachment(harness, { id: 101, parent: other, path: unrelated });
+  const correct = createArticle({
+    id: 2,
+    title: articleTitle,
+    doi: semanticDOI,
+  });
+  createAttachment(harness, { id: 102, parent: correct, path: existing });
+  harness.selectedItems = [other, correct];
+
+  await command()();
+
+  assert.deepEqual(importedFiles(), []);
+  assert.ok(queries.includes("pdf.getFulltext"));
+  assert.ok(queries.includes("pdf.renderArea"));
+  assert.deepEqual(matchSummary(), {
+    added: 0,
+    duplicates: 1,
+    unmatched: 1,
+    unverified: 0,
+  });
+});
+
+test("repeated matching clicks reuse the active progress window and preserve the original selection", async () => {
+  const source = `/source/${articleTitle}.pdf`;
+  let release;
+  let queries = 0;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  setup({
+    files: [source],
+    prefs: { readPDFtitle: "always" },
+    pdfWorkerQuery: async () => {
+      queries++;
+      await gate;
+      return { metadata: { title: articleTitle } };
+    },
+  });
+  const firstParent = createArticle({ id: 1, title: articleTitle });
+  const nextParent = createArticle({ id: 2, title: articleTitle });
+  harness.selectedItems = [firstParent];
+  const invoke = command();
+  const first = invoke();
+  try {
+    assert.equal(harness.calls.progressWindows[0].shown, 1);
+    await harness.clock.settle();
+    assert.equal(queries, 1);
+    assert.equal(matchSummary(), undefined);
+    assert.equal(
+      harness.calls.progressWindows[0].lines[0].text,
+      "zoteroattanger-attachment-match-reading",
+    );
+    harness.selectedItems = [nextParent];
+    await invoke();
+    await invoke();
+    assert.equal(harness.calls.progressWindows.length, 1);
+    assert.equal(harness.calls.progressWindows[0].shown, 3);
+    assert.equal(queries, 1);
+  } finally {
+    release();
+    await first;
+  }
+  assert.deepEqual(importedFiles(), [
+    { file: source, parentItemID: firstParent.id },
+  ]);
+  assert.equal(harness.calls.progressWindows.length, 1);
+  assert.equal(harness.clock.tasks.size, 0);
+
+  await invoke();
+
+  assert.equal(harness.calls.progressWindows.length, 2);
+  assert.deepEqual(importedFiles(), [
+    { file: source, parentItemID: firstParent.id },
+    { file: source, parentItemID: nextParent.id },
+  ]);
+});
+
+test("matching reports a scan failure and releases the running guard for retry", async () => {
+  const source = `/source/${articleTitle}.pdf`;
+  setup({ files: [source] });
+  harness.selectedItems = [createArticle({ title: articleTitle })];
+  const iterate = Zotero.File.iterateDirectory;
+  Zotero.File.iterateDirectory = async () => {
+    throw new Error("Source folder unavailable");
+  };
+
+  await command()();
+
+  assert.equal(
+    harness.calls.progressWindows[0].lines[0].text,
+    "zoteroattanger-attachment-match-failed",
+  );
+  assert.equal(harness.calls.progressWindows[0].closeTime, 6000);
+  assert.deepEqual(importedFiles(), []);
+  Zotero.File.iterateDirectory = iterate;
+
+  await command()();
+
+  assert.equal(harness.calls.progressWindows.length, 2);
+  assert.equal(importedFiles().length, 1);
+});
+
+test("a stalled source PDF shows progress, falls back after the deadline and permits the next command", async () => {
+  const source = `/source/${articleTitle}.pdf`;
+  let queries = 0;
+  setup({
+    files: [source],
+    prefs: { readPDFtitle: "always" },
+    pdfWorkerQuery: async () => {
+      queries++;
+      return new Promise(() => {});
+    },
+  });
+  const parent = createArticle({ title: articleTitle });
+  harness.selectedItems = [parent];
+  const first = command()();
+  await harness.clock.settle();
+  assert.equal(
+    harness.calls.progressWindows[0].lines[0].text,
+    "zoteroattanger-attachment-match-reading",
+  );
+  assert.equal(queries, 1);
+  await harness.clock.runAll();
+  await first;
+  assert.equal(importedFiles().length, 1);
+  assert.equal(matchSummary().added, 1);
+
+  await command()();
+
+  assert.equal(queries, 1);
+  assert.equal(matchSummary().duplicates, 1);
+  assert.equal(harness.calls.progressWindows.length, 2);
 });
 
 for (const [label, title, filename] of [

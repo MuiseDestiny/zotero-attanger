@@ -29,6 +29,7 @@ import {
 import {
   createAttachmentFingerprintCache,
   createPDFIdentityCache,
+  findByteDuplicatePDFAttachments,
   findDuplicatePDFAttachment,
   fingerprintForMatching,
   MAX_PDF_VISUAL_PAGES,
@@ -63,6 +64,9 @@ const MOVE_MENU_ID = "attanger-move-attachment";
 const UNDO_MOVE_MENU_ID = "attanger-undo-move-attachment";
 const PDF_RECOGNIZER_TIMEOUT_MS = 30_000;
 const EXTERNAL_COPY_DEBOUNCE_MS = 1000;
+let attachmentMatchProgress:
+  | InstanceType<typeof ztoolkit.ProgressWindow>
+  | undefined;
 
 /**
  * 菜单项后缀显示的快捷键提示，如 " (Ctrl + I)"；快捷键未启用或未设置时为空
@@ -1125,6 +1129,11 @@ function getAttachmentItems(hasParent = true) {
 }
 
 async function matchAttachment() {
+  if (attachmentMatchProgress) {
+    ztoolkit.log("Attachment matching is already running");
+    attachmentMatchProgress.show();
+    return;
+  }
   const items = ZoteroPane.getSelectedItems().filter(
     (i) =>
       !i.deleted &&
@@ -1133,6 +1142,44 @@ async function matchAttachment() {
       canEditAttachment(i),
   );
   if (!items.length) return;
+  const progress = new ztoolkit.ProgressWindow(config.addonName, {
+    closeTime: -1,
+    closeOtherProgressWindows: true,
+  });
+  attachmentMatchProgress = progress;
+  try {
+    progress
+      .createLine({
+        text: getString("attachment-match-starting"),
+        type: "default",
+      })
+      .show();
+    const summary = await matchSelectedAttachments(items, (key, args) => {
+      progress.changeLine({ text: getString(key, { args }) });
+    });
+    if (summary) {
+      progress
+        .changeLine({
+          text: getString("attachment-match-summary", { args: summary }),
+        })
+        .show();
+      progress.startCloseTimer(6000);
+    } else {
+      progress.close();
+    }
+  } catch (error) {
+    ztoolkit.log("Attachment matching failed", error);
+    progress.changeLine({ text: getString("attachment-match-failed") }).show();
+    progress.startCloseTimer(6000);
+  } finally {
+    attachmentMatchProgress = undefined;
+  }
+}
+
+async function matchSelectedAttachments(
+  items: Zotero.Item[],
+  reportProgress: (key: string, args: Record<string, unknown>) => void,
+) {
   ztoolkit.log(
     "item titles: ",
     items.map((i) => i.getDisplayTitle()),
@@ -1174,12 +1221,21 @@ async function matchAttachment() {
   };
   const groups = new Map<string, CandidateGroup>();
   const fileFingerprints = new Map<string, FileFingerprint>();
+  let unverified = 0;
+  let scanned = 0;
   for (const file of files.values()) {
+    reportProgress("attachment-match-scanning", {
+      current: ++scanned,
+      total: files.size,
+    });
     const pdf = /\.pdf$/i.test(file.name);
     const fingerprint = pdf
       ? await fingerprintForMatching(file.path, fingerprintCache)
       : undefined;
-    if (pdf && !fingerprint) continue;
+    if (pdf && !fingerprint) {
+      unverified++;
+      continue;
+    }
     if (fingerprint) {
       fileFingerprints.set(normalizeAttachmentPath(file.path), fingerprint);
     }
@@ -1205,25 +1261,38 @@ async function matchAttachment() {
   const remaining = new Set(items);
   const readPDFForItem = (item: Zotero.Item) =>
     canReadPDFForItem(item, readPDFTitle);
+  // Scan existing attachments once instead of comparing every download with
+  // every selected item's PDFs (including expensive whole-document reads).
+  const byteDuplicates = await findByteDuplicatePDFAttachments(
+    items,
+    [...groups.values()]
+      .filter((group) => group.fingerprint)
+      .map((group) => group.files[0].path),
+    fingerprintCache,
+    (current, total) =>
+      reportProgress("attachment-match-checking-duplicates", {
+        current,
+        total,
+      }),
+  );
+  const readAnyPDF = items.some(readPDFForItem);
+  let read = 0;
+  const groupCount = groups.size;
   for (const [key, group] of groups) {
+    reportProgress("attachment-match-reading", {
+      current: ++read,
+      total: groupCount,
+    });
     if (!group.fingerprint) continue;
-    for (const item of items) {
-      if (
-        await findDuplicatePDFAttachment(
-          item,
-          group.files[0].path,
-          fingerprintCache,
-          readPDFForItem(item) ? identityCache : undefined,
-        )
-      ) {
-        // Never recycle a duplicate download onto another selected paper.
-        duplicates += group.files.length;
-        duplicateOwners.add(item);
-        groups.delete(key);
-        break;
-      }
+    const owner = byteDuplicates.get(group.files[0].path);
+    if (owner) {
+      // Never recycle a duplicate download onto another selected paper.
+      duplicates += group.files.length;
+      duplicateOwners.add(owner);
+      groups.delete(key);
+      continue;
     }
-    if (groups.has(key) && items.some(readPDFForItem)) {
+    if (readAnyPDF) {
       try {
         const data = await getPDFData(group.files[0].path);
         group.titles = getPDFTitleCandidates(data);
@@ -1338,6 +1407,10 @@ async function matchAttachment() {
     if (!best) break;
     remaining.delete(best.item);
     availableGroups.delete(best.group);
+    reportProgress("attachment-match-importing", {
+      current: items.length - remaining.size,
+      total: items.length,
+    });
     ztoolkit.log("Confident attachment match", {
       title: getPlainTitle(best.item),
       file: best.file.path,
@@ -1385,7 +1458,6 @@ async function matchAttachment() {
       } else if (result?.attachment) {
         added++;
         duplicates += best.group.files.length - 1;
-        showAttachmentItem(result.attachment);
       } else {
         remaining.add(best.item);
       }
@@ -1409,12 +1481,13 @@ async function matchAttachment() {
         })),
     });
   }
-  showAttachmentMatchMessage("attachment-match-summary", {
+  return {
     added,
     duplicates,
+    unverified,
     unmatched: [...remaining].filter((item) => !duplicateOwners.has(item))
       .length,
-  });
+  };
 }
 
 /**

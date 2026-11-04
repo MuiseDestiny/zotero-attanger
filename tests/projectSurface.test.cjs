@@ -91,6 +91,12 @@ test("new automation locale keys exist in all supported locales", () => {
     "dir-not-set-sourceDir",
     "rename-linked-attachment-error",
     "attachment-match-summary",
+    "attachment-match-starting",
+    "attachment-match-scanning",
+    "attachment-match-checking-duplicates",
+    "attachment-match-reading",
+    "attachment-match-importing",
+    "attachment-match-failed",
     "attachment-duplicate-skipped",
     "attachment-file-unverified",
   ];

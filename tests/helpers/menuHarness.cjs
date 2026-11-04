@@ -131,6 +131,8 @@ function createHarness(options = {}) {
     remove: [],
     unregister: [],
     newItems: [],
+    progressWindows: [],
+    localeMessages: [],
   };
   let nextObserverID = 1;
   let nextItemID = 10000;
@@ -537,8 +539,12 @@ function createHarness(options = {}) {
   const ProgressWindow = class {
     static setIconURI() {}
 
-    constructor() {
+    constructor(header, options) {
       this.lines = [];
+      this.options = options;
+      this.shown = 0;
+      this.closed = false;
+      calls.progressWindows.push(this);
     }
 
     createLine(line) {
@@ -547,6 +553,12 @@ function createHarness(options = {}) {
     }
 
     show() {
+      this.shown++;
+      return this;
+    }
+
+    changeLine({ idx = 0, ...options }) {
+      Object.assign(this.lines[idx], options);
       return this;
     }
 
@@ -554,9 +566,15 @@ function createHarness(options = {}) {
       return this;
     }
 
-    close() {}
+    close() {
+      this.closed = true;
+      return this;
+    }
 
-    startCloseTimer() {}
+    startCloseTimer(milliseconds) {
+      this.closeTime = milliseconds;
+      return this;
+    }
   };
 
   global.window = {
@@ -661,6 +679,14 @@ function createHarness(options = {}) {
       folderSep: "/",
       icons: {},
       notifierID: "",
+      locale: {
+        current: {
+          formatMessagesSync(messages) {
+            calls.localeMessages.push(...messages);
+            return messages.map(({ id }) => ({ value: id }));
+          },
+        },
+      },
     },
   };
   global.ztoolkit = {
