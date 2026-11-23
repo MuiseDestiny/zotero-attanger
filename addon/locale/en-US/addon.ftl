@@ -50,3 +50,4 @@ unused-pdf-error = The directory or attachment references could not be safely ve
 unused-pdf-select-all = Select all
 unused-pdf-selected = { $count } selected · { $size } MB
 unused-pdf-recycling = Rechecking and moving to Trash…
+legacy-source-retained = The attachment now points to the new file. The original was kept because it was protected or could not be safely moved to the system Trash.

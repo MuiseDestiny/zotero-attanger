@@ -45,6 +45,7 @@ import {
   scoreAttachmentMatch,
 } from "./attachmentMatching";
 import { getExternalCopy, syncExternalCopy } from "./externalCopies";
+import { trashLegacyLinkedSource } from "./unusedPDFs";
 import { getConfiguredSourceDirs } from "../utils/sourceDirs";
 import { convertStoredAttachmentToLinked } from "./attachmentConversions";
 import {
@@ -2233,11 +2234,18 @@ async function moveLinkedAttachment(
         await removeVerifiedAttachmentFile(copied.path, copied.fingerprint);
         throw new Error("Linked attachment did not accept the destination");
       }
-      if (
-        getPref("moveWithoutDeleting") !== true &&
-        (await removeMovedSource(sourcePath, copied.sourceFingerprint, attItem))
-      ) {
-        await removeEmptyFolder(PathUtils.parent(sourcePath) as string);
+      if (getPref("moveWithoutDeleting") !== true) {
+        if (isZoteroStoragePath(sourcePath)) {
+          let removed = false;
+          try {
+            removed = await trashLegacyLinkedSource(sourcePath, copied.path, copied.sourceFingerprint, shouldCancel);
+          } catch (error) {
+            ztoolkit.log("Legacy linked source retained", error);
+          }
+          if (!removed && !shouldCancel()) showMoveMessage(getString("legacy-source-retained"));
+        } else if (await removeMovedSource(sourcePath, copied.sourceFingerprint, attItem)) {
+          await removeEmptyFolder(PathUtils.parent(sourcePath) as string);
+        }
       }
       return attItem;
     }

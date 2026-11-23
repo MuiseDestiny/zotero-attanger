@@ -50,3 +50,4 @@ unused-pdf-error = Impossibile verificare in sicurezza la cartella o i riferimen
 unused-pdf-select-all = Seleziona tutto
 unused-pdf-selected = { $count } selezionati · { $size } MB
 unused-pdf-recycling = Verifica e spostamento nel cestino…
+legacy-source-retained = L’allegato punta al nuovo file. L’originale è stato conservato perché protetto o perché non è stato possibile spostarlo nel cestino in sicurezza.

@@ -50,3 +50,4 @@ unused-pdf-error = 无法安全核实目录或附件引用。请确认配置目�
 unused-pdf-select-all = 全选
 unused-pdf-selected = 已选 { $count } 个 · { $size } MB
 unused-pdf-recycling = 正在复核并移至废纸篓…
+legacy-source-retained = 附件已链接到新位置。旧文件受保护、无法确认可安全移除，或无法移入系统回收站，已保留。

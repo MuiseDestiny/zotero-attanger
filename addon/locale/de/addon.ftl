@@ -50,3 +50,4 @@ unused-pdf-error = Ordner oder Anhangreferenzen konnten nicht sicher geprüft we
 unused-pdf-select-all = Alle auswählen
 unused-pdf-selected = { $count } ausgewählt · { $size } MB
 unused-pdf-recycling = Erneute Prüfung und Verschieben in den Papierkorb…
+legacy-source-retained = Der Anhang verweist jetzt auf die neue Datei. Das Original blieb erhalten, weil es geschützt ist oder nicht sicher in den Papierkorb verschoben werden konnte.

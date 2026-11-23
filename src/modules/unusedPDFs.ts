@@ -3,7 +3,9 @@ import { getWorkMode } from "../utils/workMode";
 import { windowsTrashScript } from "./windowsTrash";
 import {
   fingerprintFile,
+  fingerprintMatches,
   isZoteroStoragePath,
+  matchingFileContent,
   normalizeAttachmentPath,
   runAttachmentOperation,
   type FileFingerprint,
@@ -165,6 +167,50 @@ function isReferenced(path: string, references: AttachmentReferences) {
     references.paths.has(lexicalKey(path)) ||
     references.paths.has(pathKey(path))
   );
+}
+
+function isLegacyStoragePDF(path: string) {
+  if (path.split(/[\\/]/).some((part) => part === ".." || part === "."))
+    return false;
+  const root = normalizeAttachmentPath(Zotero.getStorageDirectory().path);
+  const separator = Zotero.isWin ? "\\" : "/";
+  const normalized = normalizeAttachmentPath(path);
+  if (!normalized.startsWith(root + separator) || hasSymlink(path))
+    return false;
+  const parts = normalized.slice(root.length + 1).split(separator);
+  if (
+    parts.length < 2 ||
+    parts.some((part) => part.startsWith(".") || /[. ]$|~\d|:/.test(part)) ||
+    /^(?:[a-z0-9]{8}$|tmp-|orphaned-files)/i.test(parts[0]) ||
+    !/\.pdf$/i.test(path) ||
+    !Zotero.File.pathToFile(path).isFile()
+  )
+    return false;
+  return pathKey(path) === lexicalKey(path);
+}
+
+export async function trashLegacyLinkedSource(
+  source: string,
+  target: string,
+  original: FileFingerprint,
+  cancelled: () => boolean,
+) {
+  if (!isLegacyStoragePDF(source) || cancelled()) return false;
+  const references = await collectReferences();
+  if (isReferenced(source, references)) return false;
+  if (!(await fingerprintMatches(target, original))) return false;
+  const current = await fingerprintFile(source);
+  if (
+    !matchingFileContent(current, original) ||
+    current.modified !== original.modified ||
+    !isLegacyStoragePDF(source) ||
+    isZoteroStoragePath(target) ||
+    cancelled() ||
+    getPref("moveWithoutDeleting") === true
+  )
+    return false;
+  await movePDFToTrash(source);
+  return true;
 }
 
 export async function scanUnusedPDFs(

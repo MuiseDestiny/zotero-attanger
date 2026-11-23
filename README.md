@@ -361,6 +361,7 @@ Attachment**, **Copy Attachment**, and **Undo Copy Attachment** instead.
   [Reconnect an existing library](#reconnect-an-existing-library).
 - **Rename Attachment**: renames the child attachments in the selection with
   Zotero's filename format. Standalone attachments are skipped.
+- For PDFs linked into a custom subfolder of `storage` by older versions, choose a destination outside `storage` and use **Move Attachment**. With **Keep Original File** off, a verified, unreferenced old PDF goes to the system Trash. This does not clean up files left by earlier moves.
 - **Move Attachment** / **Sync External Copy**: moves files into the File
   Storage Directory, or creates and updates their external copies. Standalone
   attachments are included.
